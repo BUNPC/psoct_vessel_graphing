@@ -19,8 +19,8 @@ newdir = mydir(1:idcs(end-1));
 addpath(genpath(newdir));
 
 %% load segment matrix
-dpath = '/projectnb/npbssmic/ns/Hui_Frangi_dataset/200218depthnorm/';
-fname = 'volume_ori_inv_cropped_sigma1.mat';
+dpath = '/projectnb/npbssmic/ns/Hui_Frangi_dataset/200726PSOCT/';
+fname = 'volume_nor_inverted_masked_sigma1.mat';
 filename = strcat(dpath, fname);
 
 %% Create the local vessel_mask variable
