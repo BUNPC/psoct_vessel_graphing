@@ -6,6 +6,7 @@ the Graph struct. The Graph struct is created in the script SegtoGraph.m.
 TODO:
 - Determine meaning of A_idx_end{1,1}
 - Determine logic of last two steps (new edges and new nodes)
+- Turn this into a function
 %}
 
 %% Prep environment & load Data, 
@@ -53,9 +54,9 @@ end
 %% Create nodeMap, which is used to create an updated set of edges (purpose?)
 % variable "nodeMap" should be renamed to "edgeMap"
 
-nNodes = size(nodes,1);      % nNodes = total number of nodes
+nNodes = size(nodes,1);      % Total number of nodes in graph
 map = (1:nNodes)';           % map = [1, 2, ..., nNodes]
-map(idx_del) = [];           % Remove array entries corresponding to idx_del
+map(idx_del<=nNodes) = [];           % Remove array entries corresponding to idx_del
 mapTemp = (1:length(map))';  % mapTemp = [1, 2, ..., length(map)]
 nodeMap = zeros(nNodes,1);   % nodeMap = [0, 0,...,0]
 nodeMap(map) = mapTemp;      % assign nonzero elements from map --> nodeMap
@@ -67,7 +68,7 @@ edgesNew(zero_idx,:) = [];
 
 %% Remove indices from nodes
 nodesNew = nodes;
-nodesNew(idx_del,:) = [];
+nodesNew( (idx_del<=nNodes), :) = [];
 
 %% Save graph
 Data.Graph.nodes = nodesNew;
@@ -75,4 +76,4 @@ Data.Graph.edges = edgesNew;
 Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
 disp([num2str(length(idx_del)) ' segments detected and removed from graph']);
 
-save('Data_segpruned.mat', 'Data');
+save('volume_nor_inverted_masked_sigma1_segpruned.mat', 'Data', '-v7.3');

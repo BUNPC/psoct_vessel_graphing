@@ -1443,10 +1443,16 @@ elseif get(handles.radiobutton_addEdge,'Value') == 1
 elseif get(handles.radiobutton_selectSegment,'Value') == 1  
 %     & get(handles.checkbox_verifySegments,'Value')
     % find the indices close to the selected point
-    s = 5;
+    s = 25;
     idx = find(Data.Graph.nodes(:,2) >= x-s & Data.Graph.nodes(:,2) <= x+s ...
             & Data.Graph.nodes(:,1) >= y-s & Data.Graph.nodes(:,1) <= y+s ...
             & Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe);
+    
+    % If idx is empty, then there were no pixels near the selected part of
+    % the image (within the tolerance)
+    if isempty(idx)
+        return
+    end
     
     % find the closet point
     min_idx = 1;

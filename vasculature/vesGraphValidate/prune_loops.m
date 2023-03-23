@@ -64,48 +64,52 @@ for uu = 1:length(endnodes)
         edges_new = [edges_new; find(Data.Graph.edges(:,1) == nodes_processed(u) | Data.Graph.edges(:,2) == nodes_processed(u))];
     end
     edges_new = unique(edges_new);
-    esub = Data.Graph.edges(edges_new,:);
     
-    v = unique(esub(:));
-    esub2 = esub;
-    c(uu).nodes = nodes_processed;
-    for iv = 1:length(v)
-        esub2(find(esub2==v(iv))) = iv;
-    end
+    %% Check if any edges detected. If not, skip this logic    
+    if ~isempty(edges_new)
+        esub = Data.Graph.edges(edges_new,:);        
+        v = unique(esub(:));
+        esub2 = esub;
+        c(uu).nodes = nodes_processed;
+        for iv = 1:length(v)
+            esub2(find(esub2==v(iv))) = iv;
+        end
+        disp(uu)
+        c(uu).ind = grCycleBasis(esub2);
     
-    c(uu).ind = grCycleBasis(esub2);
+        countLoop = [];
+        for iLoop = 1:size(c(uu).ind,2)
+            countLoop(iLoop) = 0;
+            loopNode = [];
+            lstEdges = find(c(uu).ind(:,iLoop)>0);
+            for iE = 1:length(lstEdges)
+                if nodeLoop( esub(lstEdges(iE),1) ) == 0
+                    nodeLoop( esub(lstEdges(iE),1) ) = numLoops + iLoop;
+                    countLoop(iLoop) = 1;
+                    loopNode = esub(lstEdges(iE),1);
+                end
+                if nodeLoop( esub(lstEdges(iE),2) ) == 0
+                    nodeLoop( esub(lstEdges(iE),2) ) = numLoops + iLoop;
+                    countLoop(iLoop) = 1;
+                    loopNode = esub(lstEdges(iE),2);
+                end
+            end
+            if ~isempty(loopNode)
+                loops = [loops; loopNode];
+                pt = Data.Graph.nodes(loopNode,:);
+                if pt(3) <= 100
+                    numLoopsL2 = numLoopsL2+1;
+                elseif pt(3) > 100 && pt(3) <= 200
+                    numLoops2T4 = numLoops2T4+1;
+                else
+                    numLoopsG4 = numLoopsG4+1;
+                end
+            end
+        end
+        if size(c(uu).ind,2)>0
+            numLoops = numLoops + length(find(countLoop>0));
+        end
 
-    countLoop = [];
-    for iLoop = 1:size(c(uu).ind,2)
-        countLoop(iLoop) = 0;
-        loopNode = [];
-        lstEdges = find(c(uu).ind(:,iLoop)>0);
-        for iE = 1:length(lstEdges)
-            if nodeLoop( esub(lstEdges(iE),1) ) == 0
-                nodeLoop( esub(lstEdges(iE),1) ) = numLoops + iLoop;
-                countLoop(iLoop) = 1;
-                loopNode = esub(lstEdges(iE),1);
-            end
-            if nodeLoop( esub(lstEdges(iE),2) ) == 0
-                nodeLoop( esub(lstEdges(iE),2) ) = numLoops + iLoop;
-                countLoop(iLoop) = 1;
-                loopNode = esub(lstEdges(iE),2);
-            end
-        end
-        if ~isempty(loopNode)
-            loops = [loops; loopNode];
-            pt = Data.Graph.nodes(loopNode,:);
-            if pt(3) <= 100
-                numLoopsL2 = numLoopsL2+1;
-            elseif pt(3) > 100 && pt(3) <= 200
-                numLoops2T4 = numLoops2T4+1;
-            else
-                numLoopsG4 = numLoopsG4+1;
-            end
-        end
-    end
-    if size(c(uu).ind,2)>0
-        numLoops = numLoops + length(find(countLoop>0));
     end
 end
 
@@ -147,15 +151,23 @@ for i=1:length(segmentstodelete)
 end
 nNodes = size(nodes,1);
 
+%% Remove nodes
+% The variable lstRemove containes the nodes to be removed
+% Some of these elements exceed the number of nodes in "map"
+
+% Remove elements from lstRemove exceeding the length of "map"
+rm_list = lstRemove(lstRemove <= length(map));
+
+% Remove nodes
 map = (1:nNodes)';
-map(lstRemove) = [];
+map( rm_list ) = [];
 mapTemp = (1:length(map))';
 nodeMap = zeros(nNodes,1);
 nodeMap(map) = mapTemp;
 
 edgesNew = nodeMap(edges);
 nodesNew = nodes;
-nodesNew(lstRemove,:) = [];
+nodesNew(rm_list,:) = [];
 
 zero_idx = find(edgesNew(:,1) == 0 | edgesNew(:,2)==0);
 edgesNew(zero_idx,:) = [];
@@ -165,6 +177,6 @@ Data.Graph.nodes = nodesNew;
 Data.Graph.edges = edgesNew;
 Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
 disp('Loops removed from the graph.');
-save('Data_fullypruned.mat', 'Data');
+save('volume_nor_inverted_masked_sigma1_segpruned_looppruned.mat', 'Data', '-v7.3');
 
 
