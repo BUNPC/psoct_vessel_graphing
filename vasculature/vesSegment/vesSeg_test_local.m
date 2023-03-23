@@ -36,9 +36,6 @@ addpath(genpath(topdir));
 %% load inverted volume
 fname = 'volume_ori_inv_cropped';
 
-% Lab desktop
-% dpath = '\\ad\eng\users\m\h\mhyman\My Documents\Boas_Lab\test_data\';
-
 % Laptop directory structure
 laptop_path = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm\';
 filename = strcat(laptop_path, strcat(fname,'.tif'));

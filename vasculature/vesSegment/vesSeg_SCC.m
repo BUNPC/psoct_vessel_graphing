@@ -10,14 +10,6 @@ Run the command:
 qsub vesSeg.sh
 %}
 
-% To Do:
-%{
-- Add relative path
-- Determine input parameters for vesSegment
-- 
-
-%}
-
 %% Add top-level directory of code repository to path
 % Print current working directory
 mydir  = pwd;
@@ -33,19 +25,19 @@ newdir = mydir(1:idcs(end-1));
 addpath(genpath(newdir));
 
 %% load volume
-dpath = '/projectnb/npbssmic/ns/Hui_Frangi_dataset/200218depthnorm/';
-fname = 'volume_ori_inv';
+dpath = '/projectnb/npbssmic/ns/Hui_Frangi_dataset/200726PSOCT/';
+fname = 'volume_nor_inverted_masked';
 filename = strcat(dpath, strcat(fname, '.tif'));
-ref = TIFF2MAT(filename);
+vol = TIFF2MAT(filename);
 
 %% multiscale vessel segmentation
 % I = 3D angiogram
-% sigma = vector of standard deviation values of gaussian filter to
-% thres = threshold value to get segmentation [0, 1]
-I = double(ref);
+% sigma = standard deviation values of gaussian filter
+% thres = threshold for binarizing vessel in segmentation [0, 1]
+I = double(vol);
 sigma = 1;
 thres = 0.2;
-[~, I_seg]=vesSegment(I, sigma, thres);
+[~, I_seg] = vesSegment(I, sigma, thres);
 
 %% save segmentation
 % Save vessel segment stack as .MAT for the next step (graph recon)
