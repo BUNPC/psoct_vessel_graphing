@@ -26,7 +26,7 @@ addpath(genpath(newdir));
 
 %% load volume
 dpath = '/projectnb/npbssmic/ns/Hui_Frangi_dataset/200726PSOCT/';
-fname = 'volume_nor_inverted_masked';
+fname = 'volume_nor_inverted_masked_eroded_island_rm';
 filename = strcat(dpath, strcat(fname, '.tif'));
 vol = TIFF2MAT(filename);
 
