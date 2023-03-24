@@ -31,6 +31,7 @@ laptop_path = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\t
 vol_name = 'volume_nor_inverted';
 filename = strcat(laptop_path, strcat(vol_name,'.tif'));
 vol = TIFF2MAT(filename);
+
 % Import mask
 mask_name = 'volume_mask';
 filename = strcat(laptop_path, strcat(mask_name,'.tif'));
@@ -41,12 +42,28 @@ if size(vol) ~= size(mask)
     error('Mask and volume matrices are different sizes.')
 end
 
-% Element-wise multiply mask and volume
-vol_masked = apply_mask(vol, mask);
-% figure; imshow(vol_masked(:,:,1));    % Debug
+%% Perform operations on mask and image
+% TODO: find optimal range for remove_mask_islands
+% TODO: create function "clean_mask" and perform both:
+% imerode - remove boundaries
+% remove_mask_islands - remove islands of pixels
 
+%%% Erode mask to remove small pixels on border that are not part of volume
+se = strel('disk',10);
+mask = imerode(mask, se);
+
+%%% Remove islands of pixels from mask
+% Range of object size to keep
+range = [1e4, 1e8];
+mask_isl = remove_mask_islands(mask, range);
+
+%%% Apply mask to volume
+% Convert from logical back to uint16 for matrix multiplication
+mask_isl = uint16(mask_isl);
+% Element-wise multiply mask and volume
+vol_masked = apply_mask(vol, mask_isl);
 % Convert masked image back to tif
-fout = strcat(laptop_path, strcat(vol_name,'_masked.tif'));
+fout = strcat(laptop_path, strcat(vol_name,'_masked_eroded_island_rm.tif'));
 segmat2tif(vol_masked, fout);
 
 
