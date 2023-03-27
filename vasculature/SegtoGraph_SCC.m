@@ -20,8 +20,7 @@ addpath(genpath(newdir));
 
 %% load segment matrix
 dpath = '/projectnb/npbssmic/ns/Hui_Frangi_dataset/200726PSOCT/';
-fname = 'volume_nor_inverted_masked_eroded_island_rm_sigma1.mat';
-filename = strcat(dpath, fname);
+filename = 'volume_nor_inverted_masked_eroded_island_rm_sigma1.mat';
 
 %% Create the local vessel_mask variable
 [~,~,ext] = fileparts(filename);
@@ -165,6 +164,6 @@ Graph.edges(sameEdgeIdx,:) = [];
 temp = Graph.nodes(:,2);
 Graph.nodes(:,2) = Graph.nodes(:,1);
 Graph.nodes(:,1) = temp;
-fname = strcat(fname, '_frangi_seg.mat');
-fout = strcat(dpath, fname);
+filename = strcat(filename, '_frangi_seg.mat');
+fout = strcat(dpath, filename);
 save(fout,'Graph');
