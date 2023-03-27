@@ -161,9 +161,14 @@ end
 Graph.edges(sameEdgeIdx,:) = [];
 
 %% Save the graph
+%%% Update Graph struct
 temp = Graph.nodes(:,2);
 Graph.nodes(:,2) = Graph.nodes(:,1);
 Graph.nodes(:,1) = temp;
+
+%%% Save graph
+% Remove .mat or .tif extension
+filename = filename(1:end-4);
 filename = strcat(filename, '_frangi_seg.mat');
 fout = strcat(dpath, filename);
 save(fout,'Graph');
