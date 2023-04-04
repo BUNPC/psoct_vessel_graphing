@@ -85,6 +85,10 @@ end
 % end
 edges_ind = zeros(edges_ind_count,2);
 %% Assign nodes and edges. 
+% Convert from UCSD graph structure to Boas Lab graph structure.
+% The goal is to retrieve a standard format for nodes and edges. This
+% allows us to use standard toolboxes for graph theory.
+% This section has been validated.
 % TODO: preallocate variable "tttt"
 
 node_idx = 1;
@@ -122,7 +126,6 @@ for u = 1:length(vessel_graph.node.cc_ind)
     node_idx = node_idx+1;
 end
 
-%% TODO: determine purpose of this section
 idx = find(link_cc_ind == 0);
 for u = 1:length(idx)
     link_length = length(vessel_graph.link.cc_ind{idx(u)});
@@ -135,23 +138,20 @@ for u = 1:length(idx)
     node_idx = node_idx+link_length;
 end
 
-%% TODO: determine purpose of this section
-
-% nodes = zeros(length(nodes_ind),3);
+%%% Create final nodes and edges variables
 [n1, n2, n3] = ind2sub(angio_size,nodes_ind);
 nodes =[n1', n2', n3'];
 edges = zeros(size(edges_ind));
 
-%% TODO: find faster search method
+% Find indices for edges (corresponding node index).
 for u = 1:size(edges_ind,1)
     edges(u,1) = find(nodes_ind == edges_ind(u,1));
     edges(u,2) = find(nodes_ind == edges_ind(u,2));
 end
-
-%% TODO: determine purpose of this section
 Graph.nodes = nodes;
 Graph.edges = edges;
 
+%% Remove redundant edges (edge = node i connected to node i)
 sameEdgeIdx = [];
 for u = 1:size(Graph.edges,1)
     if Graph.edges(u,1) == Graph.edges(u,2)
@@ -160,7 +160,7 @@ for u = 1:size(Graph.edges,1)
 end
 Graph.edges(sameEdgeIdx,:) = [];
 
-%% TODO: determine purpose of this section
+%% Swap x and y to convert into standard format
 temp = Graph.nodes(:,2);
 Graph.nodes(:,2) = Graph.nodes(:,1);
 Graph.nodes(:,1) = temp;

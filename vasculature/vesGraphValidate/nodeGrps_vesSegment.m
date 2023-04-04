@@ -1,7 +1,15 @@
-function im = nodeGrps_vesSegment( nodePos,nodeEdges )
+function im = nodeGrps_vesSegment(nodePos, nodeEdges )
 
 %%%%%%%%%%
 % TO DO:
+% CRITICAL - debug zero indexing (line 87)
+%   1) Load image + graph struct into GUI and get info.
+%   2) Regraph in GUI (reduce nodes). This step is to reduce the amount of
+%       nodes to make debugging faster.
+%   3) Run verification > get segment info > update. This function will be
+%       called. Determine why some indices are set to zero.
+%
+% LOW PRIORITY:
 % correct eLen (segLength) to be in um (non-cubical voxels problem) -  easy
 % correct segDiam to be in um (non-cubical voxels problem) - more
 % complicated - we already have calculated diameters in imView in voxels
@@ -84,6 +92,7 @@ for ii = 1:length(lst3p)
 %            end
         end
         
+        %%% TODO: determine why 0 indexing
 %         if nodeSegN(iN)==0  % remove 6/3/09 since it appears below
 %             nodeSegN(iN) = nSeg; % and should resolve an issue in
 %                                  % nodeGrps()
