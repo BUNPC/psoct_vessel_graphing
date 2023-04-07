@@ -8,4 +8,4 @@ clear; clc; close all;
 load('nodeGrps_vesSegment_test_data.mat');
 
 %% Call nodeGrps_vesSegment
-nodeGrps_vesSegment(nodePos, nodeEdges);
+im = nodeGrps_vesSegment(nodePos, nodeEdges);
