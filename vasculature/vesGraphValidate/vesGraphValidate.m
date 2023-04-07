@@ -2868,49 +2868,51 @@ draw(hObject, eventdata, handles)
 function pushbuttonRegraphNodes_Callback(hObject, eventdata, handles)
 global Data
 % global Data
-if get(handles.checkbox_prcoessVisible,'Value') == 1
-    [Sz,Sx,Sy] = size(Data.angio);
-    Zstartframe = str2double(get(handles.edit_Zstartframe,'String'));
-    Zstartframe = min(max(Zstartframe,1),Sz);
-    ZMIP = str2double(get(handles.edit_ZMIP,'String'));
-    Zendframe = min(max(Zstartframe+ZMIP-1,1),Sz);
-    Xstartframe = str2double(get(handles.edit_XcenterZoom,'String'));
-    Xstartframe = min(max(Xstartframe,1),Sx);
-    XMIP = str2double(get(handles.edit_XwidthZoom,'String'));
-    Xendframe = min(max(Xstartframe+XMIP-1,1),Sx);
-    Ystartframe = str2double(get(handles.edit_YcenterZoom,'String'));
-    Ystartframe = min(max(Ystartframe,1),Sy);
-    YMIP = str2double(get(handles.edit_YwidthZoom,'String'));
-    Yendframe = min(max(Ystartframe+YMIP-1,1),Sy);
-    
-    idx = find(Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe ...
-        & Data.Graph.nodes(:,1)>= Data.ZoomXrange(1) & Data.Graph.nodes(:,1) <= Data.ZoomXrange(2) ...
-        & Data.Graph.nodes(:,2)>= Data.ZoomYrange(1) & Data.Graph.nodes(:,2) <= Data.ZoomYrange(2));
-    [nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
-    [nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
-    Data.Graph.nodes = nodes;
-    Data.Graph.edges = edges;
-    Data.Graph.verifiedNodes = verifiedNodes;
-    Data.Graph.verifiedEdges = verifiedEdges;
-else
-    if ~isfield(Data.Graph,'verifiedEdges')
-        Data.Graph.verifiedEdges = zeros(size(Data.Graph.edges,1),1);
-    end
-    
-    if ~isfield(Data.Graph,'verifiedNodes')
-        Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
-    end
-    
-    if ~isfield(Data.Graph,'verifiedSegments')
-        Data.Graph.verifiedSegments = zeros(length(Data.Graph.segInfo.segLen),1);
-    end
-    [nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
-    [nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
-    Data.Graph.nodes = nodes;
-    Data.Graph.edges = edges;
-    Data.Graph.verifiedNodes = verifiedNodes;
-    Data.Graph.verifiedEdges = verifiedEdges;
+% if get(handles.checkbox_prcoessVisible,'Value') == 1
+%     [Sz,Sx,Sy] = size(Data.angio);
+%     Zstartframe = str2double(get(handles.edit_Zstartframe,'String'));
+%     Zstartframe = min(max(Zstartframe,1),Sz);
+%     ZMIP = str2double(get(handles.edit_ZMIP,'String'));
+%     Zendframe = min(max(Zstartframe+ZMIP-1,1),Sz);
+%     Xstartframe = str2double(get(handles.edit_XcenterZoom,'String'));
+%     Xstartframe = min(max(Xstartframe,1),Sx);
+%     XMIP = str2double(get(handles.edit_XwidthZoom,'String'));
+%     Xendframe = min(max(Xstartframe+XMIP-1,1),Sx);
+%     Ystartframe = str2double(get(handles.edit_YcenterZoom,'String'));
+%     Ystartframe = min(max(Ystartframe,1),Sy);
+%     YMIP = str2double(get(handles.edit_YwidthZoom,'String'));
+%     Yendframe = min(max(Ystartframe+YMIP-1,1),Sy);
+%     
+%     idx = find(Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe ...
+%         & Data.Graph.nodes(:,1)>= Data.ZoomXrange(1) & Data.Graph.nodes(:,1) <= Data.ZoomXrange(2) ...
+%         & Data.Graph.nodes(:,2)>= Data.ZoomYrange(1) & Data.Graph.nodes(:,2) <= Data.ZoomYrange(2));
+%     [nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
+%     [nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
+%     Data.Graph.nodes = nodes;
+%     Data.Graph.edges = edges;
+%     Data.Graph.verifiedNodes = verifiedNodes;
+%     Data.Graph.verifiedEdges = verifiedEdges;
+% else
+
+
+% if ~isfield(Data.Graph,'verifiedEdges')
+%     Data.Graph.verifiedEdges = zeros(size(Data.Graph.edges,1),1);
+% end
+% 
+% if ~isfield(Data.Graph,'verifiedNodes')
+%     Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
+% end
+
+if ~isfield(Data.Graph,'verifiedSegments')
+    Data.Graph.verifiedSegments = zeros(length(Data.Graph.segInfo.segLen),1);
 end
+[nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
+[nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
+Data.Graph.nodes = nodes;
+Data.Graph.edges = edges;
+Data.Graph.verifiedNodes = verifiedNodes;
+Data.Graph.verifiedEdges = verifiedEdges;
+% end
 % end
 draw(hObject, eventdata, handles)
 
@@ -4708,7 +4710,7 @@ function verification_updateBranchInfo_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-%% TODO: revise load data to include Graph.segInfo
+disp('\nUpdating Branch Info...')
 global Data
 
 % if isfield(Data.Graph,'verifiedSegments')
@@ -4837,6 +4839,7 @@ global Data
         Data.Graph.segInfo.segmentsUnverifiedGrpOrder = segmentsUnverifiedGrpOrder;
     end
     close(h);
+    disp('Finished updating branch info')
 % end
 
 
@@ -4926,6 +4929,8 @@ if isfield(Data.Graph,'segmentstodelete')
               Data.Graph.segInfo.edgeSegN(edgeidx) = [];
         end
     end
+    
+    % Logic to remove nodes and reindex
     nNodes = size(Data.Graph.nodes,1);
     map = (1:nNodes)';
     map(lstRemove) = [];
@@ -4937,7 +4942,6 @@ if isfield(Data.Graph,'segmentstodelete')
     [ir,~] = find(edgesNew == 0);
     edgesNew(ir,:) = [];
     
-   
     seglstRemove = Data.Graph.segmentstodelete;
     nSegments = size(Data.Graph.segInfo.segEndNodes,1);
     map = (1:nSegments)';
@@ -5297,10 +5301,34 @@ function getSegmentInfo_update_Callback(hObject, eventdata, handles)
 % hObject    handle to getSegmentInfo_update (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+disp('Updating Segment Info...')
 global Data
 
+%% TODO: need to update Data.Graph.verifiedNodes
+%%% remove single floating nodes before calling nodeGrps_vesSegment
+node_pos = Data.Graph.nodes;
+edge_node_idx = Data.Graph.edges;
+% Calculate number of bifurcations at each node
+nbifur = zeros(size(node_pos,1),1);
+n_nodes = size(node_pos,1);
+% TODO: this can be replaced with "ismember" call
+% ~ismember([1:n_nodes], edge_node_idx)
+for ii=1:n_nodes
+   nbifur(ii) = length(find(edge_node_idx(:,1)==ii | edge_node_idx(:,2)==ii));
+end
+% If an element of nbifur==0, then the node was not connected to any edge.
+% This indicates it was not connected to any segments.
+rm_list = find(nbifur == 0);
+[node_pos_reindex, edge_node_reindex] =...
+    remove_reindex_nodes(rm_list, node_pos, edge_node_idx);
+% Update Data with reindex nodes and edges
+Data.Graph.nodes = node_pos_reindex;
+Data.Graph.edges = edge_node_reindex;
+Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
+%%% Call function to compute graph properties
 Data.Graph.segInfo = nodeGrps_vesSegment(Data.Graph.nodes, Data.Graph.edges);
+
+
 segments = 1:size(Data.Graph.segInfo.segEndNodes,1);
 segCGrps = zeros(1,size(Data.Graph.segInfo.segEndNodes,1));% group number for all segments
 grpN = 1;
@@ -5333,6 +5361,7 @@ while ~isempty(segments)
     grpN = grpN+1;
 end
 Data.Graph.segInfo.segCGrps = segCGrps;
+disp('Finished Updating Segment Info. :=)')
 
 % --------------------------------------------------------------------
 function getSegmentInfo_display_Callback(hObject, eventdata, handles)
