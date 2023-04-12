@@ -25,8 +25,8 @@ newdir = mydir(1:idcs(end-1));
 addpath(genpath(newdir));
 
 %% load volume
-dpath = '/projectnb/npbssmic/ns/Hui_Frangi_dataset/200726PSOCT/';
-fname = 'volume_nor_inverted_masked_eroded_island_rm';
+dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/AD_10382/dist_corrected/volume/';
+fname = 'ref_4ds_norm.btf';
 filename = strcat(dpath, strcat(fname, '.tif'));
 vol = TIFF2MAT(filename);
 
