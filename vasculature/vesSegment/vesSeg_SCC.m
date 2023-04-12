@@ -46,5 +46,5 @@ fout = strcat(dpath, fname, '_sigma', num2str(sigma));
 save(strcat(fout, '.mat'), 'I_seg', '-v7.3');
 
 %% Save as .TIF for visualizations
-tifout = strcat(fout, ext);
+tifout = strcat(fout, '.tif');
 segmat2tif(I_seg, tifout);
