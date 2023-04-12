@@ -26,8 +26,9 @@ addpath(genpath(newdir));
 
 %% load volume
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/AD_10382/dist_corrected/volume/';
-fname = 'ref_4ds_norm.btf';
-filename = strcat(dpath, strcat(fname, '.tif'));
+fname = 'ref_4ds_norm';
+ext = '.btf';
+filename = strcat(dpath, strcat(fname, ext));
 vol = TIFF2MAT(filename);
 
 %% multiscale vessel segmentation
@@ -45,5 +46,5 @@ fout = strcat(dpath, fname, '_sigma', num2str(sigma));
 save(strcat(fout, '.mat'), 'I_seg', '-v7.3');
 
 %% Save as .TIF for visualizations
-tifout = strcat(fout, '.tif');
+tifout = strcat(fout, ext);
 segmat2tif(I_seg, tifout);
