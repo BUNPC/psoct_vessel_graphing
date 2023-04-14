@@ -28,8 +28,8 @@ if ispc
 elseif isunix
     idcs = strfind(mydir,'/');
 end
-% Remove the two sub folders to reach parent
-% (psoct_human_brain\vasculature\vesSegment)
+% Remove the two sub folders to reach top-level directory
+% (psoct_vessel_graphing)
 topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
