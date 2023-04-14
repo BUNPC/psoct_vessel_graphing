@@ -19,8 +19,8 @@ newdir = mydir(1:idcs(end));
 addpath(genpath(newdir));
 
 %% Hardcoded file for debugging:
-pathname = fullfile(pwd, '\vesSegment\');    % contained in subfolder
-filename = 'volume_ori_inv_cropped_sigma2.mat';
+pathname = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm';    % contained in subfolder
+filename = '\volume_ori_inv_cropped_sigma1.mat';
 
 %% Create the local vessel_mask variable
 [~,~,ext] = fileparts(filename);

@@ -1,46 +1,31 @@
-function seg_to_graph(dpath, filename)
+function [Graph] = seg_to_graph(segment)
 %seg_to_graph Convert the vessel segments to a graph (nodes + vertices)
 % This function is the second step in the vessel segmentation pipeline.
 % This function can take either a .MAT or .TIF
 %
 %%% INPUTS:
-%       dpath (str): absolute path to the data folder
-%       fname (str): name of the segmentation file (.MAT or .TIFF)
+%       segment (str): '[absolute path]/name' of segmentation data (.TIF or .MAT)
 %%% OUTPUTS:
 %       This function does not return anything. Instead, it saves a struct
 %       to the same directory that contains the segmentation files. The
 %       name of the struct will be "fname_frangi_seg"
 
 
-%% Add top-level directory of code repository to path
-% Print current working directory
-mydir  = pwd;
-% Find indices of slashes separating directories
-if ispc
-    idcs = strfind(mydir,'\');
-elseif isunix
-    idcs = strfind(mydir,'/');
-end
-% Remove the two sub folders to reach parent
-% (psoct_human_brain\vasculature\vesSegment)
-newdir = mydir(1:idcs(end-1));
-addpath(genpath(newdir));
-
 %% Create the local vessel_mask variable
-[~,~,ext] = fileparts(filename);
+[~,~,ext] = fileparts(segment);
 if strcmp(ext,'.mat')
-    temp = load([dpath filename]);
+    temp = load(segment);
     fn = fieldnames(temp);
     angio = temp.(fn{1});
 elseif  strcmp(ext,'.tiff') || strcmp(ext,'.tif')
-    info = imfinfo([dpath filename]);
+    info = imfinfo(segment);
     for u = 1:length(info)
         if u == 1
-            temp = imread([dpath filename],1);
+            temp = imread(segment,1);
             angio = zeros([size(temp) length(info)]);
             angio(:,:,u) = temp;
         else
-            angio(:,:,u) = imread([dpath filename],u);
+            angio(:,:,u) = imread(segment,u);
         end
     end
 end
@@ -172,19 +157,9 @@ same_edge_idx(same_edge_idx==0) = [];
 % Delete the edges with a shared edge
 Graph.edges(same_edge_idx,:) = [];
 
-%% Save the graph
-
-% Update graph
+%% Update graph
 temp = Graph.nodes(:,2);
 Graph.nodes(:,2) = Graph.nodes(:,1);
 Graph.nodes(:,1) = temp;
-
-%%% Save graph
-% Remove .mat or .tif extension
-filename = filename(1:end-4);
-% Create new filename for graph and add .MAT extension
-filename = strcat(filename, '_frangi_seg.mat');
-fout = strcat(dpath, filename);
-save(fout,'Graph');
 
 end

@@ -19,6 +19,7 @@ and "sigma" in the section "Segment the inverted image."
         function.
 %}
 
+clear; clc; close all;
 %% Add top-level directory of code repository to path
 % Print current working directory
 mydir  = pwd;
@@ -78,6 +79,7 @@ view3D(I_seg);
 % I_seg_masked = 
 
 %% Quality Assurance: view XY, XZ slices
+%{
 figure;
 % X-Y slice original
 subplot(2,2,1); imshow(ref(:,:,100)); title({'X-Y original','(slice 100)'})
@@ -89,6 +91,7 @@ subplot(2,2,2); imshow(squeeze(ref(:,100,:))); title({'X-Z original','(slice 100
 subplot(2,2,4); imshow(squeeze(I_seg(:,100,:))); title({'X-Z segment','(slice 100)'})
  text( 0.5, 1, fname, 'FontSize', 14', 'FontWeight', 'Bold', ...
       'HorizontalAlignment', 'Center', 'VerticalAlignment', 'Top' ) ;
+%}
 
 %% save segmentation as .MAT
 % Save vessel segment stack as .MAT for the next step (graph recon)
