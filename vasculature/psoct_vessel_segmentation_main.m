@@ -64,6 +64,34 @@ save(strcat(fout, '.mat'), 'I_seg', '-v7.3');
 tifout = strcat(fout, '.tif');
 segmat2tif(I_seg, tifout);
 
+%% Apply mask to segmentation volume -- remove erroneous vessels
+% TODO: find optimal range for remove_mask_islands
+% TODO: create function "clean_mask" and perform both:
+%       - imerode - remove boundaries
+%       - remove_mask_islands - remove islands of pixels
+
+%%% Create mask from normalized volume
+% TODO: create function to create binary 3D mask
+
+%%% Place next two steps into a function "clean_mask":
+% Erode mask to remove small pixels on border that are not part of volume
+se = strel('disk',10);
+mask = imerode(mask, se);
+
+% Remove islands of pixels from mask
+% Range of object size to keep
+range = [1e4, 1e8];
+mask_isl = remove_mask_islands(mask, range);
+
+%%% Apply mask to segmentation volume
+% Convert from logical back to uint16 for matrix multiplication
+mask_isl = uint16(mask_isl);
+% Element-wise multiply mask and volume
+vol_masked = apply_mask(vol, mask_isl);
+% Convert masked image back to tif
+fout = strcat(laptop_path, strcat(vol_name,'_masked_eroded_island_rm.tif'));
+segmat2tif(vol_masked, fout);
+
 %% Convert segmentation to graph
 % I_seg is the segmentation matrix
 I_seg_path = strcat(fout, '.mat');

@@ -45,8 +45,8 @@ end
 %% Perform operations on mask and image
 % TODO: find optimal range for remove_mask_islands
 % TODO: create function "clean_mask" and perform both:
-% imerode - remove boundaries
-% remove_mask_islands - remove islands of pixels
+%       - imerode - remove boundaries
+%       - remove_mask_islands - remove islands of pixels
 
 %%% Erode mask to remove small pixels on border that are not part of volume
 se = strel('disk',10);
