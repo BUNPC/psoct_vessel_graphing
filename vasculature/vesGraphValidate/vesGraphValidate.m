@@ -4210,89 +4210,7 @@ elseif isfield(Data.Graph,'segInfo')
             end
         end
     end
-    % This code was already commented
-    %{
-    %     if isfield(Data.Graph.segInfo, 'V')
-    %         if Data.Graph.segInfo.V == 0
-    %             if isfield(Data.Graph,'segnoVAll')
-    %                 u = Data.Graph.segnoVAll;
-    %                 u = min(u+1,length(Data.Graph.segInfo.segLen));
-    %             else
-    %                 u = 1;
-    %             end
-    %             Data.Graph.segnoVAll = u;
-    %         elseif Data.Graph.segInfo.V == 1
-    %             if isfield(Data.Graph,'segnoAll')
-    %                 if strcmp(checkmark,'off')
-    %                     [~,u] = min(abs(Data.Graph.segInfo.unverifiedIdx-Data.Graph.segnoAll));
-    %
-    %                 else
-    %                     [~,u] = min(abs(Data.Graph.segInfo.idx_end{1}-Data.Graph.segnoAll));
-    %                     u = min(u+1,length(Data.Graph.segInfo.idx_end{1}));
-    %                     u = Data.Graph.segInfo.idx_end{1}(u);
-    %                 end
-    %             else
-    %                 u = Data.Graph.segInfo.unverifiedIdx(1);
-    %             end
-    %             Data.Graph.segnoAll = u;
-    %         elseif Data.Graph.segInfo.V == 3
-    %             if isfield(Data.Graph,'segno3')
-    %                 if strcmp(checkmark,'off')
-    %                     [~,u] = min(abs(Data.Graph.segInfo.unverifiedIdx3-Data.Graph.segno3));
-    %                     u = min(u+1,length(Data.Graph.segInfo.unverifiedIdx3));
-    %                     u = Data.Graph.segInfo.unverifiedIdx3(u);
-    %                 else
-    %                     [~,u] = min(abs(Data.Graph.segInfo.idx_end{2}-Data.Graph.segno3));
-    %                     u = min(u+1,length(Data.Graph.segInfo.idx_end{2}));
-    %                     u = Data.Graph.segInfo.idx_end{2}(u);
-    %                 end
-    %             else
-    %                 u = Data.Graph.segInfo.unverifiedIdx3(1);
-    %             end
-    %             Data.Graph.segno3 = u;
-    %         elseif Data.Graph.segInfo.V == 5
-    %             if isfield(Data.Graph,'segno5')
-    %                 if strcmp(checkmark,'off')
-    %                     [~,u] = min(abs(Data.Graph.segInfo.unverifiedIdx5-Data.Graph.segno5));
-    %                     u = min(u+1,length(Data.Graph.segInfo.unverifiedIdx5));
-    %                     u = Data.Graph.segInfo.unverifiedIdx5(u);
-    %                 else
-    %                     [~,u] = min(abs(Data.Graph.segInfo.idx_end{3}-Data.Graph.segno5));
-    %                     u = min(u+1,length(Data.Graph.segInfo.idx_end{3}));
-    %                     u = Data.Graph.segInfo.idx_end{3}(u);
-    %                 end
-    %             else
-    %                 u = Data.Graph.segInfo.unverifiedIdx5(1);
-    %             end
-    %             Data.Graph.segno5 = u;
-    %         elseif Data.Graph.segInfo.V == 10
-    %             if isfield(Data.Graph,'segno10')
-    %                 if strcmp(checkmark,'off')
-    %                     [~,u] = min(abs(Data.Graph.segInfo.unverifiedIdx10-Data.Graph.segno10));
-    %                     u = min(u+1,length(Data.Graph.segInfo.unverifiedIdx10));
-    %                     u = Data.Graph.segInfo.unverifiedIdx10(u);
-    %                 else
-    %                     [~,u] = min(abs(Data.Graph.segInfo.idx_end{4}-Data.Graph.segno10));
-    %                     u = min(u+1,length(Data.Graph.segInfo.idx_end{4}));
-    %                     u = Data.Graph.segInfo.idx_end{4}(u);
-    %                 end
-    %             else
-    %                 u = Data.Graph.segInfo.unverifiedIdx10(1);
-    %             end
-    %             Data.Graph.segno10 = u;
-    %         end
-    %
-    %     else
-    %         if isfield(Data.Graph,'segnoVAll')
-    %             u = Data.Graph.segnoVAll;
-    %             u = min(u+1,length(Data.Graph.segInfo.segLen));
-    %             Data.Graph.segnoVAll = u;
-    %         else
-    %             u = 1;
-    %             Data.Graph.segnoVAll = u;
-    %         end
-    %     end
-    %}
+
     Data.Graph.segno = u;
     endNodes = Data.Graph.segInfo.segEndNodes(Data.Graph.segno,:);
     seg_nodes = unique([find(Data.Graph.segInfo.nodeSegN == Data.Graph.segno);endNodes(:)]);
@@ -4799,9 +4717,9 @@ global Data
         Data.Graph.endNodes(ii) = unique_endnodes(ii);
     end
     Data.Graph.nB = nB;
-    if ~isfield(Data.Graph,'verifiedSegments')
+%     if ~isfield(Data.Graph,'verifiedSegments')
         Data.Graph.verifiedSegments = zeros(size(Data.Graph.segInfo.segLen));
-    end
+%     end
     idx = find(Data.Graph.verifiedSegments == 0);
     Data.Graph.segInfo.unverifiedIdx = idx;
     Data.Graph.segInfo.unverifiedIdx3 = idx3;
@@ -4956,13 +4874,14 @@ if isfield(Data.Graph,'segmentstodelete')
     Data.Graph.verifiedEdges(ir) =[];
     
     Data.Graph.segInfo.nodeGrp(lstRemove) = [];
-    Data.Graph.segInfo.nodeSegN(lstRemove) = [];
+%     Data.Graph.segInfo.nodeSegN(lstRemove) = [];
     Data.Graph.segInfo.nodeSegN = segMap(Data.Graph.segInfo.nodeSegN);
+    Data.Graph.segInfo.nodeSegN(lstRemove) = [];
     Data.Graph.segInfo.edgeSegN(ir) = [];
     Data.Graph.segInfo.edgeSegN = segMap(Data.Graph.segInfo.edgeSegN);
-%     Data.Graph.segInfo.segNedges(seglstRemove) = [];
-%     Data.Graph.segInfo.segLen(seglstRemove) = [];
-%     Data.Graph.segInfo.segLen_um(seglstRemove) = [];
+    Data.Graph.segInfo.segNedges(seglstRemove) = [];
+    Data.Graph.segInfo.segLen(seglstRemove) = [];
+    Data.Graph.segInfo.segLen_um(seglstRemove) = [];
     Data.Graph.segInfo.segEndNodes(seglstRemove,:) = [];
     Data.Graph.segInfo.segEndNodes = nodeMap(Data.Graph.segInfo.segEndNodes); 
     Data.Graph.segInfo.segPos(seglstRemove,:) = [];
@@ -5052,66 +4971,6 @@ if isfield(Data.Graph,'segmentstodelete')
      %  Go to next segment
      pushbutton_nextSegment_Callback(hObject, eventdata, handles)
     
-   
-%     nodestoDelete = zeros(size(Data.Graph.nodes,1),1);
-%     nodestoDelete(idx) = 1;
-%     newNodes = [];
-%     newnodeGrp = Data.Graph.segInfo.nodeGrp;
-%     newnodeSegN = Data.Graph.segInfo.nodeSegN;
-%     newedgeSegN = Data.Graph.segInfo.edgeSegN;
-%     newverifiedNodes = [];
-%     newverifiedEdges = Data.Graph.verifiedEdges;
-%     newEdges = Data.Graph.edges;
-%     verifiedSegmentsMap  = Data.Graph.verifiedSegments;
-%     segmentno = 1;
-%     for u = 1:length(Data.Graph.segInfo.segLen)
-%         if sum(ismember(segmentstodelete,u)) == 0
-%            verifiedSegmentsMap(u) = segmentno;
-%            segmentno = segmentno+1;
-%         else
-%            verifiedSegmentsMap(u) = 0;
-%         end
-%     end
-%     for u = 1:size(Data.Graph.nodes,1)
-%         u
-%         if nodestoDelete(u) == 1
-%             idx = find(newEdges(:,1) == u | newEdges(:,2) == u);
-%             newEdges(idx,:) = [];
-%             newverifiedEdges(idx,:) = [];
-%             newnodeGrp(idx) = [];
-%             newnodeGrp(u) = [];
-%             newnodeSegN(u) = [];
-%             newedgeSegN(idx) = [];
-%         else
-%             newNodes = [newNodes; Data.Graph.nodes(u,:)];
-%             newverifiedNodes = [newverifiedNodes; Data.Graph.verifiedNodes(u)];
-%             idx = find(Data.Graph.edges(:,1) == u);
-%             nodeno = size(newNodes,1);
-%             newEdges(idx,1) = nodeno;
-%              newedgeSegN(idx) = verifiedSegmentsMap(Data.Graph.segInfo.edgeSegN(idx));
-%             idx = find(Data.Graph.edges(:,2) == u);
-%             newEdges(idx,2) = nodeno;
-%             newedgeSegN(idx) = verifiedSegmentsMap(Data.Graph.segInfo.edgeSegN(idx));
-% %             newnodeGrp(u) = verifiedSegmentsMap(Data.Graph.segInfo.nodeGrp(u));
-%             newnodeSegN(u) = verifiedSegmentsMap(Data.Graph.segInfo.nodeSegN(u));
-%         end
-%     end
-%    
-%     Data.Graph.nodes = newNodes;
-%     Data.Graph.segInfo.nodeGrp = newnodeGrp;
-%     Data.Graph.segInfo.nodeSegN = newnodeSegN;
-%     Data.Graph.segInfo.edgeSegN = newedgeSegN;
-%     Data.Graph.verifiedEdges = newverifiedEdges;
-%     Data.Graph.verifiedSegments(Data.Graph.verifiedSegments == segmentstodelete) = [];
-%     idx = find(ismember(Data.Graph.segInfo.unverifiedIdx,Data.Graph.segmentstodelete) == 1);
-%     Data.Graph.segInfo.unverifiedIdx(idx) = [];
-%     idx = find(ismember(Data.Graph.segInfo.unverifiedIdx3,Data.Graph.segmentstodelete) == 1);
-%     Data.Graph.segInfo.unverifiedIdx3(idx) = [];
-%     idx = find(ismember(Data.Graph.segInfo.unverifiedIdx5,Data.Graph.segmentstodelete) == 1);
-%     Data.Graph.segInfo.unverifiedIdx5(idx) = [];
-%     idx = find(ismember(Data.Graph.segInfo.unverifiedIdx10,Data.Graph.segmentstodelete) == 1);
-%     Data.Graph.segInfo.unverifiedIdx10(idx) = [];
-%     Data.Graph.segmentstodelete = [];
 end
 
 
@@ -5304,7 +5163,6 @@ function getSegmentInfo_update_Callback(hObject, eventdata, handles)
 disp('Updating Segment Info...')
 global Data
 
-%% TODO: need to update Data.Graph.verifiedNodes
 %%% remove single floating nodes before calling nodeGrps_vesSegment
 node_pos = Data.Graph.nodes;
 edge_node_idx = Data.Graph.edges;
