@@ -35,13 +35,24 @@ addpath(genpath(topdir));
 
 %% Imaging parameters
 % voxel dimensions
-vox_dim = [10, 10, 10]; % what are the units here? Leftover from Jairui.
+vox_dim = [30, 30, 30]; % microns
 
-%% Import volume (.TIF or .BTF) & convert to MAT
+%% Import volume (.TIF or .BTF) & convert to MAT (windows PC)
+%{
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm\';
 fname = 'volume_ori_inv_cropped';
 % filename extension
 ext = '.tif';
+filename = strcat(dpath, strcat(fname,ext));
+% Convert .tif to .MAT
+vol = TIFF2MAT(filename);
+%}
+
+%% Import volume (.TIF or .BTF) & convert to MAT (SCC)
+dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/AD_10382/dist_corrected/volume/';
+fname = 'ref_4ds_norm';
+% filename extension
+ext = '.btf';
 filename = strcat(dpath, strcat(fname,ext));
 % Convert .tif to .MAT
 vol = TIFF2MAT(filename);
@@ -64,6 +75,7 @@ save(strcat(fout, '.mat'), 'I_seg', '-v7.3');
 tifout = strcat(fout, '.tif');
 segmat2tif(I_seg, tifout);
 
+%{
 %% Apply mask to segmentation volume -- remove erroneous vessels
 % TODO: find optimal range for remove_mask_islands
 % TODO: create function "clean_mask" and perform both:
@@ -148,7 +160,7 @@ title('Vessel Tortuosity')
 xlabel('Tortuosity (unitless)')
 ylabel('Count'); ylim([0,200])
 set(gca, 'FontSize', 20)
-
+%}
 
 %% (OLD CODE) Median diameter
 %{
