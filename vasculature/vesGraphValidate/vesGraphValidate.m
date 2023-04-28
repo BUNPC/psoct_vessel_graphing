@@ -1472,17 +1472,17 @@ elseif get(handles.radiobutton_selectSegment,'Value') == 1
     seg_node = idx(min_idx);
     undoDelete_flag = 0;
     idx_seg = find(Data.Graph.segInfo.segEndNodes(:,1) == seg_node | Data.Graph.segInfo.segEndNodes(:,2) == seg_node);
-    if length(idx_seg) < 1
+    if length(idx_seg) <= 1
         selected_segment = Data.Graph.segInfo.nodeSegN(seg_node);
-    else 
+    else
         ambiguityflag = 1;
-        for u = 1:length(idx_seg)
-            if length(find(Data.Graph.segInfo.nodeSegN == idx_seg(u))) <= 2
-                selected_segment = idx_seg(u);
-                 ambiguityflag = 0;
-                 break;
-            end
-        end
+%         for u = 1:length(idx_seg)
+%             if length(find(Data.Graph.segInfo.nodeSegN == idx_seg(u))) <= 2
+%                 selected_segment = idx_seg(u);
+%                  ambiguityflag = 0;
+%                  break;
+%             end
+%         end
         if ambiguityflag == 1
             f = msgbox('Please select different node,current node is part of multiple segments');
             uiwait(f);
@@ -4992,11 +4992,7 @@ while ~isempty(segments)
     cdeletednodes = [];
     while ~isempty(segEndNodes)
         cEndnode = segEndNodes(end);
-%         u1 = segEndNodes(1);
-%         u2 = segEndNodes(2);
-%         nodesegments = find(Data.Graph.segInfo.nodeSegN(cEndnode));
         seg1 = find((Data.Graph.segInfo.segEndNodes(:,1) == cEndnode) | (Data.Graph.segInfo.segEndNodes(:,2) == cEndnode));
-%         seg2 = find((Data.Graph.segInfo.segEndNodes(:,1) == u2) | (Data.Graph.segInfo.segEndNodes(:,2) == u2));
         cSeg = unique([cSeg ; seg1]);
         tempseg = unique(setdiff(seg1,completedSegments)); 
         cdeletednodes = [cdeletednodes segEndNodes(end)];
@@ -5229,8 +5225,9 @@ function getSegmentInfo_update_Callback(hObject, eventdata, handles)
 % hObject    handle to getSegmentInfo_update (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-disp('Updating Segment Info...')
+
 global Data
+disp('Updating Segment Info...')
 
 %%% remove single floating nodes before calling nodeGrps_vesSegment
 node_pos = Data.Graph.nodes;
@@ -5289,6 +5286,7 @@ while ~isempty(segments)
 end
 Data.Graph.segInfo.segCGrps = segCGrps;
 disp('Finished Updating Segment Info.')
+draw(hObject, eventdata, handles)
 
 % --------------------------------------------------------------------
 function getSegmentInfo_display_Callback(hObject, eventdata, handles)
