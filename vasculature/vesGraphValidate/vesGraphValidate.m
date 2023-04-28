@@ -4972,15 +4972,75 @@ if isfield(Data.Graph,'segmentstodelete')
      Data.Graph.segInfo.segPos(seglstRemove,:) = [];
      
      Data.Graph.verifiedSegments(seglstRemove) = [];
-     % Do not call next line (updating segCGrps). Instead run function to
-     % update both segCGrps and segmentsGrpOrder. SK will send this code.
-     Data.Graph.segInfo.segCGrps(seglstRemove) = [];
      %}
-     
-     %  Go to next segment
-     pushbutton_nextSegment_Callback(hObject, eventdata, handles)
+     update_segCgrps_and_order()
+     draw(hObject, eventdata, handles)
+
     
 end
+
+function update_segCgrps_and_order()
+global Data
+
+segments = 1:size(Data.Graph.segInfo.segEndNodes,1);
+segCGrps = zeros(1,size(Data.Graph.segInfo.segEndNodes,1));% group number for all segments
+grpN = 1;
+while ~isempty(segments)
+    cSeg = segments(1);
+    completedSegments = cSeg;
+    segEndNodes = Data.Graph.segInfo.segEndNodes(cSeg,:);
+    cdeletednodes = [];
+    while ~isempty(segEndNodes)
+        cEndnode = segEndNodes(end);
+%         u1 = segEndNodes(1);
+%         u2 = segEndNodes(2);
+%         nodesegments = find(Data.Graph.segInfo.nodeSegN(cEndnode));
+        seg1 = find((Data.Graph.segInfo.segEndNodes(:,1) == cEndnode) | (Data.Graph.segInfo.segEndNodes(:,2) == cEndnode));
+%         seg2 = find((Data.Graph.segInfo.segEndNodes(:,1) == u2) | (Data.Graph.segInfo.segEndNodes(:,2) == u2));
+        cSeg = unique([cSeg ; seg1]);
+        tempseg = unique(setdiff(seg1,completedSegments)); 
+        cdeletednodes = [cdeletednodes segEndNodes(end)];
+        segEndNodes(end) = [];
+        for u = 1:length(tempseg)
+            tempEndNodes = Data.Graph.segInfo.segEndNodes(tempseg(u),:);
+            segEndNodes = setdiff(unique([segEndNodes; tempEndNodes']),cdeletednodes);
+        end
+        temparray = ismember(segments,cSeg);
+        completedSegments = unique([completedSegments; cSeg]);
+        idx = find(temparray == 1);
+        segCGrps(cSeg) = grpN;
+        segments(idx) = [];
+    end
+    grpN = grpN+1;
+end
+Data.Graph.segInfo.segCGrps = segCGrps;
+
+ if isfield(Data.Graph.segInfo,'segCGrps')
+    grpLengths = zeros(1,length(Data.Graph.segInfo.segCGrps(:)));
+    for u = 1:length(Data.Graph.segInfo.segCGrps)
+        idx = find(Data.Graph.segInfo.segCGrps == u);
+        grpLengths(u) = length(idx);
+    end
+    [~,id] = sort(grpLengths,'descend');
+    segmentsGrpOrder = zeros(length(Data.Graph.segInfo.segCGrps),2);
+    segmentsUnverifiedGrpOrder = zeros(length(find(Data.Graph.verifiedSegments == 0)),2);
+    sidx = 1;
+    usidx = 1;
+    for u = 1:length(id)
+        idx = find(Data.Graph.segInfo.segCGrps == id(u));
+        tempidx = find( Data.Graph.verifiedSegments == 0 );
+        uidx = intersect(idx,tempidx);
+        segmentsGrpOrder(sidx:sidx+length(idx)-1,1) = idx;
+        segmentsGrpOrder(sidx:sidx+length(idx)-1,2) = u;
+        segmentsUnverifiedGrpOrder(usidx:usidx+length(uidx)-1,1) = uidx;
+        segmentsUnverifiedGrpOrder(usidx:usidx+length(uidx)-1,2) = u;
+        sidx = sidx+length(idx);
+        usidx = usidx+length(uidx);
+    end
+    Data.Graph.segInfo.segmentsGrpOrder = segmentsGrpOrder;
+    Data.Graph.segInfo.segmentsUnverifiedGrpOrder = segmentsUnverifiedGrpOrder;
+ end
+
 
 
 % --------------------------------------------------------------------
