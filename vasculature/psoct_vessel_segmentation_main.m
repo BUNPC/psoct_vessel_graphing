@@ -51,7 +51,6 @@ vol = TIFF2MAT(filename);
 %% Import volume (.TIF or .BTF) & convert to MAT (SCC)
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/AD_10382/dist_corrected/volume/';
 fname = 'ref_4ds_norm';
-% filename extension
 ext = '.btf';
 filename = strcat(dpath, strcat(fname,ext));
 % Convert .tif to .MAT
@@ -202,3 +201,12 @@ I_seg(I_seg(:)~=0)=1;
 I_skel=bwskel(logical(I_seg));
 MAT2TIFF(I_skel,'I_seg_skel.tif');
 %}
+
+function segment_main(dpath, fname, ext)
+% 
+
+end
+
+function graph_main()
+
+end

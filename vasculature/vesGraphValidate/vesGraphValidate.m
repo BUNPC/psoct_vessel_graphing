@@ -4753,6 +4753,9 @@ global Data
             sidx = sidx+length(idx);
             usidx = usidx+length(uidx);
         end
+        % After trashing deleted segments and then running "Update Branch
+        % Info," this next line sets the last row of the array
+        % segmentsGrpOrder to zeros.
         Data.Graph.segInfo.segmentsGrpOrder = segmentsGrpOrder;
         Data.Graph.segInfo.segmentsUnverifiedGrpOrder = segmentsUnverifiedGrpOrder;
     end
@@ -4931,12 +4934,10 @@ if isfield(Data.Graph,'segmentstodelete')
 
     % loops through the end nodes to make attached segments into one
     % segments and delete other
-    segmentstodelete = [];
      for v = 1:length(noteEndNodes)
         Enode = noteEndNodes(v);
         segs = find(Data.Graph.segInfo.segEndNodes(:,1) == Enode | Data.Graph.segInfo.segEndNodes(:,2) == Enode);
         if length(segs) == 2 %length should be 2 but just in case...
-            segmenttodelete = [segmentstodelete; segs(2)];
             nodes_idx = find(Data.Graph.segInfo.nodeSegN == segs(2));
             Data.Graph.segInfo.nodeSegN(nodes_idx) = segs(1);
             edges_idx = find(Data.Graph.segInfo.edgeSegN == segs(2));
@@ -4948,6 +4949,11 @@ if isfield(Data.Graph,'segmentstodelete')
         end
      end
     
+     % The following code was not running because the array
+     % "Data.Graph.segmentstodelete" was empty. This code is being
+     % commented out temporarily. If the latest path fixes the deleting
+     % issue, then this code can be safely removed.
+     %{
      %  delete segments and update segInfo accordingly
      seglstRemove = Data.Graph.segmentstodelete;
      nSegments = length(Data.Graph.segInfo.segLen);
@@ -4966,7 +4972,10 @@ if isfield(Data.Graph,'segmentstodelete')
      Data.Graph.segInfo.segPos(seglstRemove,:) = [];
      
      Data.Graph.verifiedSegments(seglstRemove) = [];
+     % Do not call next line (updating segCGrps). Instead run function to
+     % update both segCGrps and segmentsGrpOrder. SK will send this code.
      Data.Graph.segInfo.segCGrps(seglstRemove) = [];
+     %}
      
      %  Go to next segment
      pushbutton_nextSegment_Callback(hObject, eventdata, handles)
@@ -5219,7 +5228,7 @@ while ~isempty(segments)
     grpN = grpN+1;
 end
 Data.Graph.segInfo.segCGrps = segCGrps;
-disp('Finished Updating Segment Info. :=)')
+disp('Finished Updating Segment Info.')
 
 % --------------------------------------------------------------------
 function getSegmentInfo_display_Callback(hObject, eventdata, handles)
