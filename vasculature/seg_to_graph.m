@@ -122,7 +122,6 @@ for u = 1:length(idx)
 end
 
 %% TODO: determine purpose of this section
-
 [n1, n2, n3] = ind2sub(angio_size,nodes_ind);
 nodes = [n1', n2', n3'];
 edges = zeros(size(edges_ind));
@@ -134,7 +133,6 @@ for u = 1:size(edges_ind,1)
 end
 
 %% Remove redundant edges from graph
-
 % Initialize graph struct
 graph.nodes = nodes;
 graph.edges = edges;
@@ -164,5 +162,14 @@ graph.edges(same_edge_idx,:) = [];
 temp = graph.nodes(:,2);
 graph.nodes(:,2) = graph.nodes(:,1);
 graph.nodes(:,1) = temp;
+
+%% Run the initialization steps in GUI:
+% "Verification -> Get Segment Info -> Update"
+% "Verification -> Update Branch Info"
+
+%% Run regraph (straighten) & prune loops
+%
+
+%% Remove floating nodes (see logic in 
 
 end

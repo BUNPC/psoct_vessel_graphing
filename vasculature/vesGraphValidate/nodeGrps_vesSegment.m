@@ -46,37 +46,7 @@ for ii=1:nN
    nB(ii) = length(find(nodeEdges(:,1)==ii | nodeEdges(:,2)==ii));
 end
 
-%% Logic for removing single floating nodes.
-% This is performed in vesGraphValidate, so it should not be necessary.
-%{
-lstRemove = find(nB == 0);
-
-% Call "remove_reindex_nodes" here
-nNodes = size(nodePos,1);
-map = (1:nNodes)';
-map(lstRemove) = [];
-mapTemp = (1:length(map))';
-nodeMap = zeros(nNodes,1);
-nodeMap(map) = mapTemp;
-
-edgesNew = nodeMap(nodeEdges);
-[ir,~] = find(edgesNew == 0);
-edgesNew(ir,:) = [];
-
-nodePos(lstRemove,:) = [];
-nodeEdges = edgesNew;
-
-% After calling function:
-% Remove disconnected nodes from list of bifurcations.
-nB(lstRemove,:) = [];
-% Recalculate number of nodes.
-nN = size(nodePos,1);
-%}
-
 %% create nodePos_um variable, to have positions in um
-% TODO:
-%   - replace hard-coded hxy/hz with variable inputs to function
-%   - update im.nodePos_um whenever we update im.nodePos
 nodePos_um = nodePos; 
 nodePos_um(:,1) = nodePos(:,1).*vox_dim(1);
 nodePos_um(:,2) = nodePos(:,2).*vox_dim(2);
