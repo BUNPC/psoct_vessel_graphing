@@ -109,6 +109,7 @@ segmat2tif(I_seg, tifout);
 
 
 %% Apply mask to segmentation volume -- remove erroneous vessels
+%{
 % TODO: find optimal range for remove_mask_islands
 % TODO: create function "clean_mask" and perform both:
 %       - imerode - remove boundaries
@@ -135,13 +136,12 @@ vol_masked = apply_mask(vol, mask_isl);
 % Convert masked image back to tif
 fout = strcat(laptop_path, strcat(vol_name,'_masked_eroded_island_rm.tif'));
 segmat2tif(vol_masked, fout);
-
+%}
 %% Convert segmentation to graph
-% TODO: update seg_to_graph input to take voxel dimensions
 
 % I_seg is the segmentation matrix
 I_seg_path = strcat(fout, '.mat');
-Graph = seg_to_graph(I_seg_path);   
+Graph = seg_to_graph(I_seg_path, vox_dim);
 
 %%% Save graph
 % Create new filename for graph and add .MAT extension

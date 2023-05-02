@@ -4628,7 +4628,7 @@ function verification_updateBranchInfo_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-disp('\nUpdating Branch Info...')
+disp('Updating Branch Info...')
 global Data
 
 % if isfield(Data.Graph,'verifiedSegments')
@@ -5250,7 +5250,8 @@ Data.Graph.nodes = node_pos_reindex;
 Data.Graph.edges = edge_node_reindex;
 Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
 %%% Call function to compute graph properties
-Data.Graph.segInfo = nodeGrps_vesSegment(Data.Graph.nodes, Data.Graph.edges);
+Data.Graph.segInfo =...
+    nodeGrps_vesSegment(Data.Graph.nodes, Data.Graph.edges, Data.Graph.vox);
 
 
 segments = 1:size(Data.Graph.segInfo.segEndNodes,1);
