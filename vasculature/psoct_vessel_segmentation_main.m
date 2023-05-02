@@ -33,12 +33,10 @@ end
 topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
-%% Imaging parameters
-% voxel dimensions
-vox_dim = [30, 30, 30]; % microns
 
-%% Import volume (.TIF or .BTF) & convert to MAT (windows PC)
-%{
+%% Import volume (.TIF or .BTF) & convert to MAT 
+
+%%% Local paths (windows PC)
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm\';
 fname = 'volume_ori_inv_cropped';
 % filename extension
@@ -46,24 +44,59 @@ ext = '.tif';
 filename = strcat(dpath, strcat(fname,ext));
 % Convert .tif to .MAT
 vol = TIFF2MAT(filename);
-%}
 
-%% Import volume (.TIF or .BTF) & convert to MAT (SCC)
+%%% SCC paths (windows PC)
+%{
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/AD_10382/dist_corrected/volume/';
 fname = 'ref_4ds_norm';
+% filename extension
 ext = '.btf';
 filename = strcat(dpath, strcat(fname,ext));
 % Convert .tif to .MAT
 vol = TIFF2MAT(filename);
+%}
+
+%% Set Voxel Size
+
+%%% Assign PS-OCT voxel dimension [x, y, z] according to downsample factor
+% Downasample factor = 4 --> Voxel = [12, 12, 15] micron
+% Downasample factor = 10 --> Voxel = [30, 30, 35] micron
+% TODO: Create function to extract downsample and voxel size from filename.
+%       The filename contains either "_10ds" or "_4ds".
+
+% Temporary hard-coded voxel dimensions
+% PS-OCT voxel dimensions (microns)
+vox_dim = [30, 30, 35];
+
+%%% 2P microscopy voxel will always be 5um x 5um
+vox2p = [5, 5];
+
+%%% Minimum number of connected voxels to define as vessel
+seg_min_vox = 30;
 
 %% Multiscale vessel segmentation
-% I = 3D angiogram
-% sigma = standard deviation values of gaussian filter
-% thres = threshold for binarizing vessel in segmentation [0, 1]
+%   I - inverted PS-OCT (white = vessel, non-white = tissue).
+%   sigma - vector of standard deviation values of gaussian filter to
+%           calcualte hessian matrix at each voxel
+%   thres - threshold to determine which voxel belongs to a vessel. This is
+%           applied to the probability matrix from the output of the frangi
+%           filter.
+%   min_conn - vesSegment uses the function bwconncomp to determine the
+%               number of connected voxels for each segment. If the number
+%               of voxels is less than this threshold, then the segment
+%               will be removed.
+
+%%% Create variables for image and filter parameters
+% convert volume to double matrix
 I = double(vol);
+% Filter parameters
 sigma = 1;
 thres = 0.2;
-[~, I_seg] = vesSegment(I, sigma, thres);
+% Minimum connections to define as segment
+min_conn = 30;
+
+%%% Call function to segment the original volume
+[~, I_seg] = vesSegment(I, sigma, thres, min_conn);
 
 %% Save segmented volume as .MAT and .TIF
 % Save vessel segment stack as .MAT for the next step (graph recon)
@@ -74,7 +107,7 @@ save(strcat(fout, '.mat'), 'I_seg', '-v7.3');
 tifout = strcat(fout, '.tif');
 segmat2tif(I_seg, tifout);
 
-%{
+
 %% Apply mask to segmentation volume -- remove erroneous vessels
 % TODO: find optimal range for remove_mask_islands
 % TODO: create function "clean_mask" and perform both:
@@ -104,6 +137,8 @@ fout = strcat(laptop_path, strcat(vol_name,'_masked_eroded_island_rm.tif'));
 segmat2tif(vol_masked, fout);
 
 %% Convert segmentation to graph
+% TODO: update seg_to_graph input to take voxel dimensions
+
 % I_seg is the segmentation matrix
 I_seg_path = strcat(fout, '.mat');
 Graph = seg_to_graph(I_seg_path);   
