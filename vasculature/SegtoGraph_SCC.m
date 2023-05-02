@@ -20,24 +20,23 @@ addpath(genpath(newdir));
 
 %% load segment matrix
 dpath = '/projectnb/npbssmic/ns/Hui_Frangi_dataset/200726PSOCT/';
-fname = 'volume_nor_inverted_masked_sigma1.mat';
-filename = strcat(dpath, fname);
+filename = 'volume_nor_inverted_masked_eroded_island_rm_sigma1.mat';
 
 %% Create the local vessel_mask variable
 [~,~,ext] = fileparts(filename);
 if strcmp(ext,'.mat')
-    temp = load([pathname filename]);
+    temp = load([dpath filename]);
     fn = fieldnames(temp);
     angio = temp.(fn{1});
 elseif  strcmp(ext,'.tiff') || strcmp(ext,'.tif')
-    info = imfinfo([pathname filename]);
+    info = imfinfo([dpath filename]);
     for u = 1:length(info)
         if u == 1
-            temp = imread([pathname filename],1);
+            temp = imread([dpath filename],1);
             angio = zeros([size(temp) length(info)]);
             angio(:,:,u) = temp;
         else
-            angio(:,:,u) = imread([pathname filename],u);
+            angio(:,:,u) = imread([dpath filename],u);
         end
     end
 end
@@ -162,9 +161,15 @@ end
 Graph.edges(sameEdgeIdx,:) = [];
 
 %% Save the graph
+%%% Update Graph struct
 temp = Graph.nodes(:,2);
 Graph.nodes(:,2) = Graph.nodes(:,1);
 Graph.nodes(:,1) = temp;
-fname = strcat(fname, '_frangi_seg.mat');
-fout = strcat(dpath, fname);
+
+%%% Save graph
+% Remove .mat or .tif extension
+filename = filename(1:end-4);
+% Append correct extension
+filename = strcat(filename, '_frangi_seg.mat');
+fout = strcat(dpath, filename);
 save(fout,'Graph');

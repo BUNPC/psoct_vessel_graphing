@@ -1472,17 +1472,17 @@ elseif get(handles.radiobutton_selectSegment,'Value') == 1
     seg_node = idx(min_idx);
     undoDelete_flag = 0;
     idx_seg = find(Data.Graph.segInfo.segEndNodes(:,1) == seg_node | Data.Graph.segInfo.segEndNodes(:,2) == seg_node);
-    if length(idx_seg) < 1
+    if length(idx_seg) <= 1
         selected_segment = Data.Graph.segInfo.nodeSegN(seg_node);
-    else 
+    else
         ambiguityflag = 1;
-        for u = 1:length(idx_seg)
-            if length(find(Data.Graph.segInfo.nodeSegN == idx_seg(u))) <= 2
-                selected_segment = idx_seg(u);
-                 ambiguityflag = 0;
-                 break;
-            end
-        end
+%         for u = 1:length(idx_seg)
+%             if length(find(Data.Graph.segInfo.nodeSegN == idx_seg(u))) <= 2
+%                 selected_segment = idx_seg(u);
+%                  ambiguityflag = 0;
+%                  break;
+%             end
+%         end
         if ambiguityflag == 1
             f = msgbox('Please select different node,current node is part of multiple segments');
             uiwait(f);
@@ -2868,49 +2868,51 @@ draw(hObject, eventdata, handles)
 function pushbuttonRegraphNodes_Callback(hObject, eventdata, handles)
 global Data
 % global Data
-if get(handles.checkbox_prcoessVisible,'Value') == 1
-    [Sz,Sx,Sy] = size(Data.angio);
-    Zstartframe = str2double(get(handles.edit_Zstartframe,'String'));
-    Zstartframe = min(max(Zstartframe,1),Sz);
-    ZMIP = str2double(get(handles.edit_ZMIP,'String'));
-    Zendframe = min(max(Zstartframe+ZMIP-1,1),Sz);
-    Xstartframe = str2double(get(handles.edit_XcenterZoom,'String'));
-    Xstartframe = min(max(Xstartframe,1),Sx);
-    XMIP = str2double(get(handles.edit_XwidthZoom,'String'));
-    Xendframe = min(max(Xstartframe+XMIP-1,1),Sx);
-    Ystartframe = str2double(get(handles.edit_YcenterZoom,'String'));
-    Ystartframe = min(max(Ystartframe,1),Sy);
-    YMIP = str2double(get(handles.edit_YwidthZoom,'String'));
-    Yendframe = min(max(Ystartframe+YMIP-1,1),Sy);
-    
-    idx = find(Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe ...
-        & Data.Graph.nodes(:,1)>= Data.ZoomXrange(1) & Data.Graph.nodes(:,1) <= Data.ZoomXrange(2) ...
-        & Data.Graph.nodes(:,2)>= Data.ZoomYrange(1) & Data.Graph.nodes(:,2) <= Data.ZoomYrange(2));
-    [nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
-    [nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
-    Data.Graph.nodes = nodes;
-    Data.Graph.edges = edges;
-    Data.Graph.verifiedNodes = verifiedNodes;
-    Data.Graph.verifiedEdges = verifiedEdges;
-else
-    if ~isfield(Data.Graph,'verifiedEdges')
-        Data.Graph.verifiedEdges = zeros(size(Data.Graph.edges,1),1);
-    end
-    
-    if ~isfield(Data.Graph,'verifiedNodes')
-        Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
-    end
-    
-    if ~isfield(Data.Graph,'verifiedSegments')
-        Data.Graph.verifiedSegments = zeros(length(Data.Graph.segInfo.segLen),1);
-    end
-    [nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
-    [nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
-    Data.Graph.nodes = nodes;
-    Data.Graph.edges = edges;
-    Data.Graph.verifiedNodes = verifiedNodes;
-    Data.Graph.verifiedEdges = verifiedEdges;
+% if get(handles.checkbox_prcoessVisible,'Value') == 1
+%     [Sz,Sx,Sy] = size(Data.angio);
+%     Zstartframe = str2double(get(handles.edit_Zstartframe,'String'));
+%     Zstartframe = min(max(Zstartframe,1),Sz);
+%     ZMIP = str2double(get(handles.edit_ZMIP,'String'));
+%     Zendframe = min(max(Zstartframe+ZMIP-1,1),Sz);
+%     Xstartframe = str2double(get(handles.edit_XcenterZoom,'String'));
+%     Xstartframe = min(max(Xstartframe,1),Sx);
+%     XMIP = str2double(get(handles.edit_XwidthZoom,'String'));
+%     Xendframe = min(max(Xstartframe+XMIP-1,1),Sx);
+%     Ystartframe = str2double(get(handles.edit_YcenterZoom,'String'));
+%     Ystartframe = min(max(Ystartframe,1),Sy);
+%     YMIP = str2double(get(handles.edit_YwidthZoom,'String'));
+%     Yendframe = min(max(Ystartframe+YMIP-1,1),Sy);
+%     
+%     idx = find(Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe ...
+%         & Data.Graph.nodes(:,1)>= Data.ZoomXrange(1) & Data.Graph.nodes(:,1) <= Data.ZoomXrange(2) ...
+%         & Data.Graph.nodes(:,2)>= Data.ZoomYrange(1) & Data.Graph.nodes(:,2) <= Data.ZoomYrange(2));
+%     [nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
+%     [nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
+%     Data.Graph.nodes = nodes;
+%     Data.Graph.edges = edges;
+%     Data.Graph.verifiedNodes = verifiedNodes;
+%     Data.Graph.verifiedEdges = verifiedEdges;
+% else
+
+
+% if ~isfield(Data.Graph,'verifiedEdges')
+%     Data.Graph.verifiedEdges = zeros(size(Data.Graph.edges,1),1);
+% end
+% 
+% if ~isfield(Data.Graph,'verifiedNodes')
+%     Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
+% end
+
+if ~isfield(Data.Graph,'verifiedSegments')
+    Data.Graph.verifiedSegments = zeros(length(Data.Graph.segInfo.segLen),1);
 end
+[nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
+[nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
+Data.Graph.nodes = nodes;
+Data.Graph.edges = edges;
+Data.Graph.verifiedNodes = verifiedNodes;
+Data.Graph.verifiedEdges = verifiedEdges;
+% end
 % end
 draw(hObject, eventdata, handles)
 
@@ -4208,89 +4210,7 @@ elseif isfield(Data.Graph,'segInfo')
             end
         end
     end
-    % This code was already commented
-    %{
-    %     if isfield(Data.Graph.segInfo, 'V')
-    %         if Data.Graph.segInfo.V == 0
-    %             if isfield(Data.Graph,'segnoVAll')
-    %                 u = Data.Graph.segnoVAll;
-    %                 u = min(u+1,length(Data.Graph.segInfo.segLen));
-    %             else
-    %                 u = 1;
-    %             end
-    %             Data.Graph.segnoVAll = u;
-    %         elseif Data.Graph.segInfo.V == 1
-    %             if isfield(Data.Graph,'segnoAll')
-    %                 if strcmp(checkmark,'off')
-    %                     [~,u] = min(abs(Data.Graph.segInfo.unverifiedIdx-Data.Graph.segnoAll));
-    %
-    %                 else
-    %                     [~,u] = min(abs(Data.Graph.segInfo.idx_end{1}-Data.Graph.segnoAll));
-    %                     u = min(u+1,length(Data.Graph.segInfo.idx_end{1}));
-    %                     u = Data.Graph.segInfo.idx_end{1}(u);
-    %                 end
-    %             else
-    %                 u = Data.Graph.segInfo.unverifiedIdx(1);
-    %             end
-    %             Data.Graph.segnoAll = u;
-    %         elseif Data.Graph.segInfo.V == 3
-    %             if isfield(Data.Graph,'segno3')
-    %                 if strcmp(checkmark,'off')
-    %                     [~,u] = min(abs(Data.Graph.segInfo.unverifiedIdx3-Data.Graph.segno3));
-    %                     u = min(u+1,length(Data.Graph.segInfo.unverifiedIdx3));
-    %                     u = Data.Graph.segInfo.unverifiedIdx3(u);
-    %                 else
-    %                     [~,u] = min(abs(Data.Graph.segInfo.idx_end{2}-Data.Graph.segno3));
-    %                     u = min(u+1,length(Data.Graph.segInfo.idx_end{2}));
-    %                     u = Data.Graph.segInfo.idx_end{2}(u);
-    %                 end
-    %             else
-    %                 u = Data.Graph.segInfo.unverifiedIdx3(1);
-    %             end
-    %             Data.Graph.segno3 = u;
-    %         elseif Data.Graph.segInfo.V == 5
-    %             if isfield(Data.Graph,'segno5')
-    %                 if strcmp(checkmark,'off')
-    %                     [~,u] = min(abs(Data.Graph.segInfo.unverifiedIdx5-Data.Graph.segno5));
-    %                     u = min(u+1,length(Data.Graph.segInfo.unverifiedIdx5));
-    %                     u = Data.Graph.segInfo.unverifiedIdx5(u);
-    %                 else
-    %                     [~,u] = min(abs(Data.Graph.segInfo.idx_end{3}-Data.Graph.segno5));
-    %                     u = min(u+1,length(Data.Graph.segInfo.idx_end{3}));
-    %                     u = Data.Graph.segInfo.idx_end{3}(u);
-    %                 end
-    %             else
-    %                 u = Data.Graph.segInfo.unverifiedIdx5(1);
-    %             end
-    %             Data.Graph.segno5 = u;
-    %         elseif Data.Graph.segInfo.V == 10
-    %             if isfield(Data.Graph,'segno10')
-    %                 if strcmp(checkmark,'off')
-    %                     [~,u] = min(abs(Data.Graph.segInfo.unverifiedIdx10-Data.Graph.segno10));
-    %                     u = min(u+1,length(Data.Graph.segInfo.unverifiedIdx10));
-    %                     u = Data.Graph.segInfo.unverifiedIdx10(u);
-    %                 else
-    %                     [~,u] = min(abs(Data.Graph.segInfo.idx_end{4}-Data.Graph.segno10));
-    %                     u = min(u+1,length(Data.Graph.segInfo.idx_end{4}));
-    %                     u = Data.Graph.segInfo.idx_end{4}(u);
-    %                 end
-    %             else
-    %                 u = Data.Graph.segInfo.unverifiedIdx10(1);
-    %             end
-    %             Data.Graph.segno10 = u;
-    %         end
-    %
-    %     else
-    %         if isfield(Data.Graph,'segnoVAll')
-    %             u = Data.Graph.segnoVAll;
-    %             u = min(u+1,length(Data.Graph.segInfo.segLen));
-    %             Data.Graph.segnoVAll = u;
-    %         else
-    %             u = 1;
-    %             Data.Graph.segnoVAll = u;
-    %         end
-    %     end
-    %}
+
     Data.Graph.segno = u;
     endNodes = Data.Graph.segInfo.segEndNodes(Data.Graph.segno,:);
     seg_nodes = unique([find(Data.Graph.segInfo.nodeSegN == Data.Graph.segno);endNodes(:)]);
@@ -4708,7 +4628,7 @@ function verification_updateBranchInfo_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-%% TODO: revise load data to include Graph.segInfo
+disp('\nUpdating Branch Info...')
 global Data
 
 % if isfield(Data.Graph,'verifiedSegments')
@@ -4797,9 +4717,9 @@ global Data
         Data.Graph.endNodes(ii) = unique_endnodes(ii);
     end
     Data.Graph.nB = nB;
-    if ~isfield(Data.Graph,'verifiedSegments')
+%     if ~isfield(Data.Graph,'verifiedSegments')
         Data.Graph.verifiedSegments = zeros(size(Data.Graph.segInfo.segLen));
-    end
+%     end
     idx = find(Data.Graph.verifiedSegments == 0);
     Data.Graph.segInfo.unverifiedIdx = idx;
     Data.Graph.segInfo.unverifiedIdx3 = idx3;
@@ -4833,10 +4753,14 @@ global Data
             sidx = sidx+length(idx);
             usidx = usidx+length(uidx);
         end
+        % After trashing deleted segments and then running "Update Branch
+        % Info," this next line sets the last row of the array
+        % segmentsGrpOrder to zeros.
         Data.Graph.segInfo.segmentsGrpOrder = segmentsGrpOrder;
         Data.Graph.segInfo.segmentsUnverifiedGrpOrder = segmentsUnverifiedGrpOrder;
     end
     close(h);
+    disp('Finished updating branch info')
 % end
 
 
@@ -4926,6 +4850,8 @@ if isfield(Data.Graph,'segmentstodelete')
               Data.Graph.segInfo.edgeSegN(edgeidx) = [];
         end
     end
+    
+    % Logic to remove nodes and reindex
     nNodes = size(Data.Graph.nodes,1);
     map = (1:nNodes)';
     map(lstRemove) = [];
@@ -4937,7 +4863,6 @@ if isfield(Data.Graph,'segmentstodelete')
     [ir,~] = find(edgesNew == 0);
     edgesNew(ir,:) = [];
     
-   
     seglstRemove = Data.Graph.segmentstodelete;
     nSegments = size(Data.Graph.segInfo.segEndNodes,1);
     map = (1:nSegments)';
@@ -4952,13 +4877,14 @@ if isfield(Data.Graph,'segmentstodelete')
     Data.Graph.verifiedEdges(ir) =[];
     
     Data.Graph.segInfo.nodeGrp(lstRemove) = [];
-    Data.Graph.segInfo.nodeSegN(lstRemove) = [];
+%     Data.Graph.segInfo.nodeSegN(lstRemove) = [];
     Data.Graph.segInfo.nodeSegN = segMap(Data.Graph.segInfo.nodeSegN);
+    Data.Graph.segInfo.nodeSegN(lstRemove) = [];
     Data.Graph.segInfo.edgeSegN(ir) = [];
     Data.Graph.segInfo.edgeSegN = segMap(Data.Graph.segInfo.edgeSegN);
-%     Data.Graph.segInfo.segNedges(seglstRemove) = [];
-%     Data.Graph.segInfo.segLen(seglstRemove) = [];
-%     Data.Graph.segInfo.segLen_um(seglstRemove) = [];
+    Data.Graph.segInfo.segNedges(seglstRemove) = [];
+    Data.Graph.segInfo.segLen(seglstRemove) = [];
+    Data.Graph.segInfo.segLen_um(seglstRemove) = [];
     Data.Graph.segInfo.segEndNodes(seglstRemove,:) = [];
     Data.Graph.segInfo.segEndNodes = nodeMap(Data.Graph.segInfo.segEndNodes); 
     Data.Graph.segInfo.segPos(seglstRemove,:) = [];
@@ -5008,12 +4934,10 @@ if isfield(Data.Graph,'segmentstodelete')
 
     % loops through the end nodes to make attached segments into one
     % segments and delete other
-    segmentstodelete = [];
      for v = 1:length(noteEndNodes)
         Enode = noteEndNodes(v);
         segs = find(Data.Graph.segInfo.segEndNodes(:,1) == Enode | Data.Graph.segInfo.segEndNodes(:,2) == Enode);
         if length(segs) == 2 %length should be 2 but just in case...
-            segmenttodelete = [segmentstodelete; segs(2)];
             nodes_idx = find(Data.Graph.segInfo.nodeSegN == segs(2));
             Data.Graph.segInfo.nodeSegN(nodes_idx) = segs(1);
             edges_idx = find(Data.Graph.segInfo.edgeSegN == segs(2));
@@ -5025,6 +4949,11 @@ if isfield(Data.Graph,'segmentstodelete')
         end
      end
     
+     % The following code was not running because the array
+     % "Data.Graph.segmentstodelete" was empty. This code is being
+     % commented out temporarily. If the latest path fixes the deleting
+     % issue, then this code can be safely removed.
+     %{
      %  delete segments and update segInfo accordingly
      seglstRemove = Data.Graph.segmentstodelete;
      nSegments = length(Data.Graph.segInfo.segLen);
@@ -5043,72 +4972,71 @@ if isfield(Data.Graph,'segmentstodelete')
      Data.Graph.segInfo.segPos(seglstRemove,:) = [];
      
      Data.Graph.verifiedSegments(seglstRemove) = [];
-     Data.Graph.segInfo.segCGrps(seglstRemove) = [];
-     
-     %  Go to next segment
-     pushbutton_nextSegment_Callback(hObject, eventdata, handles)
+     %}
+     update_segCgrps_and_order()
+     draw(hObject, eventdata, handles)
+
     
-   
-%     nodestoDelete = zeros(size(Data.Graph.nodes,1),1);
-%     nodestoDelete(idx) = 1;
-%     newNodes = [];
-%     newnodeGrp = Data.Graph.segInfo.nodeGrp;
-%     newnodeSegN = Data.Graph.segInfo.nodeSegN;
-%     newedgeSegN = Data.Graph.segInfo.edgeSegN;
-%     newverifiedNodes = [];
-%     newverifiedEdges = Data.Graph.verifiedEdges;
-%     newEdges = Data.Graph.edges;
-%     verifiedSegmentsMap  = Data.Graph.verifiedSegments;
-%     segmentno = 1;
-%     for u = 1:length(Data.Graph.segInfo.segLen)
-%         if sum(ismember(segmentstodelete,u)) == 0
-%            verifiedSegmentsMap(u) = segmentno;
-%            segmentno = segmentno+1;
-%         else
-%            verifiedSegmentsMap(u) = 0;
-%         end
-%     end
-%     for u = 1:size(Data.Graph.nodes,1)
-%         u
-%         if nodestoDelete(u) == 1
-%             idx = find(newEdges(:,1) == u | newEdges(:,2) == u);
-%             newEdges(idx,:) = [];
-%             newverifiedEdges(idx,:) = [];
-%             newnodeGrp(idx) = [];
-%             newnodeGrp(u) = [];
-%             newnodeSegN(u) = [];
-%             newedgeSegN(idx) = [];
-%         else
-%             newNodes = [newNodes; Data.Graph.nodes(u,:)];
-%             newverifiedNodes = [newverifiedNodes; Data.Graph.verifiedNodes(u)];
-%             idx = find(Data.Graph.edges(:,1) == u);
-%             nodeno = size(newNodes,1);
-%             newEdges(idx,1) = nodeno;
-%              newedgeSegN(idx) = verifiedSegmentsMap(Data.Graph.segInfo.edgeSegN(idx));
-%             idx = find(Data.Graph.edges(:,2) == u);
-%             newEdges(idx,2) = nodeno;
-%             newedgeSegN(idx) = verifiedSegmentsMap(Data.Graph.segInfo.edgeSegN(idx));
-% %             newnodeGrp(u) = verifiedSegmentsMap(Data.Graph.segInfo.nodeGrp(u));
-%             newnodeSegN(u) = verifiedSegmentsMap(Data.Graph.segInfo.nodeSegN(u));
-%         end
-%     end
-%    
-%     Data.Graph.nodes = newNodes;
-%     Data.Graph.segInfo.nodeGrp = newnodeGrp;
-%     Data.Graph.segInfo.nodeSegN = newnodeSegN;
-%     Data.Graph.segInfo.edgeSegN = newedgeSegN;
-%     Data.Graph.verifiedEdges = newverifiedEdges;
-%     Data.Graph.verifiedSegments(Data.Graph.verifiedSegments == segmentstodelete) = [];
-%     idx = find(ismember(Data.Graph.segInfo.unverifiedIdx,Data.Graph.segmentstodelete) == 1);
-%     Data.Graph.segInfo.unverifiedIdx(idx) = [];
-%     idx = find(ismember(Data.Graph.segInfo.unverifiedIdx3,Data.Graph.segmentstodelete) == 1);
-%     Data.Graph.segInfo.unverifiedIdx3(idx) = [];
-%     idx = find(ismember(Data.Graph.segInfo.unverifiedIdx5,Data.Graph.segmentstodelete) == 1);
-%     Data.Graph.segInfo.unverifiedIdx5(idx) = [];
-%     idx = find(ismember(Data.Graph.segInfo.unverifiedIdx10,Data.Graph.segmentstodelete) == 1);
-%     Data.Graph.segInfo.unverifiedIdx10(idx) = [];
-%     Data.Graph.segmentstodelete = [];
 end
+
+function update_segCgrps_and_order()
+global Data
+
+segments = 1:size(Data.Graph.segInfo.segEndNodes,1);
+segCGrps = zeros(1,size(Data.Graph.segInfo.segEndNodes,1));% group number for all segments
+grpN = 1;
+while ~isempty(segments)
+    cSeg = segments(1);
+    completedSegments = cSeg;
+    segEndNodes = Data.Graph.segInfo.segEndNodes(cSeg,:);
+    cdeletednodes = [];
+    while ~isempty(segEndNodes)
+        cEndnode = segEndNodes(end);
+        seg1 = find((Data.Graph.segInfo.segEndNodes(:,1) == cEndnode) | (Data.Graph.segInfo.segEndNodes(:,2) == cEndnode));
+        cSeg = unique([cSeg ; seg1]);
+        tempseg = unique(setdiff(seg1,completedSegments)); 
+        cdeletednodes = [cdeletednodes segEndNodes(end)];
+        segEndNodes(end) = [];
+        for u = 1:length(tempseg)
+            tempEndNodes = Data.Graph.segInfo.segEndNodes(tempseg(u),:);
+            segEndNodes = setdiff(unique([segEndNodes; tempEndNodes']),cdeletednodes);
+        end
+        temparray = ismember(segments,cSeg);
+        completedSegments = unique([completedSegments; cSeg]);
+        idx = find(temparray == 1);
+        segCGrps(cSeg) = grpN;
+        segments(idx) = [];
+    end
+    grpN = grpN+1;
+end
+Data.Graph.segInfo.segCGrps = segCGrps;
+
+ if isfield(Data.Graph.segInfo,'segCGrps')
+    grpLengths = zeros(1,length(Data.Graph.segInfo.segCGrps(:)));
+    for u = 1:length(Data.Graph.segInfo.segCGrps)
+        idx = find(Data.Graph.segInfo.segCGrps == u);
+        grpLengths(u) = length(idx);
+    end
+    [~,id] = sort(grpLengths,'descend');
+    segmentsGrpOrder = zeros(length(Data.Graph.segInfo.segCGrps),2);
+    segmentsUnverifiedGrpOrder = zeros(length(find(Data.Graph.verifiedSegments == 0)),2);
+    sidx = 1;
+    usidx = 1;
+    for u = 1:length(id)
+        idx = find(Data.Graph.segInfo.segCGrps == id(u));
+        tempidx = find( Data.Graph.verifiedSegments == 0 );
+        uidx = intersect(idx,tempidx);
+        segmentsGrpOrder(sidx:sidx+length(idx)-1,1) = idx;
+        segmentsGrpOrder(sidx:sidx+length(idx)-1,2) = u;
+        segmentsUnverifiedGrpOrder(usidx:usidx+length(uidx)-1,1) = uidx;
+        segmentsUnverifiedGrpOrder(usidx:usidx+length(uidx)-1,2) = u;
+        sidx = sidx+length(idx);
+        usidx = usidx+length(uidx);
+    end
+    Data.Graph.segInfo.segmentsGrpOrder = segmentsGrpOrder;
+    Data.Graph.segInfo.segmentsUnverifiedGrpOrder = segmentsUnverifiedGrpOrder;
+ end
+
 
 
 % --------------------------------------------------------------------
@@ -5299,8 +5227,32 @@ function getSegmentInfo_update_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 global Data
+disp('Updating Segment Info...')
 
+%%% remove single floating nodes before calling nodeGrps_vesSegment
+node_pos = Data.Graph.nodes;
+edge_node_idx = Data.Graph.edges;
+% Calculate number of bifurcations at each node
+nbifur = zeros(size(node_pos,1),1);
+n_nodes = size(node_pos,1);
+% TODO: this can be replaced with "ismember" call
+% ~ismember([1:n_nodes], edge_node_idx)
+for ii=1:n_nodes
+   nbifur(ii) = length(find(edge_node_idx(:,1)==ii | edge_node_idx(:,2)==ii));
+end
+% If an element of nbifur==0, then the node was not connected to any edge.
+% This indicates it was not connected to any segments.
+rm_list = find(nbifur == 0);
+[node_pos_reindex, edge_node_reindex] =...
+    remove_reindex_nodes(rm_list, node_pos, edge_node_idx);
+% Update Data with reindex nodes and edges
+Data.Graph.nodes = node_pos_reindex;
+Data.Graph.edges = edge_node_reindex;
+Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
+%%% Call function to compute graph properties
 Data.Graph.segInfo = nodeGrps_vesSegment(Data.Graph.nodes, Data.Graph.edges);
+
+
 segments = 1:size(Data.Graph.segInfo.segEndNodes,1);
 segCGrps = zeros(1,size(Data.Graph.segInfo.segEndNodes,1));% group number for all segments
 grpN = 1;
@@ -5333,6 +5285,8 @@ while ~isempty(segments)
     grpN = grpN+1;
 end
 Data.Graph.segInfo.segCGrps = segCGrps;
+disp('Finished Updating Segment Info.')
+draw(hObject, eventdata, handles)
 
 % --------------------------------------------------------------------
 function getSegmentInfo_display_Callback(hObject, eventdata, handles)

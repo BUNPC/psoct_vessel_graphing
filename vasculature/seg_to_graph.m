@@ -1,42 +1,31 @@
-%% Convert the vessel segments to a graph (nodes + vertices)
-%{
-This script takes the output of the script ~\vasculature\vesSegment\vesSegment
-and then creates a graph.
-%}
+function [Graph] = seg_to_graph(segment)
+%seg_to_graph Convert the vessel segments to a graph (nodes + vertices)
+% This function is the second step in the vessel segmentation pipeline.
+% This function can take either a .MAT or .TIF
+%
+%%% INPUTS:
+%       segment (str): '[absolute path]/name' of segmentation data (.TIF or .MAT)
+%%% OUTPUTS:
+%       This function does not return anything. Instead, it saves a struct
+%       to the same directory that contains the segmentation files. The
+%       name of the struct will be "fname_frangi_seg"
 
-%% Add top-level directory of code repository to path
-% Print current working directory
-mydir  = pwd;
-% Find indices of slashes separating directories
-if ispc
-    idcs = strfind(mydir,'\');
-elseif isunix
-    idcs = strfind(mydir,'/');
-end
-% Remove the two sub folders to reach parent
-% (psoct_human_brain\vasculature\vesSegment)
-newdir = mydir(1:idcs(end));
-addpath(genpath(newdir));
-
-%% Hardcoded file for debugging:
-dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm';    % contained in subfolder
-filename = '\volume_ori_inv_cropped_sigma2.mat';
 
 %% Create the local vessel_mask variable
-[~,~,ext] = fileparts(filename);
+[~,~,ext] = fileparts(segment);
 if strcmp(ext,'.mat')
-    temp = load([dpath filename]);
+    temp = load(segment);
     fn = fieldnames(temp);
     angio = temp.(fn{1});
 elseif  strcmp(ext,'.tiff') || strcmp(ext,'.tif')
-    info = imfinfo([dpath filename]);
+    info = imfinfo(segment);
     for u = 1:length(info)
         if u == 1
-            temp = imread([dpath filename],1);
+            temp = imread(segment,1);
             angio = zeros([size(temp) length(info)]);
             angio(:,:,u) = temp;
         else
-            angio(:,:,u) = imread([dpath filename],u);
+            angio(:,:,u) = imread(segment,u);
         end
     end
 end
@@ -57,8 +46,10 @@ end
 vessel_skl = bwskel(vessel_mask,'MinBranchLength',1);
 % Compute graph from skeleton
 vessel_graph = fun_skeleton_to_graph(vessel_skl);
+
+%%% This function output is unused. It is leftover from original code.
 % Compute Euclidean distance transform of inverse of binary vessel mask
-vessel_mask_dt = bwdist(~vessel_mask);
+% vessel_mask_dt = bwdist(~vessel_mask);
 
 %% Count the number of edges
 
@@ -78,17 +69,9 @@ end
 for  u = 1:length(vessel_graph.link.cc_ind)
     edges_ind_count = edges_ind_count+length(vessel_graph.link.cc_ind{u})-1;
 end
-% edges_ind_count = edges_ind_count+length(vessel_graph.link.pos_ind);
-% idx = find(link_cc_ind == 0);
-% for u = 1:length(idx)
-%     
-% end
+
 edges_ind = zeros(edges_ind_count,2);
 %% Assign nodes and edges. 
-% Convert from UCSD graph structure to Boas Lab graph structure.
-% The goal is to retrieve a standard format for nodes and edges. This
-% allows us to use standard toolboxes for graph theory.
-% This section has been validated.
 % TODO: preallocate variable "tttt"
 
 node_idx = 1;
@@ -126,6 +109,7 @@ for u = 1:length(vessel_graph.node.cc_ind)
     node_idx = node_idx+1;
 end
 
+%% TODO: determine purpose of this section
 idx = find(link_cc_ind == 0);
 for u = 1:length(idx)
     link_length = length(vessel_graph.link.cc_ind{idx(u)});
@@ -138,38 +122,44 @@ for u = 1:length(idx)
     node_idx = node_idx+link_length;
 end
 
-%%% Create final nodes and edges variables
+%% TODO: determine purpose of this section
+
 [n1, n2, n3] = ind2sub(angio_size,nodes_ind);
-nodes =[n1', n2', n3'];
+nodes = [n1', n2', n3'];
 edges = zeros(size(edges_ind));
 
-% Find indices for edges (corresponding node index).
+%% TODO: find faster search method
 for u = 1:size(edges_ind,1)
     edges(u,1) = find(nodes_ind == edges_ind(u,1));
     edges(u,2) = find(nodes_ind == edges_ind(u,2));
 end
+
+%% Remove redundant edges from graph
 Graph.nodes = nodes;
 Graph.edges = edges;
 
-%% Remove redundant edges (edge = node i connected to node i)
-sameEdgeIdx = [];
-for u = 1:size(Graph.edges,1)
-    if Graph.edges(u,1) == Graph.edges(u,2)
-        sameEdgeIdx = [sameEdgeIdx; u];
+% Create array for storing indices of edges with the same edge.
+nedge = size(Graph.edges,1);
+same_edge_idx = zeros(nedge,1);
+j = 1;      % index for position in same_edge_idx array
+
+% Iterate over all edges
+for ii = 1:nedge
+    if Graph.edges(ii,1) == Graph.edges(ii,2)
+        same_edge_idx(j) = ii;
+        j = j + 1;
     end
 end
-Graph.edges(sameEdgeIdx,:) = [];
 
-%% Save the graph
-% Swap x and y to convert into standard format
+% Remove zero entries in same_edge_idx. Leave just nonzero indices.
+same_edge_idx(same_edge_idx==0) = [];
+
+% Delete the edges with a shared edge
+Graph.edges(same_edge_idx,:) = [];
+
+%% Update graph
 temp = Graph.nodes(:,2);
 Graph.nodes(:,2) = Graph.nodes(:,1);
 Graph.nodes(:,1) = temp;
 
-%%% Save graph
-% Remove .mat or .tif extension
-filename = filename(1:end-4);
-% Append correct extension
-filename = strcat(filename, '_frangi_seg.mat');
-fout = strcat(dpath, filename);
-save(fout,'Graph');
+end
