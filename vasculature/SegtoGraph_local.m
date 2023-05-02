@@ -19,24 +19,24 @@ newdir = mydir(1:idcs(end));
 addpath(genpath(newdir));
 
 %% Hardcoded file for debugging:
-pathname = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm';    % contained in subfolder
-filename = '\volume_ori_inv_cropped_sigma1.mat';
+dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm';    % contained in subfolder
+filename = '\volume_ori_inv_cropped_sigma2.mat';
 
 %% Create the local vessel_mask variable
 [~,~,ext] = fileparts(filename);
 if strcmp(ext,'.mat')
-    temp = load([pathname filename]);
+    temp = load([dpath filename]);
     fn = fieldnames(temp);
     angio = temp.(fn{1});
 elseif  strcmp(ext,'.tiff') || strcmp(ext,'.tif')
-    info = imfinfo([pathname filename]);
+    info = imfinfo([dpath filename]);
     for u = 1:length(info)
         if u == 1
-            temp = imread([pathname filename],1);
+            temp = imread([dpath filename],1);
             angio = zeros([size(temp) length(info)]);
             angio(:,:,u) = temp;
         else
-            angio(:,:,u) = imread([pathname filename],u);
+            angio(:,:,u) = imread([dpath filename],u);
         end
     end
 end
@@ -160,11 +160,16 @@ for u = 1:size(Graph.edges,1)
 end
 Graph.edges(sameEdgeIdx,:) = [];
 
-%% Swap x and y to convert into standard format
+%% Save the graph
+% Swap x and y to convert into standard format
 temp = Graph.nodes(:,2);
 Graph.nodes(:,2) = Graph.nodes(:,1);
 Graph.nodes(:,1) = temp;
 
-%% Save as .mat
-fout = strcat('frangi_', filename);
+%%% Save graph
+% Remove .mat or .tif extension
+filename = filename(1:end-4);
+% Append correct extension
+filename = strcat(filename, '_frangi_seg.mat');
+fout = strcat(dpath, filename);
 save(fout,'Graph');

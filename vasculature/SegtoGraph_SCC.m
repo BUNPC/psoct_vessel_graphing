@@ -169,6 +169,7 @@ Graph.nodes(:,1) = temp;
 %%% Save graph
 % Remove .mat or .tif extension
 filename = filename(1:end-4);
+% Append correct extension
 filename = strcat(filename, '_frangi_seg.mat');
 fout = strcat(dpath, filename);
 save(fout,'Graph');

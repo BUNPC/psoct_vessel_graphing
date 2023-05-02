@@ -93,14 +93,11 @@ subplot(2,2,4); imshow(squeeze(I_seg(:,100,:))); title({'X-Z segment','(slice 10
       'HorizontalAlignment', 'Center', 'VerticalAlignment', 'Top' ) ;
 %}
 
-%% save segmentation as .MAT
+%% Save Vessel Segmentation
 % Save vessel segment stack as .MAT for the next step (graph recon)
 fout = strcat(laptop_path, fname, '_sigma', num2str(sigma));
 save(strcat(fout,'.mat'), 'I_seg', '-v7.3');
 
-%% Save as .TIF for visual validation
-tifout = strcat(fout,'.tif');
-savepath = strcat(laptop_path, tifout);
-segmat2tif(I_seg, savepath);
-% imwrite2tif(I_seg, [], savepath, 'double');
+% Save as .TIF for visual validation
+segmat2tif(I_seg, strcat(fout,'.tif'));
 
