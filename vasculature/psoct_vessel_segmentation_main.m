@@ -37,6 +37,7 @@ addpath(genpath(topdir));
 %% Import volume (.TIF or .BTF) & convert to MAT 
 
 %%% Local paths (windows PC)
+%{
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm\';
 fname = 'volume_ori_inv_cropped';
 % filename extension
@@ -44,9 +45,10 @@ ext = '.tif';
 filename = strcat(dpath, strcat(fname,ext));
 % Convert .tif to .MAT
 vol = TIFF2MAT(filename);
+%}
 
 %%% SCC paths (windows PC)
-%{
+
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/AD_10382/dist_corrected/volume/';
 fname = 'ref_4ds_norm';
 % filename extension
@@ -57,7 +59,6 @@ vol = TIFF2MAT(filename);
 %}
 
 %% Set Voxel Size
-
 %%% Assign PS-OCT voxel dimension [x, y, z] according to downsample factor
 % Downasample factor = 4 --> Voxel = [12, 12, 15] micron
 % Downasample factor = 10 --> Voxel = [30, 30, 35] micron
@@ -71,81 +72,72 @@ vox_dim = [30, 30, 35];
 %%% 2P microscopy voxel will always be 5um x 5um
 vox2p = [5, 5];
 
-%%% Minimum number of connected voxels to define as vessel
-seg_min_vox = 30;
-
-%% Multiscale vessel segmentation
-%   I - inverted PS-OCT (white = vessel, non-white = tissue).
-%   sigma - vector of standard deviation values of gaussian filter to
-%           calcualte hessian matrix at each voxel
-%   thres - threshold to determine which voxel belongs to a vessel. This is
-%           applied to the probability matrix from the output of the frangi
-%           filter.
-%   min_conn - vesSegment uses the function bwconncomp to determine the
-%               number of connected voxels for each segment. If the number
-%               of voxels is less than this threshold, then the segment
-%               will be removed.
-
-%%% Create variables for image and filter parameters
-% convert volume to double matrix
-I = double(vol);
-% Filter parameters
+%% Segment the volume
+% Std. Dev. for gaussian filter
 sigma = 1;
-thres = 0.2;
-% Minimum connections to define as segment
+% threshold to determine whether voxel belongs to a vessel. This is applied
+% to the probability matrix from the output of the frangi filter.
+thresh = 0.2;
+% Segments with few than "min_conn" voxels will be removed
 min_conn = 30;
 
-%%% Call function to segment the original volume
-[~, I_seg] = vesSegment(I, sigma, thres, min_conn);
+% Run segmentation function
+[I_seg] = ...
+    segment_main(dpath, fname, ext, sigma, thresh, min_conn);
 
-%% Save segmented volume as .MAT and .TIF
-% Save vessel segment stack as .MAT for the next step (graph recon)
-fname = strcat(fname, '_sigma', num2str(sigma));
-fout = strcat(dpath, fname);
-save(strcat(fout, '.mat'), 'I_seg', '-v7.3');
-% Save as .TIF for visualizations
-tifout = strcat(fout, '.tif');
-segmat2tif(I_seg, tifout);
+% Save segmentation before applying mask
+fname = strcat(fname,'_segment','_sigma', num2str(sigma));
+fout = strcat(dpath, fname, '.tif');
+segmat2tif(I_seg, fout);
 
+% Call masking function
 
 %% Apply mask to segmentation volume -- remove erroneous vessels
-%{
 % TODO: find optimal range for remove_mask_islands
-% TODO: create function "clean_mask" and perform both:
-%       - imerode - remove boundaries
-%       - remove_mask_islands - remove islands of pixels
+% TODO: create function "clean_mask" and perform:
+%       - convert original volume to binary (backgroun = 0)
+%       - imerode - shrink boundaries of mask
+%       - remove_mask_islands (remove islands of pixels from mask)
+%       - apply_mask (multiply mask and segmented volume)
+%       - save output
 
-%%% Create mask from normalized volume
-% TODO: create function to create binary 3D mask
+%%% Create 3D mask
+mask = logical(vol);
 
-%%% Place next two steps into a function "clean_mask":
-% Erode mask to remove small pixels on border that are not part of volume
+%%% Erode mask to remove small pixels on border that are not part of volume
 se = strel('disk',10);
 mask = imerode(mask, se);
 
-% Remove islands of pixels from mask
+%%% Remove islands of pixels from mask
 % Range of object size to keep
 range = [1e4, 1e8];
-mask_isl = remove_mask_islands(mask, range);
+mask = remove_mask_islands(mask, range);
 
 %%% Apply mask to segmentation volume
 % Convert from logical back to uint16 for matrix multiplication
-mask_isl = uint16(mask_isl);
+mask = uint16(mask);
 % Element-wise multiply mask and volume
-vol_masked = apply_mask(vol, mask_isl);
-% Convert masked image back to tif
-fout = strcat(laptop_path, strcat(vol_name,'_masked_eroded_island_rm.tif'));
-segmat2tif(vol_masked, fout);
+I_seg_masked = apply_mask(I_seg, mask);
 %}
+
+%% Save segmented/masked volume as .MAT and .TIF
+
+% Convert masked image back to tif
+fname = strcat(fname,'_masked');
+fout = strcat(dpath, fname, '.tif');
+segmat2tif(I_seg_masked, fout);
+
+% Save vessel segment stack as .MAT for the next step (graph recon)
+fout = strcat(dpath, fname, '.mat');
+save(fout, 'I_seg_masked', '-v7.3');
+
 %% Convert segmentation to graph
 
-% I_seg is the segmentation matrix
-I_seg_path = strcat(fout, '.mat');
-Graph = seg_to_graph(I_seg_path, vox_dim);
+% Use masked segmentation to create graph
+Graph = seg_to_graph(fout, vox_dim);
 
-%%% Save graph
 % Create new filename for graph and add .MAT extension
-fname = strcat(fname, '_frangi_seg.mat');
+fname = strcat(fname, '_graph.mat');
 fout = strcat(dpath, fname);
 save(fout,'Graph');
 
@@ -162,6 +154,7 @@ save(fout,'Graph');
 % The user must use the matlab GUI to manually remove these segments
 
 %% Calculate Diameter
+%{
 % Load Graph struct
 fname = 'volume_nor_inverted_masked_sigma1_frangi_seg_regraphed';
 dpath =...
@@ -176,11 +169,13 @@ Diam = GetDiam_graph(...
     Data.Graph.edges,...
     Ithresh,...
     vox_dim);
-
+%}
 %% Calculate Tortuosity
+%{
 tortuosity = vessel_tortuosity_index(Data.Graph, Ithresh);
-
+%}
 %% Histograms for geometries
+%{
 % Histo for diameter
 figure; histogram(Diam);
 title('Vessel Diameter')
@@ -237,11 +232,77 @@ I_skel=bwskel(logical(I_seg));
 MAT2TIFF(I_skel,'I_seg_skel.tif');
 %}
 
-function segment_main(dpath, fname, ext)
-% 
+%% Apply Mask
+function [I_seg_masked] = mask_segments(I, I_seg, epsilon)
+% Remove the edges labeled as vessels.
+%   INPUTS:
+%       I (matrix) - original volume
+%       I_seg (matrix) - output of segmentation function
+%       epsilon (double) - scalar for determining masking
+%   OUTPUTS:
+%       I_seg_masked (matrix) - I_seg with boundaries eroded to remove
+%           erroneously labeled vessels.
+
+%%% Create mask from normalized volume
+% TODO: convert volume -> binary 3D mask
+mask = logical(I);
+
+%%% Erode mask to remove small pixels on border that are not part of volume
+se = strel('disk',10);
+mask = imerode(mask, se);
+
+%%% Remove islands of pixels from mask
+% Range of object size to keep
+range = [1e4, 1e8];
+mask = remove_mask_islands(mask, range);
+
+%%% Apply mask to segmentation volume
+% Convert from logical back to uint16 for matrix multiplication
+mask = uint16(mask);
+% Element-wise multiply mask and volume
+vol_masked = apply_mask(vol, mask);
+% Convert masked image back to tif
+fout = strcat(laptop_path, strcat(vol_name,'_masked.tif'));
+segmat2tif(vol_masked, fout);
+%}
 
 end
 
+%% Segment volume
+function [I_seg] =...
+    segment_main(dpath, fname, ext, sigma, thresh, min_conn)
+% Multiscale vessel segmentation
+%   INPUTS:
+%   sigma - vector of standard deviation values of gaussian filter to
+%           calcualte hessian matrix at each voxel
+%   thres - threshold to determine which voxel belongs to a vessel. This is
+%           applied to the probability matrix from the output of the frangi
+%           filter.
+%   min_conn - vesSegment uses the function bwconncomp to determine the
+%               number of connected voxels for each segment. If the number
+%               of voxels is less than this threshold, then the segment
+%               will be removed.
+%   OUTPUTS:
+%       I_seg - segmentation of vessels (Frangi filter of original volume)
+%       I_seg_masked - masked segmentation (removed borders)
+
+%%% Load .TIF and convert to .MAT
+filename = strcat(dpath, strcat(fname,ext));
+vol = TIFF2MAT(filename);
+% convert volume to double matrix
+I = double(vol);
+
+%%% Segment the original volume
+[~, I_seg] = vesSegment(I, sigma, thresh, min_conn);
+
+%%% Apply a mask to segmentation
+% Scalar for determining how much to erode mask
+% epsilon = 1;
+% I_seg_masked = mask_segments(I, I_seg, epsilon);
+
+end
+
+%% Convert segmentation to graph
 function graph_main()
 
 end

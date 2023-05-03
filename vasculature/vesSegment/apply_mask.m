@@ -25,4 +25,7 @@ masked = uint16(orig_re) .* mask_re;
 % Reshape the masked image back to original shape
 masked = reshape(masked, [r, c, s]);
 
+% Convert masked from logical back to grayscale [0, 255]
+masked(masked==1) = 255;
+
 end

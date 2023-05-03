@@ -28,17 +28,8 @@ elseif  strcmp(ext,'.tiff') || strcmp(ext,'.tif')
         end
     end
 end
-
 % Convert all nonzero values into a logical 1.
 vessel_mask = logical(angio);
-
-% remove islands from raw segments
-CC = bwconncomp(vessel_mask);
-for uuu = 1:length(CC.PixelIdxList)
-    if length(CC.PixelIdxList{uuu}) < 100    % 30 for default
-        vessel_mask(CC.PixelIdxList{uuu}) = 0;
-    end
-end
 
 %% Create graph from binary vessel mask
 % Reduce 3-D binary volume to a curve skeleton
@@ -59,16 +50,17 @@ angio_size = size(vessel_mask);
 nodes_ind_count = length(vessel_graph.node.cc_ind)+length(vessel_graph.link.pos_ind);
 nodes_ind = zeros(1,nodes_ind_count);
 
-% find length of edges to allocate size
+% find number of edges to preallocate matrix
 edges_ind_count = 0;
-% link_cc_ind = zeros(size(vessel_graph.link.cc_ind));
 for u = 1:length(vessel_graph.node.connected_link_label)
-    edges_ind_count = edges_ind_count+length(vessel_graph.node.connected_link_label{u});
+    edges_ind_count =...
+        edges_ind_count + length(vessel_graph.node.connected_link_label{u});
 end
 for  u = 1:length(vessel_graph.link.cc_ind)
-    edges_ind_count = edges_ind_count+length(vessel_graph.link.cc_ind{u})-1;
+    edges_ind_count =...
+        edges_ind_count + length(vessel_graph.link.cc_ind{u})-1;
 end
-
+% Preallocate matrix for storing edge indice
 edges_ind = zeros(edges_ind_count,2);
 %% Assign nodes and edges. 
 % TODO: preallocate variable "tttt"
