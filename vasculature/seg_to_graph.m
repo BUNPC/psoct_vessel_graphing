@@ -1,14 +1,13 @@
-function [Graph] = seg_to_graph(segment)
+function [graph] = seg_to_graph(segment, vox_dim)
 %seg_to_graph Convert the vessel segments to a graph (nodes + vertices)
 % This function is the second step in the vessel segmentation pipeline.
 % This function can take either a .MAT or .TIF
 %
 %%% INPUTS:
 %       segment (str): '[absolute path]/name' of segmentation data (.TIF or .MAT)
+%       vox_dim (array): voxel dimensions (x, y, z) (micron)
 %%% OUTPUTS:
-%       This function does not return anything. Instead, it saves a struct
-%       to the same directory that contains the segmentation files. The
-%       name of the struct will be "fname_frangi_seg"
+%       graph (struct): nodes and edges for graph of segmentation
 
 
 %% Create the local vessel_mask variable
@@ -123,7 +122,6 @@ for u = 1:length(idx)
 end
 
 %% TODO: determine purpose of this section
-
 [n1, n2, n3] = ind2sub(angio_size,nodes_ind);
 nodes = [n1', n2', n3'];
 edges = zeros(size(edges_ind));
@@ -135,17 +133,20 @@ for u = 1:size(edges_ind,1)
 end
 
 %% Remove redundant edges from graph
-Graph.nodes = nodes;
-Graph.edges = edges;
+% Initialize graph struct
+graph.nodes = nodes;
+graph.edges = edges;
+% Add dimensions of voxel (microns)
+graph.vox = vox_dim;
 
 % Create array for storing indices of edges with the same edge.
-nedge = size(Graph.edges,1);
+nedge = size(graph.edges,1);
 same_edge_idx = zeros(nedge,1);
 j = 1;      % index for position in same_edge_idx array
 
 % Iterate over all edges
 for ii = 1:nedge
-    if Graph.edges(ii,1) == Graph.edges(ii,2)
+    if graph.edges(ii,1) == graph.edges(ii,2)
         same_edge_idx(j) = ii;
         j = j + 1;
     end
@@ -155,11 +156,20 @@ end
 same_edge_idx(same_edge_idx==0) = [];
 
 % Delete the edges with a shared edge
-Graph.edges(same_edge_idx,:) = [];
+graph.edges(same_edge_idx,:) = [];
 
 %% Update graph
-temp = Graph.nodes(:,2);
-Graph.nodes(:,2) = Graph.nodes(:,1);
-Graph.nodes(:,1) = temp;
+temp = graph.nodes(:,2);
+graph.nodes(:,2) = graph.nodes(:,1);
+graph.nodes(:,1) = temp;
+
+%% Run the initialization steps in GUI:
+% "Verification -> Get Segment Info -> Update"
+% "Verification -> Update Branch Info"
+
+%% Run regraph (straighten) & prune loops
+%
+
+%% Remove floating nodes (see logic in 
 
 end
