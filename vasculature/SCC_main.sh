@@ -11,7 +11,7 @@
 # Specify number of cores
 #$ -pe omp 16
 # Specify memory per core
-#$ -l mem_per_core=13G
+#$ -l mem_per_core=16G
 
 # Send email upon completion
 #$ -m ea
