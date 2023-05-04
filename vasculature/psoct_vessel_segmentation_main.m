@@ -37,7 +37,7 @@ addpath(genpath(topdir));
 %% Import volume (.TIF or .BTF) & convert to MAT 
 
 %%% Local paths (windows PC)
-
+%{
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm\';
 fname = 'volume_ori_inv_cropped';
 % filename extension
@@ -47,8 +47,8 @@ filename = strcat(dpath, strcat(fname,ext));
 vol = TIFF2MAT(filename);
 %}
 
-%%% SCC paths (windows PC)
-%{
+%%% SCC paths
+
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/AD_10382/dist_corrected/volume/';
 fname = 'ref_4ds_norm';
 % filename extension
