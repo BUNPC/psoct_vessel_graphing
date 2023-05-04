@@ -37,7 +37,7 @@ addpath(genpath(topdir));
 %% Import volume (.TIF or .BTF) & convert to MAT 
 
 %%% Local paths (windows PC)
-%{
+
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm\';
 fname = 'volume_ori_inv_cropped';
 % filename extension
@@ -48,7 +48,7 @@ vol = TIFF2MAT(filename);
 %}
 
 %%% SCC paths (windows PC)
-
+%{
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/AD_10382/dist_corrected/volume/';
 fname = 'ref_4ds_norm';
 % filename extension
@@ -90,83 +90,54 @@ fname = strcat(fname,'_segment','_sigma', num2str(sigma));
 fout = strcat(dpath, fname, '.tif');
 segmat2tif(I_seg, fout);
 
-% Call masking function
-
 %% Apply mask to segmentation volume -- remove erroneous vessels
 % TODO: find optimal range for remove_mask_islands
-% TODO: create function "clean_mask" and perform:
-%       - convert original volume to binary (backgroun = 0)
-%       - imerode - shrink boundaries of mask
-%       - remove_mask_islands (remove islands of pixels from mask)
-%       - apply_mask (multiply mask and segmented volume)
-%       - save output
 
-%%% Create 3D mask
+% Create 3D mask from original volume
 mask = logical(vol);
-
+% Array of radii for eroding the mask
 radii = 10:2:22;
 
-for ii = 1:10
-    %%% Erode mask to remove small pixels on border that are not part of volume
-    se = strel('disk', radii(ii));
-    mask = imerode(mask, se);
+for ii = 1:length(radii)
+    %% Apply mask and save .MAT and .TIF
+    [I_seg_masked] = mask_segments(I_seg, mask, radii(ii), dpath, fname);
+
+    %% Convert masked segmentation to graph
+    % Use masked segmentation to create graph
+    Graph = seg_to_graph(I_seg_masked, vox_dim);
     
-    %%% Remove islands of pixels from mask
-    % Range of object size to keep
-    range = [1e4, 1e8];
-    mask = remove_mask_islands(mask, range);
-    
-    %%% Apply mask to segmentation volume
-    % Convert from logical back to uint16 for matrix multiplication
-    mask = uint16(mask);
-    % Element-wise multiply mask and volume
-    I_seg_masked = apply_mask(I_seg, mask);
-    
-    %%% Save segmented/masked volume as .MAT and .TIF
-    % Convert masked image back to tif
-    fname = strcat(fname,'_masked_radius_', num2str(radii(ii)));
-    fout = strcat(dpath, fname, '.tif');
-    segmat2tif(I_seg_masked, fout);
-    % Save vessel segment stack as .MAT for the next step (graph recon)
-    fout = strcat(dpath, fname, '.mat');
-    save(fout, 'I_seg_masked', '-v7.3');
+    %% Create new filename for graph and add .MAT extension
+    tmp_fname = strcat(fname,'_masked_radius_', num2str(radii(ii)),'_graph.mat');
+    fout = strcat(dpath, tmp_fname);
+    save(fout,'Graph');
 end
 
-%% Convert segmentation to graph
-
-% Use masked segmentation to create graph
-Graph = seg_to_graph(fout, vox_dim);
-
-% Create new filename for graph and add .MAT extension
-fname = strcat(fname, '_graph.mat');
-fout = strcat(dpath, fname);
-save(fout,'Graph');
-
 %% Initialization of vesGraphValidate
+function [graph_init] = initialize_graph(Graph)
+%%% Perform the manual operations for initializing data in the GUI.
 % Run "Verification > get segment info > Update"
 % Run "Update branch info"
 % Run "Regraph Nodes" to down sample
 % Open GUI with both image and data (graph)
 % Run prune_loops and prune_segment
 % Run straighten
+end
 
 %% Apply Mask
-function [I_seg_masked] = mask_segments(I, I_seg, epsilon)
+function [I_seg_masked] = mask_segments(I_seg, mask, radius, dpath, fname)
 % Remove the edges labeled as vessels.
 %   INPUTS:
-%       I (matrix) - original volume
 %       I_seg (matrix) - output of segmentation function
-%       epsilon (double) - scalar for determining masking
+%       mask (matrix) - unsegmented volume converted to logicals
+%       radius (double array) - radius of disk for eroding the mask
+%       dpath (string) - absolute directory for saving processed data
+%       fname (string) - filename prior to applying mask
 %   OUTPUTS:
 %       I_seg_masked (matrix) - I_seg with boundaries eroded to remove
 %           erroneously labeled vessels.
 
-%%% Create mask from normalized volume
-% TODO: convert volume -> binary 3D mask
-mask = logical(I);
-
 %%% Erode mask to remove small pixels on border that are not part of volume
-se = strel('disk',10);
+se = strel('disk', radius);
 mask = imerode(mask, se);
 
 %%% Remove islands of pixels from mask
@@ -178,11 +149,16 @@ mask = remove_mask_islands(mask, range);
 % Convert from logical back to uint16 for matrix multiplication
 mask = uint16(mask);
 % Element-wise multiply mask and volume
-vol_masked = apply_mask(vol, mask);
+I_seg_masked = apply_mask(I_seg, mask);
+
+%%% Save segmented/masked volume as .MAT and .TIF
 % Convert masked image back to tif
-fout = strcat(laptop_path, strcat(vol_name,'_masked.tif'));
-segmat2tif(vol_masked, fout);
-%}
+tmp_fname = strcat(fname,'_masked_radius_', num2str(radius));
+fout = strcat(dpath, tmp_fname, '.tif');
+segmat2tif(I_seg_masked, fout);
+% Save vessel segment stack as .MAT for the next step (graph recon)
+fout = strcat(dpath, tmp_fname, '.mat');
+save(fout, 'I_seg_masked', '-v7.3');
 
 end
 
@@ -217,10 +193,5 @@ I = double(vol);
 % Scalar for determining how much to erode mask
 % epsilon = 1;
 % I_seg_masked = mask_segments(I, I_seg, epsilon);
-
-end
-
-%% Convert segmentation to graph
-function graph_main()
 
 end

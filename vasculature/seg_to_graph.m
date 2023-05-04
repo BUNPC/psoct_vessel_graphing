@@ -1,34 +1,13 @@
-function [graph] = seg_to_graph(segment, vox_dim)
+function [graph] = seg_to_graph(angio, vox_dim)
 %seg_to_graph Convert the vessel segments to a graph (nodes + vertices)
-% This function is the second step in the vessel segmentation pipeline.
-% This function can take either a .MAT or .TIF
-%
 %%% INPUTS:
-%       segment (str): '[absolute path]/name' of segmentation data (.TIF or .MAT)
+%       angio (matrix): segmented volume
 %       vox_dim (array): voxel dimensions (x, y, z) (micron)
 %%% OUTPUTS:
-%       graph (struct): nodes and edges for graph of segmentation
+%       Graph (struct): nodes and edges for graph of segmentation
 
 
 %% Create the local vessel_mask variable
-[~,~,ext] = fileparts(segment);
-if strcmp(ext,'.mat')
-    temp = load(segment);
-    fn = fieldnames(temp);
-    angio = temp.(fn{1});
-elseif  strcmp(ext,'.tiff') || strcmp(ext,'.tif')
-    info = imfinfo(segment);
-    for u = 1:length(info)
-        if u == 1
-            temp = imread(segment,1);
-            angio = zeros([size(temp) length(info)]);
-            angio(:,:,u) = temp;
-        else
-            angio(:,:,u) = imread(segment,u);
-        end
-    end
-end
-% Convert all nonzero values into a logical 1.
 vessel_mask = logical(angio);
 
 %% Create graph from binary vessel mask
@@ -154,14 +133,5 @@ graph.edges(same_edge_idx,:) = [];
 temp = graph.nodes(:,2);
 graph.nodes(:,2) = graph.nodes(:,1);
 graph.nodes(:,1) = temp;
-
-%% Run the initialization steps in GUI:
-% "Verification -> Get Segment Info -> Update"
-% "Verification -> Update Branch Info"
-
-%% Run regraph (straighten) & prune loops
-%
-
-%% Remove floating nodes (see logic in 
 
 end
