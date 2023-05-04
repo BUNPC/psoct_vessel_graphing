@@ -104,32 +104,33 @@ segmat2tif(I_seg, fout);
 %%% Create 3D mask
 mask = logical(vol);
 
-%%% Erode mask to remove small pixels on border that are not part of volume
-se = strel('disk',10);
-mask = imerode(mask, se);
+radii = [10:2:22];
 
-%%% Remove islands of pixels from mask
-% Range of object size to keep
-range = [1e4, 1e8];
-mask = remove_mask_islands(mask, range);
-
-%%% Apply mask to segmentation volume
-% Convert from logical back to uint16 for matrix multiplication
-mask = uint16(mask);
-% Element-wise multiply mask and volume
-I_seg_masked = apply_mask(I_seg, mask);
-%}
-
-%% Save segmented/masked volume as .MAT and .TIF
-
-% Convert masked image back to tif
-fname = strcat(fname,'_masked');
-fout = strcat(dpath, fname, '.tif');
-segmat2tif(I_seg_masked, fout);
-
-% Save vessel segment stack as .MAT for the next step (graph recon)
-fout = strcat(dpath, fname, '.mat');
-save(fout, 'I_seg_masked', '-v7.3');
+for ii = 1:10
+    %%% Erode mask to remove small pixels on border that are not part of volume
+    se = strel('disk', radii(ii));
+    mask = imerode(mask, se);
+    
+    %%% Remove islands of pixels from mask
+    % Range of object size to keep
+    range = [1e4, 1e8];
+    mask = remove_mask_islands(mask, range);
+    
+    %%% Apply mask to segmentation volume
+    % Convert from logical back to uint16 for matrix multiplication
+    mask = uint16(mask);
+    % Element-wise multiply mask and volume
+    I_seg_masked = apply_mask(I_seg, mask);
+    
+    %%% Save segmented/masked volume as .MAT and .TIF
+    % Convert masked image back to tif
+    fname = strcat(fname,'_masked_radius_', num2str(radii(ii)));
+    fout = strcat(dpath, fname, '.tif');
+    segmat2tif(I_seg_masked, fout);
+    % Save vessel segment stack as .MAT for the next step (graph recon)
+    fout = strcat(dpath, fname, '.mat');
+    save(fout, 'I_seg_masked', '-v7.3');
+end
 
 %% Convert segmentation to graph
 
