@@ -1,44 +1,14 @@
-function [graph] = seg_to_graph(segment, vox_dim)
+function [graph] = seg_to_graph(angio, vox_dim)
 %seg_to_graph Convert the vessel segments to a graph (nodes + vertices)
-% This function is the second step in the vessel segmentation pipeline.
-% This function can take either a .MAT or .TIF
-%
 %%% INPUTS:
-%       segment (str): '[absolute path]/name' of segmentation data (.TIF or .MAT)
+%       angio (matrix): segmented volume
 %       vox_dim (array): voxel dimensions (x, y, z) (micron)
 %%% OUTPUTS:
-%       graph (struct): nodes and edges for graph of segmentation
+%       Graph (struct): nodes and edges for graph of segmentation
 
 
 %% Create the local vessel_mask variable
-[~,~,ext] = fileparts(segment);
-if strcmp(ext,'.mat')
-    temp = load(segment);
-    fn = fieldnames(temp);
-    angio = temp.(fn{1});
-elseif  strcmp(ext,'.tiff') || strcmp(ext,'.tif')
-    info = imfinfo(segment);
-    for u = 1:length(info)
-        if u == 1
-            temp = imread(segment,1);
-            angio = zeros([size(temp) length(info)]);
-            angio(:,:,u) = temp;
-        else
-            angio(:,:,u) = imread(segment,u);
-        end
-    end
-end
-
-% Convert all nonzero values into a logical 1.
 vessel_mask = logical(angio);
-
-% remove islands from raw segments
-CC = bwconncomp(vessel_mask);
-for uuu = 1:length(CC.PixelIdxList)
-    if length(CC.PixelIdxList{uuu}) < 100    % 30 for default
-        vessel_mask(CC.PixelIdxList{uuu}) = 0;
-    end
-end
 
 %% Create graph from binary vessel mask
 % Reduce 3-D binary volume to a curve skeleton
@@ -59,16 +29,17 @@ angio_size = size(vessel_mask);
 nodes_ind_count = length(vessel_graph.node.cc_ind)+length(vessel_graph.link.pos_ind);
 nodes_ind = zeros(1,nodes_ind_count);
 
-% find length of edges to allocate size
+% find number of edges to preallocate matrix
 edges_ind_count = 0;
-% link_cc_ind = zeros(size(vessel_graph.link.cc_ind));
 for u = 1:length(vessel_graph.node.connected_link_label)
-    edges_ind_count = edges_ind_count+length(vessel_graph.node.connected_link_label{u});
+    edges_ind_count =...
+        edges_ind_count + length(vessel_graph.node.connected_link_label{u});
 end
 for  u = 1:length(vessel_graph.link.cc_ind)
-    edges_ind_count = edges_ind_count+length(vessel_graph.link.cc_ind{u})-1;
+    edges_ind_count =...
+        edges_ind_count + length(vessel_graph.link.cc_ind{u})-1;
 end
-
+% Preallocate matrix for storing edge indice
 edges_ind = zeros(edges_ind_count,2);
 %% Assign nodes and edges. 
 % TODO: preallocate variable "tttt"
@@ -162,14 +133,5 @@ graph.edges(same_edge_idx,:) = [];
 temp = graph.nodes(:,2);
 graph.nodes(:,2) = graph.nodes(:,1);
 graph.nodes(:,1) = temp;
-
-%% Run the initialization steps in GUI:
-% "Verification -> Get Segment Info -> Update"
-% "Verification -> Update Branch Info"
-
-%% Run regraph (straighten) & prune loops
-%
-
-%% Remove floating nodes (see logic in 
 
 end

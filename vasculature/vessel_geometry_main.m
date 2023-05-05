@@ -43,3 +43,50 @@ figure;histogram(dia_vessel,'BinWidth',10);
 length_vessel=sum(:,1).*sum(:,6);
 length_vessel(length_vessel(:)==0)=[];    % get rid of fake vessels
 figure;histogram(length_vessel.*10,0:25:1000);
+
+%% Calculate Diameter
+%{
+% Load Graph struct
+fname = 'volume_nor_inverted_masked_sigma1_frangi_seg_regraphed';
+dpath =...
+    'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200726PSOCT\';
+fpath = strcat(dpath, strcat(fname,'.mat'));
+Data = load(fpath,'Graph');
+
+% Call function to calculate diameter at each node
+Diam = GetDiam_graph(...
+    vol,...
+    Data.Graph.nodes,...
+    Data.Graph.edges,...
+    Ithresh,...
+    vox_dim);
+%}
+%% Calculate Tortuosity
+%{
+tortuosity = vessel_tortuosity_index(Data.Graph, Ithresh);
+%}
+%% Histograms for geometries
+%{
+% Histo for diameter
+figure; histogram(Diam);
+title('Vessel Diameter')
+xlabel('Diameter (microns)')
+ylabel('Count')
+set(gca, 'FontSize', 20)
+
+% Histo for diameter
+figure; histogram(tortuosity);
+title('Vessel Tortuosity')
+xlabel('Tortuosity (unitless)')
+ylabel('Count'); ylim([0,200])
+set(gca, 'FontSize', 20)
+%}
+
+%% (OLD CODE) Median diameter
+%{
+dia_vessel=zeros(1,length(Data.Graph.segInfo.segLen));
+for i=1:length(dia_vessel)
+    dia_vessel(i)=median(Diam(find(Data.Graph.segInfo.nodeSegN(:)==i)));
+end
+figure; histogram(dia_vessel,'BinWidth',10);
+%}
