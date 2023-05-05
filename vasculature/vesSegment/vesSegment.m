@@ -8,7 +8,7 @@ function [w, I_seg] = vesSegment(I, sigma, thres, min_conn)
 %           calcualte hessian matrix at each voxel
 %   thres - threshold to determine which voxel belongs to a vessel. This is
 %           applied to the probability matrix from the output of the frangi
-%           filter.
+%           filter. The threshold belongs to [0, 1].
 %   vox_dim - voxel dimensions [x,y,z] (microns)
 %
 % OUTPUTS:

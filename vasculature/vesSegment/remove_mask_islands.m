@@ -21,12 +21,6 @@ mask_re = logical(mask_re);
 % Find/delete islands in the mask
 mask_rm = bwareafilt(mask_re, range);
 
-% Debugging figure
-figure;
-subplot(2,1,1); imshow(mask_re(:,1:(2*c))); title('Original Mask')
-subplot(2,1,2); imshow(mask_rm(:,1:(2*c))); title('Cleaned Mask')
-
-
 % Convert back to 3D matrix
 mask_rm = reshape(mask_rm, [r, c, s]);
 

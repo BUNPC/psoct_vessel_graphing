@@ -8,12 +8,11 @@ This script performs the following:
 - segment the original volume
 - apply a mask to the segmentation
 - convert segmentation to graph
+To Do:
+- find optimal range for remove_mask_islands
 - prune graph (remove loops and unterminated segments)
     - remove loops ()
     - remove segments ()
-
-To Do:
-- find optimal range for remove_mask_islands
 %}
 clear; clc; close all;
 
@@ -73,16 +72,16 @@ end
 vox_dim = [30, 30, 35];
 % Std. Dev. for gaussian filter (one value or array)
 sigma = 1;
-% Threshold for Frangi filter probability matrix (voxel<thresh = not vessel)
-thresh = 0.2;
+% Minimum fringi filter probability to classify voxel as vessel
+min_prob = 0.1:0.05:0.25;
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
 
-% Array of radii for eroding the mask
-radii = 16:4:50;
+% Array (or single value) of radii for eroding the mask
+radii = 40;
 
 % Boolean for converting segment to graph (0 = don't convert, 1 = convert)
-graph_boolean = 1;
+graph_boolean = 0;
 
 for ii = 1:length(subid)
     %% Segment the volume
@@ -91,36 +90,37 @@ for ii = 1:length(subid)
     filename = strcat(fullpath, strcat(fname, ext));
     % Convert .tif to .MAT
     vol = TIFF2MAT(filename);
-
-    [I_seg, fname_seg] = ...
-        segment_main(vol, sigma, thresh, min_conn, fullpath, fname);
     
-    %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
-    % The function for creating the mask requires a radius. This for-loop will
-    % iterate over an array of radii. For each radius, it will create a mask,
-    % apply the mask to the segmentation volume, and save the output.
-    % If the graph_boolean is true (1), then the masked segmentation will be
-    % converted to a graph.
-
-    % Create 3D mask from original volume
-    mask = logical(vol);
-    
-    for j = 1:length(radii)
-        %%% Apply mask and save .MAT and .TIF
-        [I_seg_masked] = mask_segments(I_seg, mask, radii(j), fullpath, fname_seg);
+    for j = 1:length(min_prob)
+        [I_seg, fname_seg] = ...
+            segment_main(vol, sigma, min_prob(j), min_conn, fullpath, fname);
         
-        %%% Convert masked segmentation to graph
-        if graph_boolean
-            % Use masked segmentation to create graph
-            Graph = seg_to_graph(I_seg_masked, vox_dim);
-            
-            % initialize graph information
-    %         Graph = initialize_graph(Graph);
+        %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
+        % The function for creating the mask requires a radius. This for-loop will
+        % iterate over an array of radii. For each radius, it will create a mask,
+        % apply the mask to the segmentation volume, and save the output.
+        % If the graph_boolean is true (1), then the masked segmentation will be
+        % converted to a graph.
     
-            % Create new filename for graph and add .MAT extension
-            fname_graph = strcat(fname_seg,'_masked_radius_', num2str(radii(j)),'_graph.mat');
-            fout = strcat(fullpath, fname_graph);
-            save(fout,'Graph');
+        % Create 3D mask from original volume
+        mask = logical(vol);
+        for k = 1:length(radii)
+            %%% Apply mask and save .MAT and .TIF
+            [I_seg_masked] = mask_segments(I_seg, mask, radii(k), fullpath, fname_seg);
+            
+            %%% Convert masked segmentation to graph
+            if graph_boolean
+                % Use masked segmentation to create graph
+                Graph = seg_to_graph(I_seg_masked, vox_dim);
+                
+                % initialize graph information
+        %         Graph = initialize_graph(Graph);
+        
+                % Create new filename for graph and add .MAT extension
+                fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph.mat');
+                fout = strcat(fullpath, fname_graph);
+                save(fout,'Graph');
+            end
         end
     end
 end
@@ -167,7 +167,7 @@ I_seg_masked = apply_mask(I_seg, mask);
 
 %%% Save segmented/masked volume as .MAT and .TIF
 % Convert masked image back to tif
-tmp_fname = strcat(fname,'_masked_radius_', num2str(radius));
+tmp_fname = strcat(fname,'_mask', num2str(radius));
 fout = strcat(fullpath, tmp_fname, '.tif');
 segmat2tif(I_seg_masked, fout);
 % Save vessel segment stack as .MAT for the next step (graph recon)
@@ -178,7 +178,7 @@ end
 
 %% Segment volume
 function [I_seg, fname] =...
-    segment_main(vol, sigma, thresh, min_conn, fullpath, fname)
+    segment_main(vol, sigma, min_prob, min_conn, fullpath, fname)
 % Multiscale vessel segmentation
 %   INPUTS:
 %       vol (matrix) - the original volume prior to segmentation
@@ -201,10 +201,10 @@ function [I_seg, fname] =...
 I = double(vol);
 
 %%% Segment the original volume
-[~, I_seg] = vesSegment(I, sigma, thresh, min_conn);
+[~, I_seg] = vesSegment(I, sigma, min_prob, min_conn);
 
 %%% Save segmentation
-fname = strcat(fname,'_segment','_sigma', num2str(sigma));
+fname = strcat(fname,'_segment','_sigma', num2str(sigma), '_thresh', num2str(min_prob));
 fout = strcat(fullpath, fname, '.tif');
 segmat2tif(I_seg, fout);
 
