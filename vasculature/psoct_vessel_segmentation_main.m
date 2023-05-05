@@ -69,8 +69,14 @@ end
 % Downasample factor = 10 --> Voxel = [30, 30, 35] micron
 % 2P microscopy voxel will always be 5um x 5um
 
-% PS-OCT voxel dimensions (microns) (hard coded for debugging)
-vox_dim = [30, 30, 35];
+% Set voxel dimensions from filename
+if regexp(fname, '4ds')
+    vox_dim = [12, 12, 15];
+elseif regexp(fname, '10ds')
+    vox_dim = [30, 30, 35];
+else
+    vox_dim = [30, 30, 35];
+end
 
 % Std. Dev. for gaussian filter (one value or array)
 % The value of sigma corresponds to the smallest resolvable radius of the
@@ -87,7 +93,7 @@ min_conn = 30;
 radii = 40;
 
 % Boolean for converting segment to graph (0 = don't convert, 1 = convert)
-graph_boolean = 0;
+graph_boolean = 1;
 
 for ii = 1:length(subid)
     %% Segment the volume
@@ -119,8 +125,8 @@ for ii = 1:length(subid)
                 % Use masked segmentation to create graph
                 Graph = seg_to_graph(I_seg_masked, vox_dim);
                 
-                % initialize graph information
-        %         Graph = initialize_graph(Graph);
+                % Initialize graph information (work in progress)
+                % Graph = initialize_graph(Graph);
         
                 % Create new filename for graph and add .MAT extension
                 fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph.mat');
