@@ -32,32 +32,6 @@ end
 topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
-%% Automate segmentation of multiple volumes
-%{
-dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
-subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
-         'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
-         'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
-         'NC_8095', 'NC_8653'};
-for ii = length(subid)
-    % Set voxel size from filename (either "_10ds" or "_4ds")
-
-    % Segment
-
-    % Mask
-
-    % Convert to graph
-
-    % Initialize graph structure information
-
-    % Downsample graph
-
-    % Prune loops
-
-    % Straighten segments
-end
-%}
-
 %% Import volume (.TIF or .BTF) & convert to MAT 
 
 % Check if running on local machine for debugging or on SCC for processing
@@ -80,7 +54,7 @@ elseif isunix
 %              'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
 %              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
 %              'NC_8095', 'NC_8653'};
-    subid = {'AD_10382', 'AD_20832'};
+    subid = {'AD_20969', 'AD_21354'};
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm';
@@ -105,7 +79,7 @@ thresh = 0.2;
 min_conn = 30;
 
 % Array of radii for eroding the mask
-radii = 10:2:14;
+radii = 16:4:50;
 
 % Boolean for converting segment to graph (0 = don't convert, 1 = convert)
 graph_boolean = 1;
@@ -145,7 +119,7 @@ for ii = 1:length(subid)
     
             % Create new filename for graph and add .MAT extension
             fname_graph = strcat(fname_seg,'_masked_radius_', num2str(radii(j)),'_graph.mat');
-            fout = strcat(dpath, fname_graph);
+            fout = strcat(fullpath, fname_graph);
             save(fout,'Graph');
         end
     end
