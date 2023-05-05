@@ -116,7 +116,7 @@ end
 Data.Graph.segInfo.loops = loops;
 disp([num2str(length(loops)) ' loops are detected in the graph.']);
 
-%% 
+%%  What is purpose of this?
 segmentstodelete = [];
 for v = 1:length(Data.Graph.segInfo.loops)   
     nodeno = Data.Graph.segInfo.loops(v);
@@ -127,7 +127,7 @@ end
 nodes = Data.Graph.nodes;
 edges = Data.Graph.edges;
 
-%% 
+%%  What is purpose of this?
 lstRemove=[];
 for i=1:length(segmentstodelete)
     idx =  find(Data.Graph.segInfo.nodeSegN == segmentstodelete(i));

@@ -15,6 +15,7 @@ To Do:
     - remove segments ()
 %}
 clear; clc; close all;
+tic
 
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
@@ -70,8 +71,13 @@ end
 
 % PS-OCT voxel dimensions (microns) (hard coded for debugging)
 vox_dim = [30, 30, 35];
+
 % Std. Dev. for gaussian filter (one value or array)
+% The value of sigma corresponds to the smallest resolvable radius of the
+% vessels. If sigma==1, then the smallest resolvable vessel will be
+% 1*voxel. In our case, the smallest resolvable vessel has a radius = 12um
 sigma = 1;
+
 % Minimum fringi filter probability to classify voxel as vessel
 min_prob = 0.1:0.05:0.25;
 % A segment with < "min_conn" voxels will be removed
@@ -124,6 +130,7 @@ for ii = 1:length(subid)
         end
     end
 end
+toc
 
 %% Initialization of vesGraphValidate
 function [graph_init] = initialize_graph(Graph)

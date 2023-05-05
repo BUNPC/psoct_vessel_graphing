@@ -11,6 +11,7 @@ if ~exist('nodeDiam')
     nodeDiam = zeros(nNodes,1);
 end
 
+% Change this from ds_rate to voxel size?
 hxy = ds_rate;
 hz = ds_rate;
 
