@@ -50,11 +50,11 @@ elseif isunix
     % Path to top-level directory
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
     % Subject IDs
-%     subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
-%              'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
-%              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
-%              'NC_8095', 'NC_8653'};
-    subid = {'AD_20969', 'AD_21354'};
+    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
+             'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
+             'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
+             'NC_8095', 'NC_8653'};
+%     subid = {'AD_20969', 'AD_21354'};
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm';
@@ -93,7 +93,7 @@ min_conn = 30;
 radii = 40;
 
 % Boolean for converting segment to graph (0 = don't convert, 1 = convert)
-graph_boolean = 1;
+graph_boolean = 0;
 
 for ii = 1:length(subid)
     %% Segment the volume
@@ -141,12 +141,17 @@ toc
 %% Initialization of vesGraphValidate
 function [graph_init] = initialize_graph(Graph)
 %%% Perform the manual operations for initializing data in the GUI.
+% Prune Loops from nodes/edges
+% Prune segments
+% Down sample (regraph) graph (see if built-in Matlab function)
+% Run straighten (see if built-in Matlab function)
+
+
 % Run "Verification > get segment info > Update"
 % Run "Update branch info"
-% Run "Regraph Nodes" to down sample
+
 % Open GUI with both image and data (graph)
-% Run prune_loops and prune_segment
-% Run straighten
+
 graph_init = Graph;
 end
 

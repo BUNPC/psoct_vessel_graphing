@@ -1,26 +1,20 @@
 %% Remove looped segments
 %{
-This script uses a nested struct "Data.Graph" which contains metadata about
+This script uses a nested struct "Graph" which contains metadata about
 the Graph struct. The Graph struct is created in the script SegtoGraph.m.
 
 TODO:
 - Determine meaning of A_idx_end{1,1}
 - Determine logic of last two steps (new edges and new nodes)
 %}
-%% Prep environment & load the data w/ pruned segments
-%{
-clear; close all; clc;
-tmp = load('Data_segpruned.mat');
-Data = tmp.Data;
-% Top-level directory
-addpath '\\ad\eng\users\m\h\mhyman\My Documents\Boas_Lab\psoct_human_brain\vasculature\vesGraphValidate\GrTheory\';
-%}
-%% Prune loops
-global Data
-endnodes = unique(Data.Graph.segInfo.segEndNodes(:));
+
+
+function [Graph] = prune_loops(Graph)
+
+endnodes = unique(Graph.segInfo.segEndNodes(:));
 numLoops = 0;
 numLoopsL2 = 0; numLoops2T4 = 0; numLoopsG4 = 0;
-nodeLoop = zeros( size(Data.Graph.nodes,1), 1);
+nodeLoop = zeros( size(Graph.nodes,1), 1);
 loops = [];
 
 for uu = 1:length(endnodes)
@@ -34,11 +28,11 @@ for uu = 1:length(endnodes)
     while ~isempty(nodes_tobeprocessed) 
         while dist_nodes <= dist_cutoff
             nodes_processed = unique([nodes_processed; currentnode]);
-            edges_connected = find(Data.Graph.edges(:,1) == currentnode | Data.Graph.edges(:,2) == currentnode);
+            edges_connected = find(Graph.edges(:,1) == currentnode | Graph.edges(:,2) == currentnode);
             edges_processed = unique([edges_processed; edges_connected(:)]);
             connected_nodes = [];
             for u = 1:length(edges_connected)
-                temp = Data.Graph.edges(edges_connected(u),:);
+                temp = Graph.edges(edges_connected(u),:);
                 connected_nodes = [connected_nodes; temp(:)];
             end
             nodes_tobeprocessed = setdiff(unique([nodes_tobeprocessed;connected_nodes]),nodes_processed);
@@ -47,7 +41,7 @@ for uu = 1:length(endnodes)
             else
                 break;
             end
-            dist_nodes = sqrt(sum(Data.Graph.nodes(start_node,:) - Data.Graph.nodes(currentnode,:)).^2);
+            dist_nodes = sqrt(sum(Graph.nodes(start_node,:) - Graph.nodes(currentnode,:)).^2);
 %             if ~(dist_nodes <= dist_cutoff)
 %                 nodes_tobeprocessed = nodes_tobeprocessed(1:end-1);
 %                 break;
@@ -61,13 +55,13 @@ for uu = 1:length(endnodes)
     end  
     edges_new = [];
     for u = 1:length(nodes_processed)
-        edges_new = [edges_new; find(Data.Graph.edges(:,1) == nodes_processed(u) | Data.Graph.edges(:,2) == nodes_processed(u))];
+        edges_new = [edges_new; find(Graph.edges(:,1) == nodes_processed(u) | Graph.edges(:,2) == nodes_processed(u))];
     end
     edges_new = unique(edges_new);
     
     %% Check if any edges detected. If not, skip this logic    
     if ~isempty(edges_new)
-        esub = Data.Graph.edges(edges_new,:);        
+        esub = Graph.edges(edges_new,:);        
         v = unique(esub(:));
         esub2 = esub;
         c(uu).nodes = nodes_processed;
@@ -96,7 +90,7 @@ for uu = 1:length(endnodes)
             end
             if ~isempty(loopNode)
                 loops = [loops; loopNode];
-                pt = Data.Graph.nodes(loopNode,:);
+                pt = Graph.nodes(loopNode,:);
                 if pt(3) <= 100
                     numLoopsL2 = numLoopsL2+1;
                 elseif pt(3) > 100 && pt(3) <= 200
@@ -113,28 +107,28 @@ for uu = 1:length(endnodes)
     end
 end
 
-Data.Graph.segInfo.loops = loops;
+Graph.segInfo.loops = loops;
 disp([num2str(length(loops)) ' loops are detected in the graph.']);
 
 %%  What is purpose of this?
 segmentstodelete = [];
-for v = 1:length(Data.Graph.segInfo.loops)   
-    nodeno = Data.Graph.segInfo.loops(v);
+for v = 1:length(Graph.segInfo.loops)   
+    nodeno = Graph.segInfo.loops(v);
     if ~isempty(nodeno)
-        segmentstodelete = [ segmentstodelete; Data.Graph.segInfo.nodeSegN(nodeno)];
+        segmentstodelete = [ segmentstodelete; Graph.segInfo.nodeSegN(nodeno)];
     end
 end
-nodes = Data.Graph.nodes;
-edges = Data.Graph.edges;
+nodes = Graph.nodes;
+edges = Graph.edges;
 
 %%  What is purpose of this?
 lstRemove=[];
 for i=1:length(segmentstodelete)
-    idx =  find(Data.Graph.segInfo.nodeSegN == segmentstodelete(i));
-    endnodes = Data.Graph.segInfo.segEndNodes(segmentstodelete(i),:);
+    idx =  find(Graph.segInfo.nodeSegN == segmentstodelete(i));
+    endnodes = Graph.segInfo.segEndNodes(segmentstodelete(i),:);
         endnodes = endnodes(:);
-        segs1 = find(Data.Graph.segInfo.segEndNodes(:,1) == endnodes(1) | Data.Graph.segInfo.segEndNodes(:,2) == endnodes(1));
-        segs2 = find(Data.Graph.segInfo.segEndNodes(:,1) == endnodes(2) | Data.Graph.segInfo.segEndNodes(:,2) == endnodes(2));
+        segs1 = find(Graph.segInfo.segEndNodes(:,1) == endnodes(1) | Graph.segInfo.segEndNodes(:,2) == endnodes(1));
+        segs2 = find(Graph.segInfo.segEndNodes(:,1) == endnodes(2) | Graph.segInfo.segEndNodes(:,2) == endnodes(2));
         if length(segs1) > 1
             tsegs1 = setdiff(segs1,segmentstodelete);
             if ~isempty(tsegs1)
@@ -173,10 +167,11 @@ zero_idx = find(edgesNew(:,1) == 0 | edgesNew(:,2)==0);
 edgesNew(zero_idx,:) = [];
 
 %% Save Data
-Data.Graph.nodes = nodesNew;
-Data.Graph.edges = edgesNew;
-Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
+Graph.nodes = nodesNew;
+Graph.edges = edgesNew;
+Graph.verifiedNodes = zeros(size(Graph.nodes,1),1);
 disp('Loops removed from the graph.');
 save('volume_nor_inverted_masked_sigma1_segpruned_looppruned.mat', 'Data', '-v7.3');
 
+end
 
