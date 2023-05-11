@@ -1,6 +1,6 @@
 %% This script is for testing the "rm_loops" function
-% TODO: determine why the graph does not match the vessel segmentation.
-%       the order of x,y,z in the nodes may be incorrect.
+% TODO:
+%       test with graph from entire volume + determine run time
 
 %% Graph struct from PSOCT graph.
 clear; clc; close all;

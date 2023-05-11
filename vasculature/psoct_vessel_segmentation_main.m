@@ -37,12 +37,12 @@ addpath(genpath(topdir));
 % Check if running on local machine for debugging or on SCC for processing
 if ispc
     %%% Local machine
-    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm\';
+    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
-    subid = {'sub_00'};
+    subid = {'AD_20832'};
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
-    fname = 'volume_ori_inv_cropped';
+    fname = 'ref_4ds_norm_inv_cropped';
     % filename extension
     ext = '.tif';
 elseif isunix
@@ -85,7 +85,7 @@ end
 sigma = 1;
 
 % Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.1:0.05:0.25;
+min_prob = 0.21:0.02:0.25;
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
 
@@ -93,7 +93,7 @@ min_conn = 30;
 radii = 40;
 
 % Boolean for converting segment to graph (0 = don't convert, 1 = convert)
-graph_boolean = 0;
+graph_boolean = 1;
 
 for ii = 1:length(subid)
     %% Segment the volume
@@ -106,7 +106,16 @@ for ii = 1:length(subid)
     for j = 1:length(min_prob)
         [I_seg, fname_seg] = ...
             segment_main(vol, sigma, min_prob(j), min_conn, fullpath, fname);
-        
+        if graph_boolean
+            % Create graph of unmasked segmentation
+            Graph = seg_to_graph(I_seg, vox_dim);
+            
+            % Save unmasked Graph
+            fname_graph = strcat(fname_seg,'_graph.mat');
+            fout = strcat(fullpath, fname_graph);
+            save(fout,'Graph');
+        end
+
         %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
         % The function for creating the mask requires a radius. This for-loop will
         % iterate over an array of radii. For each radius, it will create a mask,
@@ -128,7 +137,7 @@ for ii = 1:length(subid)
                 % Initialize graph information (work in progress)
                 % Graph = initialize_graph(Graph);
         
-                % Create new filename for graph and add .MAT extension
+                % Save Graph
                 fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph.mat');
                 fout = strcat(fullpath, fname_graph);
                 save(fout,'Graph');
@@ -140,10 +149,15 @@ toc
 
 %% Initialization of vesGraphValidate
 function [graph_init] = initialize_graph(Graph)
-%%% Perform the manual operations for initializing data in the GUI.
+%%% Down sample (regraph) graph (see if built-in Matlab function)
+% Create array of verified segments (required input)
+v = zeros(length(Graph.edges));
+[nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new(Graph.nodes, Graph.edges, v, 30);
+
 % Prune Loops from nodes/edges
+
 % Prune segments
-% Down sample (regraph) graph (see if built-in Matlab function)
+
 % Run straighten (see if built-in Matlab function)
 
 
