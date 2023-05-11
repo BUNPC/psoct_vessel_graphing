@@ -16,10 +16,6 @@ vessel_skl = bwskel(vessel_mask,'MinBranchLength',1);
 % Compute graph from skeleton
 vessel_graph = fun_skeleton_to_graph(vessel_skl);
 
-%%% This function output is unused. It is leftover from original code.
-% Compute Euclidean distance transform of inverse of binary vessel mask
-% vessel_mask_dt = bwdist(~vessel_mask);
-
 %% Count the number of edges
 
 % Size of the angiogram. It will help to convert indeces to subscripts
@@ -92,7 +88,7 @@ for u = 1:length(idx)
     node_idx = node_idx+link_length;
 end
 
-%% TODO: determine purpose of this section
+%% Convert node indices to matrix subscripts
 [n1, n2, n3] = ind2sub(angio_size,nodes_ind);
 nodes = [n1', n2', n3'];
 edges = zeros(size(edges_ind));
