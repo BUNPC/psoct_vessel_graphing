@@ -3,10 +3,6 @@
 # Set SCC project
 #$ -P npbssmic
 
-# Specify job to run on lab's buy-in computers on SCC
-#$ -l buyin
-
-
 # Request a whole node with 28 cores and at least 384 GB of RAM.
 # Specify number of cores
 #$ -pe omp 16
