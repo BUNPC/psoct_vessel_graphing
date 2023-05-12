@@ -21,6 +21,6 @@
 # Combine output/error files into single file
 #$ -j y
 
-module load matlab/2020b
+module load matlab/2022b
 matlab -nodisplay -singleCompThread -r "psoct_vessel_segmentation_main; exit"
 
