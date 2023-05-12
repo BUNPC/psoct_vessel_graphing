@@ -1,7 +1,16 @@
-function [nodes, edges, validatedNodes,validatedEdges] = regraphNodes_new(nodes, edges,validatedNodes,ds_rate)
+function [nodes, edges, validatedNodes,validatedEdges] =...
+    downsample_nodes(nodes, edges, validatedNodes, vox_xy, vox_z)
+%%% Down sample 
+% INPUTS:
+%       nodes (matrix) - Nodes prior to downsample
+%       edges (matrix) - edges prior to downsample
+%       validatedNodes () - this is set to an array of zeros
+%       vox_xy (double) - voxel dimensions (x,y)
+%       vox_z (double) -  voxel dimension (z)
+% OUTPUTS:
+%       
 
 
-% Re-graph 
 nodePos = nodes;
 nodeEdges = edges;
 
@@ -12,8 +21,8 @@ if ~exist('nodeDiam')
 end
 
 % Change this from ds_rate to voxel size?
-hxy = ds_rate;
-hz = ds_rate;
+hxy = vox_xy;
+hz = vox_z;
 
 nNodesUnique = 1;
 nodeMap = zeros(nNodes,1);
@@ -35,27 +44,7 @@ for ii=2:nNodes
         lst = find(pos(1)>=(nodePosNew(:,1)-hxy) & pos(1)<=(nodePosNew(:,1)+hxy) & ...
             pos(2)>=(nodePosNew(:,2)-hxy) & pos(2)<=(nodePosNew(:,2)+hxy) & ...
             pos(3)>=(nodePosNew(:,3)-hz) & pos(3)<=(nodePosNew(:,3)+hz) );
-        
-        % in the lst remove unconnected nodes to current processing node. This will
-        % avoid unwanted connections and loops
-%         temp_lst = lst;
-%         new_lst = [];
-%         curr_node = ii;
-%         for u = 1:length(lst)
-%            node_edges = find(edges(:,1) == curr_node | edges(:,2) == curr_node);
-%            conn_nodes = edges(node_edges,:);
-%            conn_nodes = conn_nodes(:);
-%            common_node = intersect(temp_lst,conn_nodes);
-%            if isempty(common_node)
-%                break;
-%            else
-%               new_lst = [new_lst; common_node];
-%               curr_node = common_node(1);
-%               temp_lst = setdiff(temp_lst,curr_node);
-%            end
-%         end
-%         lst = new_lst;
-        
+              
         if isempty(lst)
             nNodesUnique = nNodesUnique+1;
 
@@ -94,7 +83,7 @@ close(hwait);
 nodeEdgesNew = nodeMap(nodeEdges);
 nodeEdges = nodeEdgesNew;
 
-%%%%%%%%%%%%%%
+%%
 % prune edges - still need to handle small loops
 % point edges
 nodeEdges = nodeEdges(find(nodeEdges(:,1)~=nodeEdges(:,2)),:);

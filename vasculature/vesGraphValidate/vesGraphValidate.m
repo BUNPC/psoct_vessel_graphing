@@ -222,10 +222,8 @@ function draw(hObject, eventdata, handles)
 
 global Data
 
-
 I = Data.angio;
 [Sz,Sy,Sx] = size(I);
-
 
 %%%% Read display range
 Zstartframe = str2double(get(handles.edit_Zstartframe,'String'));
@@ -1126,31 +1124,6 @@ if isfield(Data,'Graph') && isfield(Data.Graph,'addSegment') && (get(handles.che
     hold off
 end
 
-%{
-% % Display nodes and edges information
-% if isfield(Data,'Graph')
-%     nodes1 = 0;
-%     nodes2 = 0;
-%     nodesg2 = 0;
-%     for u = 1:size(Data.Graph.nodes,1)
-%         lst = find(Data.Graph.edges(:,1) == u | Data.Graph.edges(:,2) == u);
-%         if length(lst) == 1
-%             nodes1 = nodes1+1;
-%         end
-%         if length(lst) == 2
-%             nodes2 = nodes2+1;
-%         end
-%          if length(lst) > 2
-%             nodesg2 = nodesg2+1;
-%         end
-%     end
-% str = sprintf('%s\n%s\n%s\n%s','Nodes info',['One edge nodes -' num2str(nodes1)],...
-%     ['Two edge nodes -' num2str(nodes2)],...
-%     ['More than two edge nodes -' num2str(nodesg2)]);
-% set(handles.edit_NodesInfo,'String',str);
-% end
-%}
-
 function axes_ButtonDown(hObject, eventdata, handles)
 
 global Data
@@ -1871,114 +1844,8 @@ elseif get(handles.radiobutton_unvalidateNodes,'Value') == 1
 end
 draw(hObject, eventdata, handles);
 
-%{
-% function Node_ButtonDown(hObject, eventdata, handles)
-% 
-% global Data
-% 
-% if get(handles.checkbox_validateNodes,'Value') == 1
-%     parent = (get(hObject, 'Parent'));
-%     pts = round(get(parent, 'CurrentPoint'));
-%     y = pts(1,1);
-%     x = pts(1,2);
-%     [Sz,Sx,Sy] = size(Data.angio);
-%     Zstartframe = str2double(get(handles.edit_Zstartframe,'String'));
-%     Zstartframe = min(max(Zstartframe,1),Sz);
-%     ZMIP = str2double(get(handles.edit_ZMIP,'String'));
-%     Zendframe = min(max(Zstartframe+ZMIP-1,1),Sz);
-%     parent = get(parent,'parent');
-%     mouseclick = get(parent, 'SelectionType');
-%     if ~isfield(Data.Graph,'verifiedNodes')
-%         Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
-%     end
-%     if strcmp(mouseclick,'normal')
-%         idx = find(Data.Graph.nodes(:,2) >= x-1 & Data.Graph.nodes(:,2) <= x+1 ...
-%             & Data.Graph.nodes(:,1) >= y-1 & Data.Graph.nodes(:,1) <= y+1 ...
-%             & Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe);
-%         Data.node1 = idx(1);
-%         Data.Graph.verifiedNodes(idx(1)) = 2;
-%     elseif strcmp(mouseclick,'alt')
-%        idx = find(Data.Graph.nodes(:,2) >= x-1 & Data.Graph.nodes(:,2) <= x+1 ...
-%             & Data.Graph.nodes(:,1) >= y-1 & Data.Graph.nodes(:,1) <= y+1 ...
-%             & Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe);
-%         Data.node2 = idx(1);
-%         if isfield(Data,'node1')
-%             if length(Data.node1) == 1
-%                 nlst = [];
-%                 cnode = Data.node1;
-%                 path = cnode;
-%                 pathtemp = [];
-%                 branchidx = 0;
-%                 count =0;
-%                 maxbranch = 3;
-%                 while(count < 1000) 
-%                     count = count + 1
-%     %                 [costs,paths] = dijkstra(Data.Graph.nodes,Data.Graph.edges,Data.node1,Data.node2,1);
-%                     eidx = find(Data.Graph.edges(:,1) == cnode | Data.Graph.edges(:,2) == cnode);
-%                     nidx = [];
-%                     for u = 1:length(eidx)
-%                         nidx = [nidx Data.Graph.edges(eidx(u),:)];
-%                     end
-%                     nidx = setdiff(nidx, path);
-%                     if length(nidx) > 1
-%                         branchidx = branchidx+1;
-%                         temp = [nidx(2:end)' branchidx*ones(size(nidx(2:end)'))];
-%                         if branchidx < maxbranch+1
-% %                             nlst = [nlst nidx(2:end)];
-%                             nlst = [nlst; temp];
-%                             pathtemp = [pathtemp length(path)];
-%                             cnode = nidx(1);
-%                             path = [path cnode];
-%                         end
-%                     elseif length(nidx) == 1
-%                         cnode = nidx(1);
-%                         path = [path cnode];
-%                     end
-% %                     if branchidx > maxbranch
-% %                          cnode = nlst(end-1);
-% %                     end
-%                     if (isempty(nidx) || branchidx > maxbranch+1) 
-%                         if ~isempty(nlst)
-%                             cnode = nlst(end,1);
-%                             if length(pathtemp) > 0
-%                                 path(pathtemp(end)+1:end) = [];
-%                                 pathtemp(end) = [];
-%                             end
-%                             branchidx = nlst(end,2);
-%                             nlst(end,:) = [];
-%                             path = [path cnode];
-% %                             branchidx = max(0,branchidx - 1);
-%                         else
-%                             path = [];
-%                             break;
-%                         end
-%                     end 
-%                     if ~isempty(find(ismember(nidx,Data.node2)))
-%                         break;
-%                     end
-% %                      if ~isempty(path)
-% %                         Data.Graph.verifiedNodes(path) = 1;
-% %                         Data.Graph.verifiedNodes(end) = 2;
-% %                     end
-% %                     draw(hObject, eventdata, handles);
-%                 end
-%             end
-%             if ~isempty(path)
-%                 Data.Graph.verifiedNodes(path) = 1;
-%                 Data.Graph.verifiedNodes(Data.Graph.verifiedNodes ~= 0) = 1;
-%                 Data.Graph.verifiedNodes(path(end)) = 2;
-%                 Data.node1 = Data.node2;
-%             end
-%         end
-%     end
-% end
-% draw(hObject, eventdata, handles);
-%}
-
 function addSegment(hObject, eventdata, handles)
-
 global Data
-
 draw(hObject, eventdata, handles)
 answer = questdlg('Are you sure you want to add the segment?', 'Add segment','No');
 if strcmp(answer,'Yes')
@@ -2866,61 +2733,32 @@ draw(hObject, eventdata, handles)
 
 % --- Executes on button press in pushbuttonRegraphNodes.
 function pushbuttonRegraphNodes_Callback(hObject, eventdata, handles)
-global Data
-% global Data
-% if get(handles.checkbox_prcoessVisible,'Value') == 1
-%     [Sz,Sx,Sy] = size(Data.angio);
-%     Zstartframe = str2double(get(handles.edit_Zstartframe,'String'));
-%     Zstartframe = min(max(Zstartframe,1),Sz);
-%     ZMIP = str2double(get(handles.edit_ZMIP,'String'));
-%     Zendframe = min(max(Zstartframe+ZMIP-1,1),Sz);
-%     Xstartframe = str2double(get(handles.edit_XcenterZoom,'String'));
-%     Xstartframe = min(max(Xstartframe,1),Sx);
-%     XMIP = str2double(get(handles.edit_XwidthZoom,'String'));
-%     Xendframe = min(max(Xstartframe+XMIP-1,1),Sx);
-%     Ystartframe = str2double(get(handles.edit_YcenterZoom,'String'));
-%     Ystartframe = min(max(Ystartframe,1),Sy);
-%     YMIP = str2double(get(handles.edit_YwidthZoom,'String'));
-%     Yendframe = min(max(Ystartframe+YMIP-1,1),Sy);
-%     
-%     idx = find(Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe ...
-%         & Data.Graph.nodes(:,1)>= Data.ZoomXrange(1) & Data.Graph.nodes(:,1) <= Data.ZoomXrange(2) ...
-%         & Data.Graph.nodes(:,2)>= Data.ZoomYrange(1) & Data.Graph.nodes(:,2) <= Data.ZoomYrange(2));
-%     [nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
-%     [nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
-%     Data.Graph.nodes = nodes;
-%     Data.Graph.edges = edges;
-%     Data.Graph.verifiedNodes = verifiedNodes;
-%     Data.Graph.verifiedEdges = verifiedEdges;
-% else
+    global Data
+    
+    % Copy voxel dimensions
+    vox = Data.Graph.vox;
+    vox_xy = vox(1);
+    vox_z = vox(3);
 
-
-% if ~isfield(Data.Graph,'verifiedEdges')
-%     Data.Graph.verifiedEdges = zeros(size(Data.Graph.edges,1),1);
-% end
-% 
-% if ~isfield(Data.Graph,'verifiedNodes')
-%     Data.Graph.verifiedNodes = zeros(size(Data.Graph.nodes,1),1);
-% end
-
-if ~isfield(Data.Graph,'verifiedSegments')
-    Data.Graph.verifiedSegments = zeros(length(Data.Graph.segInfo.segLen),1);
-end
-[nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new( Data.Graph.nodes, Data.Graph.edges,Data.Graph.verifiedNodes, 10);
-[nodes, edges,verifiedNodes,verifiedEdges] = fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges, 10);
-Data.Graph.nodes = nodes;
-Data.Graph.edges = edges;
-Data.Graph.verifiedNodes = verifiedNodes;
-Data.Graph.verifiedEdges = verifiedEdges;
-% end
-% end
-draw(hObject, eventdata, handles)
+    if ~isfield(Data.Graph,'verifiedSegments')
+        Data.Graph.verifiedSegments = zeros(length(Data.Graph.segInfo.segLen),1);
+    end
+    % Downsample
+    [nodes, edges,verifiedNodes,verifiedEdges] =...
+        downsample_nodes( Data.Graph.nodes, Data.Graph.edges, Data.Graph.verifiedNodes, vox_xy, vox_z);
+    % Fill nodes
+    [nodes, edges,verifiedNodes,verifiedEdges] =...
+        fillNodes_new( nodes, edges, verifiedNodes,verifiedEdges,  vox_xy, vox_z);
+    Data.Graph.nodes = nodes;
+    Data.Graph.edges = edges;
+    Data.Graph.verifiedNodes = verifiedNodes;
+    Data.Graph.verifiedEdges = verifiedEdges;
+    draw(hObject, eventdata, handles)
 
 
 % --- Executes on button press in pushbuttonStraightenNodes.
 function pushbuttonStraightenNodes_Callback(hObject, eventdata, handles)
 global Data
-
 Ithresh = str2double(get(handles.edit_Ithresh,'String'));
 if get(handles.checkbox_prcoessVisible,'Value') == 1
     [Sz,Sx,Sy] = size(Data.angio);
