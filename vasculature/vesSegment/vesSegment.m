@@ -106,17 +106,19 @@ w = (w-min(w(:))) / (max(w(:))-min(w(:)));
 % The threshold (thres) determines the cutoff for this likelihood.
 % w < thres = 0 (non-vessel)
 % w < thres = 0 (vessel vessel)
-w_thresh = w;
-w_thresh(w<thres) = 0;
-w_thresh(w>=thres) = 1;
+prob_mat = w;
+prob_mat(w<thres) = 0;
+prob_mat(w>=thres) = 1;
 
 %% Remove small disconnected segments via connectivity analysis
 % Remove segments that are composed of fewer than 30 voxels.
+[I_seg, seg_removed, seg_total] = rm_small_seg(prob_mat, min_conn);
 
+%{
 % Run built-in matlab function to perform connectivity analysis
-cc = bwconncomp(w_thresh);
+cc = bwconncomp(prob_mat);
 % Define output variable
-I_seg = w_thresh;
+I_seg = prob_mat;
 % Counter to track number of vessels that are removed
 cnt = 0;
 for ii = 1:length(cc.PixelIdxList)
@@ -125,8 +127,9 @@ for ii = 1:length(cc.PixelIdxList)
         cnt = cnt + 1;
     end
 end
+%}
 
-sprintf('Segments before connectivity analysis = %d', cc.NumObjects)
-sprintf('Segments removed during connectivity analysis = %d', cnt)
-sprintf('Segments after connectivity analysis = %d', (cc.NumObjects - cnt))
+sprintf('Segments before connectivity analysis = %d', seg_total)
+sprintf('Segments removed during connectivity analysis = %d', seg_removed)
+sprintf('Segments after connectivity analysis = %d', (seg_total - seg_removed))
 
