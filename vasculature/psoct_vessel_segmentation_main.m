@@ -94,7 +94,7 @@ min_conn = 30;
 radii = 40;
 
 % Boolean for converting segment to graph (0 = don't convert, 1 = convert)
-graph_boolean = 0;
+graph_boolean = 1;
 
 for ii = 1:length(subid)
     %% Segment the volume
