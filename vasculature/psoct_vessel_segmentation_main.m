@@ -60,7 +60,7 @@ elseif isunix
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
     % filename extension
-    ext = '.btf';    
+    ext = '.tif';
 end
 
 %% Initialization parameters
