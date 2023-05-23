@@ -62,7 +62,7 @@ if ispc
 else
     dpath = '/projectnb/npbssmic/ns/CAA25_Frontal/Process_caa25_frontal/mus_vessel/';
 end
-
+%{
 mri = MRIread(strcat(dpath, fname));
 fprintf('mri loaded.\n')
 mri.vol = single(mri.vol);
@@ -155,7 +155,7 @@ save(partition_path,'cell_I2_skirt_lnridx','-append')
 save(partition_path,'cell_I2_main','-append')
 save(partition_path,'cell_I2_main_skirt','-append')
 
-
+%}
 %% Image Processing and Frangi Filter
 frangi_partitions(dpath, partition_path);
 
@@ -188,7 +188,6 @@ function frangi_partitions(dpath, ppath)
 %       ppath (string): path to the partitions
 
 % Clear memory and reload partitions
-clearvars -except dpath ppath
 load(ppath,'cell_I2_main');
 
 % Define window size
