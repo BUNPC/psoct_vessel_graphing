@@ -62,6 +62,10 @@ if ispc
 else
     dpath = '/projectnb/npbssmic/ns/CAA25_Frontal/Process_caa25_frontal/mus_vessel/';
 end
+
+% Create path to save partitions in same folder as original data
+partition_path = strcat(dpath, 'Ma_partition_cell_padded.mat');
+
 %{
 mri = MRIread(strcat(dpath, fname));
 fprintf('mri loaded.\n')
@@ -134,10 +138,7 @@ clear cell_I_padded* cell_I2_m
 
 
 %% save partition
-
-% Create path to save partitions in same folder as original data
-partition_path = strcat(dpath, 'Ma_partition_cell_padded.mat');
-
+% Initialize output variable
 placeholder = 1;
 save(partition_path, 'placeholder','-v7.3')
 
