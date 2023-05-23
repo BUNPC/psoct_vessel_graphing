@@ -210,7 +210,7 @@ for s = 1:length(cell_I2_main(:))
     I = conv3D(I,40);               % normalize, kernel 40px
     I = mat2gray(I,[0 1]);          % window I [0 1]
     I = double(I);                  % make I double before frangi
-    I_seg = frangi_wrapper(I);                 % frangi sigma [1 3 5]; I_VE thresh = 0.15; bwconncomp thresh = 100;                           
+    I_seg = frangi_wrapper(I);      % frangi sigma [1 3 5]; I_VE thresh = 0.15; bwconncomp thresh = 100;                           
     toc
     tic
     var_out_name = sprintf('I_seg%i',s);
