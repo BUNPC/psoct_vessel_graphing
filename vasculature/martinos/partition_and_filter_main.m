@@ -210,7 +210,7 @@ for s = 1:length(cell_I2_main(:))
     I = conv3D(I,40);               % normalize, kernel 40px
     I = mat2gray(I,[0 1]);          % window I [0 1]
     I = double(I);                  % make I double before frangi
-    I_seg = ves(I);                 % frangi sigma [1 3 5]; I_VE thresh = 0.15; bwconncomp thresh = 100;                           
+    I_seg = frangi_wrapper(I);                 % frangi sigma [1 3 5]; I_VE thresh = 0.15; bwconncomp thresh = 100;                           
     toc
     tic
     var_out_name = sprintf('I_seg%i',s);
@@ -224,19 +224,16 @@ end
 end
 
 %% Frangi filter wrapper
-function I_seg = ves(I)
+function I_seg = frangi_wrapper(I)
     
     sigmas = [ 1,   3,    5]; %% 100~200 um 20px big vessel are manually segmented
     thres  = 0.15; 
     cthres = 100;
 
-    sz = size(sigmas);
     I_seg = zeros(size(I),'logical');
-    for i = 1:sz(2)
+    for i = 1:size(sigmas,2)
         tic
-        I_VE = vesSegment(1-I,[sigmas(i)],1);   % I_VE is logical 
-        I_VE = I_VE > thres;
-        I_VE = clean_ves(I_VE,cthres);
+        I_VE = vesSegment(1-I, [sigmas(i)], thres, cthres);
         toc        
         I_seg = max(I_VE,I_seg);
     end
