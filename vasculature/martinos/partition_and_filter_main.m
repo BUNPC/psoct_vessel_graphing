@@ -71,8 +71,8 @@ mri.vol = single(mri.vol);
 % Programatically select these values to generate 18 volumes.
 % (i.e.  divide entire volume into (3x3x2))
 
-cell_I = mat2cell(mri.vol,[1000,1000,1099],[1000,1000,1410],[600,600]);
-
+cell_I = mat2cell(mri.vol,[1000,1000,879],[1000,1000,613],[300, 390]);
+clear mri
 %% Initialize padded partitions
 cell_I_padded = cell(size(cell_I)+2);
 cell_I_padded = cellfun(@single,cell_I_padded,'UniformOutput',false);
@@ -137,6 +137,9 @@ clear cell_I_padded* cell_I2_m
 
 % Create path to save partitions in same folder as original data
 partition_path = strcat(dpath, 'Ma_partition_cell_padded.mat');
+
+placeholder = 1;
+save(partition_path, 'placeholder','-v7.3')
 
 for s = 1:length(cell_I2(:))
     var_name = sprintf('I%i',s);
@@ -287,3 +290,54 @@ function save_mri_s(I, name, res, datatype)
     MRIwrite(mri,name,datatype);
     disp(' - done - ');
 end
+
+%% Calcualte dimensions for partitioning volume
+function [xarray, yarray, zarray] = calc_part_dim(vol)
+% Calculate partition dimensions
+% Equally divide each dimension of the volume.
+%
+% INPUTS:
+%		vol (matrix): entire mri volume
+% OUTPUTS:
+%		pdims (matrix):  three arrays
+
+%%% Find memory available for jobs
+% Check available memory
+m = memory;
+% Convert bytes to gigabytes
+m_gb = (m.MemAvailableAllArrays) / 1e9;
+
+%%% Calculate partitions
+% Find x,y,z dimensions of entire volume
+[x,y,z] = size(vol);
+% Calculate parition size
+xarray = dimpart(x);
+yarray = dimpart(y);
+zarray = dimpart(z);
+
+    %% Find the partition size of each dimension
+    function [parray] = dimpart(dim)
+        % Divide dimension by 3 to find partition dimension
+        pdim = floor(dim ./ 3);
+        % Find remainder
+        prem = rem(dim, 3);
+        % Create array for respective dimension of partition
+        parray = [pdim, pdim, (pdim+prem)];
+    end
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
