@@ -188,7 +188,7 @@ function frangi_partitions(dpath, ppath)
 %       ppath (string): path to the partitions
 
 % Clear memory and reload partitions
-clear;
+clearvars -except dpath ppath
 load(ppath,'cell_I2_main');
 
 % Define window size
@@ -295,6 +295,7 @@ end
 function [xarray, yarray, zarray] = calc_part_dim(vol)
 % Calculate partition dimensions
 % Equally divide each dimension of the volume.
+% TODO: ensure the partitions will fit into available memory.
 %
 % INPUTS:
 %		vol (matrix): entire mri volume
@@ -311,18 +312,39 @@ m_gb = (m.MemAvailableAllArrays) / 1e9;
 % Find x,y,z dimensions of entire volume
 [x,y,z] = size(vol);
 % Calculate parition size
-xarray = dimpart(x);
-yarray = dimpart(y);
-zarray = dimpart(z);
+xarray = dimpart(x,0);
+yarray = dimpart(y,0);
+zarray = dimpart(z,1);
 
     %% Find the partition size of each dimension
-    function [parray] = dimpart(dim)
-        % Divide dimension by 3 to find partition dimension
-        pdim = floor(dim ./ 3);
-        % Find remainder
-        prem = rem(dim, 3);
-        % Create array for respective dimension of partition
+    function [parray] = dimpart(dim, zbool)
+    % Calculate the partition size for the respective dimension.
+    %
+    % INPUTS:
+    %       dim (double): size of dimension
+    %       zbool (double): boolean for z dimension
+    % OUTPUTS
+    %       parray (array): array containing an array for each dimension
+    
+    % If zbool is true, then dividend equals 2. This is because the z
+    % dimension is always smaller than x,y, so it can safely be separated
+    % into just two paritions.
+    if zbool
+        div = 2;
+    else
+        div = 3;
+    end
+    % Divide dimension by 3 to find partition dimension
+    pdim = floor(dim ./ div);
+    % Find remainder
+    prem = rem(dim, div);
+    % Create array for respective dimension of partition
+    if zbool
+        parray = [pdim, (pdim+prem)];
+    else        
         parray = [pdim, pdim, (pdim+prem)];
+    end
+    
     end
 
 end
