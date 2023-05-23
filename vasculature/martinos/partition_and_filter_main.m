@@ -4,6 +4,8 @@ This is to ensure that a computer has sufficient memory for applying
 the Frangi filter.
 
 TODO:
+- this is currently breaking on line 166 of MRIread.m because the header is
+      empty.
 - programatically determine mat2cell variables
 - programatically change hte skirt size.
 	- skirt size = (# in conv3D(I,#) in Frangi filter / 2)
@@ -52,9 +54,15 @@ topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
 %% Load output of stitching
-fname = 'mus_mean_10um-iso.slice40px.nii.filepart';
+fname = 'mus_mean_10um-iso.slice40px.nii';
 fout = 'mus_mean_10um-iso.slice40px.I_seg.nii';
-dpath = '/projectnb/npbssmic/ns/CAA25_Frontal/Process_caa25_frontal/mus_vessel/';
+
+if ispc
+    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\CAA25_Frontal\Process_caa25_frontal\mus_vessel\';
+else
+    dpath = '/projectnb/npbssmic/ns/CAA25_Frontal/Process_caa25_frontal/mus_vessel/';
+end
+
 mri = MRIread(strcat(dpath, fname));
 fprintf('mri loaded.\n')
 mri.vol = single(mri);
