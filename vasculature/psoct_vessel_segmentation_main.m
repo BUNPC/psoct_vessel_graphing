@@ -15,7 +15,6 @@ To Do:
     - remove segments ()
 %}
 clear; clc; close all;
-tic
 
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
@@ -55,7 +54,7 @@ elseif isunix
 %              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
 %              'NC_8095', 'NC_8653'};
     % Partial subject ID list for testing script on SCC
-    subid = {'CTE_7019', 'AD_20832'};
+    subid = {'CTE_7019'};
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
