@@ -65,7 +65,7 @@ end
 
 mri = MRIread(strcat(dpath, fname));
 fprintf('mri loaded.\n')
-mri.vol = single(mri);
+mri.vol = single(mri.vol);
 
 %% Divide volume into smaller sections for memory management.
 % Programatically select these values to generate 18 volumes.
