@@ -85,7 +85,8 @@ end
 sigma = 1;
 
 % Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.20:0.02:0.26;
+% min_prob = 0.20:0.02:0.26;
+min_prob = 0.24;
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
 
