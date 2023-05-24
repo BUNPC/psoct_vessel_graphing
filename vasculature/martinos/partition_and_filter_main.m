@@ -233,7 +233,7 @@ function I_seg = frangi_wrapper(I)
     I_seg = zeros(size(I),'logical');
     for i = 1:size(sigmas,2)
         tic
-        I_VE = vesSegment(1-I, [sigmas(i)], thres, cthres);
+        [~, I_VE] = vesSegment(1-I, [sigmas(i)], thres, cthres);
         toc        
         I_seg = max(I_VE,I_seg);
     end
