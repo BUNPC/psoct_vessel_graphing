@@ -4934,10 +4934,12 @@ if isfield(Data.Graph,'segmentstodelete')
 
     % loops through the end nodes to make attached segments into one
     % segments and delete other
+    segmentstodelete = [];
      for v = 1:length(noteEndNodes)
         Enode = noteEndNodes(v);
         segs = find(Data.Graph.segInfo.segEndNodes(:,1) == Enode | Data.Graph.segInfo.segEndNodes(:,2) == Enode);
         if length(segs) == 2 %length should be 2 but just in case...
+            segmenttodelete = [segmentstodelete; segs(2)];
             nodes_idx = find(Data.Graph.segInfo.nodeSegN == segs(2));
             Data.Graph.segInfo.nodeSegN(nodes_idx) = segs(1);
             edges_idx = find(Data.Graph.segInfo.edgeSegN == segs(2));
