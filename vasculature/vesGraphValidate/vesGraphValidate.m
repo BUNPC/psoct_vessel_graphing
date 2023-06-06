@@ -1472,17 +1472,17 @@ elseif get(handles.radiobutton_selectSegment,'Value') == 1
     seg_node = idx(min_idx);
     undoDelete_flag = 0;
     idx_seg = find(Data.Graph.segInfo.segEndNodes(:,1) == seg_node | Data.Graph.segInfo.segEndNodes(:,2) == seg_node);
-    if length(idx_seg) <= 1
+    if length(idx_seg) < 1
         selected_segment = Data.Graph.segInfo.nodeSegN(seg_node);
     else
         ambiguityflag = 1;
-%         for u = 1:length(idx_seg)
-%             if length(find(Data.Graph.segInfo.nodeSegN == idx_seg(u))) <= 2
-%                 selected_segment = idx_seg(u);
-%                  ambiguityflag = 0;
-%                  break;
-%             end
-%         end
+        for u = 1:length(idx_seg)
+            if length(find(Data.Graph.segInfo.nodeSegN == idx_seg(u))) <= 2
+                selected_segment = idx_seg(u);
+                 ambiguityflag = 0;
+                 break;
+            end
+        end
         if ambiguityflag == 1
             f = msgbox('Please select different node,current node is part of multiple segments');
             uiwait(f);
