@@ -54,7 +54,10 @@ elseif isunix
 %              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
 %              'NC_8095', 'NC_8653'};
     % Partial subject ID list for testing script on SCC
-    subid = {'AD_10382'};
+    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424'};
+%     subid = {'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126'};
+%     subid = {'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974'};
+%     subid = {'NC_7597','NC_8095', 'NC_8653'};
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
@@ -67,7 +70,7 @@ end
 %%% Assign PS-OCT voxel dimension [x, y, z] according to downsample factor
 % Downasample factor = 4 --> Voxel = [12, 12, 15] micron
 % Downasample factor = 10 --> Voxel = [30, 30, 35] micron
-% 2P microscopy voxel will always be 5um x 5um
+% 2P microscopy voxel will always be [2, 2] micron
 
 % Set voxel dimensions from filename
 if regexp(fname, '4ds')
@@ -85,15 +88,12 @@ end
 sigma = 1;
 
 % Minimum fringi filter probability to classify voxel as vessel
-% min_prob = 0.20:0.02:0.26;
-min_prob = 0.23;
+min_prob = 0.20:0.01:0.26;
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
-
 % Array (or single value) of radii for eroding the mask
 radii = 40;
-
-% Boolean for converting segment to graph (0 = don't convert, 1 = convert)
+% Boolean for converting segment to graph (0 = do not convert. 1 = convert)
 graph_boolean = 1;
 
 for ii = 1:length(subid)
