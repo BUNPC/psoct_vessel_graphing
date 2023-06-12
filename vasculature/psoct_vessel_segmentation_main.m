@@ -171,10 +171,12 @@ range = [1e4, 1e8];
 mask = remove_mask_islands(mask, range);
 
 %%% Apply mask to segmentation volume
-% Convert from logical back to uint16 for matrix multiplication
-mask = uint16(mask);
+% Convert from logical back to uint8 for matrix multiplication
+mask = uint8(mask);
 % Element-wise multiply mask and volume
 I_seg_masked = apply_mask(I_seg, mask);
+% Convert segmentation output to uint8
+I_seg_masked = uint8(I_seg_masked);
 
 %%% Save segmented/masked volume as .MAT and .TIF
 % Convert masked image back to tif
@@ -213,6 +215,8 @@ I = double(vol);
 
 %%% Segment the original volume
 [~, I_seg] = vesSegment(I, sigma, min_prob, min_conn);
+% Convert segmentation to 8-bit to reduce file size and computations.
+I_seg = uint8(I_seg);
 
 %%% Save segmentation
 fname = strcat(fname,'_segment','_sigma', num2str(sigma), '_thresh', num2str(min_prob));
