@@ -123,39 +123,21 @@ for ii = 1:length(subid)
             
             %%% Convert masked segmentation to graph
             if graph_boolean
-                % Use masked segmentation to create graph
-                Graph = seg_to_graph(I_seg_masked, vox_dim);
+                % Use masked segmentation to create graph. This will output
+                % a struct with just the nodes and segments, but none of
+                % the metadata about the graph.
+                graph_nodes_segs = seg_to_graph(I_seg_masked, vox_dim);
                 
-                % Initialize graph information (work in progress)
-                % Graph = initialize_graph(Graph);
+                % Initialize graph metadata (Graph.Data)
+                [Data] = init_graph(graph_nodes_segs);
         
                 % Create new filename for graph and add .MAT extension
                 fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph.mat');
                 fout = strcat(fullpath, fname_graph);
-                save(fout,'Graph');
+                save(fout,'Data');
             end
         end
     end
-end
-toc
-
-%% Initialization of vesGraphValidate
-function [graph_init] = initialize_graph(Graph)
-%%% Perform the manual operations for initializing data in the GUI.
-% Load the graph data
-
-% Run "Verification > get segment info > Update"
-verification_updateBranchInfo_Callback();
-% Run "Update branch info"
-% Save graph prior to down sampling
-
-% Run "Regraph Nodes" to down sample
-% Run prune_loops and prune_segment
-% Run straighten
-% Save output
-
-
-graph_init = Graph;
 end
 
 %% Apply Mask
