@@ -71,7 +71,7 @@ end
 %%% Assign PS-OCT voxel dimension [x, y, z] according to downsample factor
 % Downasample factor = 4 --> Voxel = [12, 12, 15] micron
 % Downasample factor = 10 --> Voxel = [30, 30, 35] micron
-% 2P microscopy voxel will always be [2, 2] micron
+% 2P microscopy pixel will always be [2, 2] micron
 
 % Set voxel dimensions from filename
 if regexp(fname, '4ds')
