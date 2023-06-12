@@ -4508,7 +4508,10 @@ function File_loadGraphData_Callback(hObject, eventdata, handles)
 global Data
 [filename,pathname] = uigetfile('*.mat','Please load the Graph Data');
 load([pathname filename]);
-Data.Graph = Graph;
+% Check if importing the Data.Graph or Graph struct 
+if ~isfield(Data,'Graph')
+    Data.Graph = Graph;
+end
 set(handles.checkboxDisplayGraph,'enable','on')
 draw(hObject, eventdata, handles);
 

@@ -88,7 +88,8 @@ end
 sigma = 1;
 
 % Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.20:0.01:0.26;
+% min_prob = 0.20:0.01:0.26;
+min_prob = 0.231;
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
 % Array (or single value) of radii for eroding the mask
@@ -130,7 +131,13 @@ for ii = 1:length(subid)
                 
                 % Initialize graph metadata (Graph.Data)
                 [Data] = init_graph(graph_nodes_segs);
-        
+
+                %%% Append "angio" data (segmentation matrix)
+                % Rearrange [x,y,z] --> [z,x,y]. This is the standard in
+                % the graph validation GUI.
+                angio = permute(I_seg_masked, [3,1,2]);
+                Data.angio = angio;
+
                 % Create new filename for graph and add .MAT extension
                 fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph_data.mat');
                 fout = strcat(fullpath, fname_graph);
