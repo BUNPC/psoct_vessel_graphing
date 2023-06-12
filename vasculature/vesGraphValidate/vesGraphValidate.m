@@ -174,47 +174,36 @@ if strcmp(ext,'.mat')
         Data.Graph = temp.Graph;
     end
 elseif strcmp(ext,'.tiff') || strcmp(ext,'.tif')
-    info = imfinfo([pathname filename]);
-    for u = 1:length(info)
-        if u == 1
-            temp = imread([pathname filename],1);
-            angio = zeros([length(info) size(temp)]);
-            angio(u,:,:) = temp;
-        else
-            angio(u,:,:) = imread([pathname filename],u);
-        end
-    end
+    % Open the TIFF image
+    fpath = fullfile(pathname, filename);
+    angio = TIFF2MAT(fpath);
+    % Place the z dimension as the first [Z, Y, X]
+    angio = permute(angio, [3,1,2]);
     Data.angio = angio;
     Data.rawdatapath = [pathname filename];
 end
-% TODO: what is the expected value of Data.angio(:)?
-% Currently, the struct is Data.angio.[edges, nodes].
+% Set the intensity limits
 maxI = max(Data.angio(:));
 minI = min(Data.angio(:));
 set(handles.edit_maxI,'String',num2str(maxI));
 set(handles.edit_minI,'String',num2str(minI));
-[z,x,y] = size(Data.angio);
+
+% Set the coordinate bounds
+[z,y,x] = size(Data.angio);
 set(handles.edit_Zstartframe,'String',num2str(1));
 set(handles.edit_ZMIP,'String',num2str(z));
-% set(handles.edit_XcenterZoom,'String',num2str(1));
-% set(handles.edit_XwidthZoom,'String',num2str(x));
-% set(handles.edit_YcenterZoom,'String',num2str(1));
-% set(handles.edit_YwidthZoom,'String',num2str(y));
-
-set(handles.edit_XcenterZoom,'String',num2str(mean([1 size(Data.angio,2)-1])))
-set(handles.edit_YcenterZoom,'String',num2str(mean([1 size(Data.angio,3)-1])))
-set(handles.edit_XwidthZoom,'String',num2str(size(Data.angio,2)));
+set(handles.edit_XcenterZoom,'String',num2str(mean([1 size(Data.angio,3)-1])))
+set(handles.edit_YcenterZoom,'String',num2str(mean([1 size(Data.angio,2)-1])))
+set(handles.edit_XwidthZoom,'String',num2str(size(Data.angio,3)));
 set(handles.edit_YwidthZoom,'String',num2str(size(Data.angio,2)));
 
-% set(handles.edit_imageInfo,'String','Image info');
-% set(handles.edit_imageInfo,'String',[num2str(x) 'X' num2str(y) 'X' num2str(z)]);
+% Display dimensions in GUI
 str = sprintf('%s\n%s','Image info',[num2str(x) 'X' num2str(y) 'X' num2str(z)]);
 set(handles.edit_imageInfo,'String',str);
-Data.ZoomXrange = [1 size(Data.angio,2)];
-Data.ZoomYrange = [1 size(Data.angio,3)];
+
 waitbar(1);
 close(h);
-
+% Redraw image data
 draw(hObject, eventdata, handles);
 
 
@@ -222,10 +211,9 @@ function draw(hObject, eventdata, handles)
 
 global Data
 
-
+%%% Set I to be vasculature image
 I = Data.angio;
 [Sz,Sy,Sx] = size(I);
-
 
 %%%% Read display range
 Zstartframe = str2double(get(handles.edit_Zstartframe,'String'));
@@ -243,33 +231,17 @@ Yendframe = min(max(Ystartframe+YMIP,1),Sy);
 Data.ZoomXrange = [Xstartframe Xendframe];
 Data.ZoomYrange = [Ystartframe Yendframe];
 Data.ZoomZrange = [Zstartframe Zendframe];
-Zimg = squeeze(max(I(Zstartframe:Zendframe,:,:),[],1));
+ZimgXY = squeeze(max(I(Zstartframe:Zendframe,:,:),[],1));
 ZimgXZ = squeeze(max(I(:,Ystartframe:Yendframe,:),[],2));
 ZimgYZ = squeeze(max(I(:,:,Xstartframe:Xendframe),[],3));
-%Ximg = squeeze(max(I(:,Xstartframe:Xendframe,:),[],2));
-%Yimg = squeeze(max(I(:,:,Ystartframe:Yendframe),[],3));
-%ZMIPimg = squeeze(max(I,[],1));
-
-% if isfield(Data,'segangio') && (get(handles.checkbox_showSeg,'Value') == 1)
-%     ZimgS = squeeze(max(Data.segangio(Zstartframe:Zendframe,:,:),[],1));
-%     %    XimgS = squeeze(max(Data.segangio(:,Xstartframe:Xendframe,:),[],2));
-%     %    YimgS = squeeze(max(Data.segangio(:,:,Ystartframe:Yendframe),[],3));
-%     %    imgS = squeeze(max(Data.segangio,[],1));
-% end
 
 axes(handles.axes1)
-if 1
-    cmap(254,:) = [1 0 1];
-    cmap(255,:) = [0 1 0];
-    cmap(252,:) = [1 0 1];
-    cmap(253,:) = [0 1 0];
-    cmap(251,:) = [1 1 0];
-else
-    cmap(254,:) = [1 0 1];
-    cmap(255,:) = [0 1 0];
-    cmap(252,:) = [1 1 0];
-    cmap(253,:) = [1 1 1];
-end
+% Create color map
+cmap(254,:) = [1 0 1];
+cmap(255,:) = [0 1 0];
+cmap(252,:) = [1 0 1];
+cmap(253,:) = [0 1 0];
+cmap(251,:) = [1 1 0];
 
 if get(handles.checkbox_verifySegments,'Value') && (isfield(Data,'Graph') && isfield(Data.Graph,'segInfo'))
     
@@ -394,14 +366,13 @@ if get(handles.checkbox_verifySegments,'Value') && (isfield(Data,'Graph') && isf
         set(handles.text_segNumber,'String','segment');
         set(handles.edit_segmentNumber,'String',num2str(Data.Graph.segno));
         set(handles.text_segNumber2,'String', seginfo_text);
-        %         set(handles.text_segNumber,'String',seginfo_text);
     end
     
     maxI = str2double(get(handles.edit_maxI,'String'));
     minI = str2double(get(handles.edit_minI,'String'));
     colormap('gray')
     if get(handles.radiobutton_XYview,'Value')
-        I_h = imagesc(Zimg,[minI maxI]);
+        I_h = imagesc(ZimgXY,[minI maxI]);
     elseif get(handles.radiobutton_XZview,'Value')
         I_h = imagesc(ZimgXZ,[minI maxI]);
     else
@@ -426,19 +397,6 @@ if get(handles.checkbox_verifySegments,'Value') && (isfield(Data,'Graph') && isf
     end
     nodes = Data.Graph.nodes;
     edges = Data.Graph.edges;
-    %     nodeSegN = Data.Graph.segInfo.nodeSegN;
-    %     Seg_count = max(nodeSegN(:));
-    %     ZMIP = str2double(get(handles.edit_ZMIP,'String'));
-    %     XMIP = str2double(get(handles.edit_XwidthZoom,'String'));
-    %     YMIP = str2double(get(handles.edit_YwidthZoom,'String'));
-    %     if isfield(Data.Graph,'segno')
-    %         u = Data.Graph.segno;
-    %     else
-    %         u = 1;
-    %         Data.Graph.segno = u;
-    %     end
-    %     seg_nodes = find(nodeSegN == u);
-    %     Data.Graph.verifiedNodes(seg_nodes) = 3;
     hold on
     lstvisible = find(nodes(:,1)>=Data.ZoomXrange(1) & nodes(:,1)<=Data.ZoomXrange(2) & ...
         nodes(:,2)>=Data.ZoomYrange(1) & nodes(:,2)<=Data.ZoomYrange(2) & ...
@@ -466,7 +424,6 @@ if get(handles.checkbox_verifySegments,'Value') && (isfield(Data,'Graph') && isf
             ce = 'c-';
         end
     end
-    %      h=plot(nodes(lstseg,1),nodes(lstseg,2),cn);
     if get(handles.radiobutton_XYview,'Value')
         h=plot(nodes(lstseg,1),nodes(lstseg,2),cn);
     elseif get(handles.radiobutton_XZview,'Value')
@@ -485,15 +442,6 @@ if get(handles.checkbox_verifySegments,'Value') && (isfield(Data,'Graph') && isf
             h = plot(nodes(edges(lstseg_edges(ii),:),2), nodes(edges(lstseg_edges(ii),:),3), ce );
         end
     end
-    %      for ii=1:length(lstseg)
-    %             lst2 = find(edges(:,1)==lstseg(ii));
-    %             h = plot(nodes(edges(lst2,:),1), nodes(edges(lst2,:),2), ce );
-    % %                h = plot(nodes(edges(lst2,:),1), 'm-' );
-    % %             if get(handles.radiobutton_validateNodes,'Value') == 1 || get(handles.radiobutton_addEdge,'Value') == 1 ...
-    % %                  || get(handles.radiobutton_selectSegment,'Value') == 1 || get(handles.radiobutton_unvalidateNodes,'Value') == 1
-    % %                 set(h, 'ButtonDownFcn', {@axes_ButtonDown, handles});
-    % %             end
-    %      end
     hold off
     
     u1 = Data.Graph.segInfo.segEndNodes(Data.Graph.segno,1);
@@ -546,231 +494,205 @@ if get(handles.checkbox_verifySegments,'Value') && (isfield(Data,'Graph') && isf
         hold off
     end
     guigcf = gcf;
-    if 1
-        fig_handle = figure(1); subplot(2,2,1); I_h = imagesc(Zimg,[minI maxI]); axis image; axis on
-        if isfield(Data,'ZoomXrange') && isfield(Data,'ZoomYrange')
-            xlim(Data.ZoomXrange);
-            ylim(Data.ZoomYrange);
+    
+    % Handle range
+    fig_handle = figure(1); subplot(2,2,1); I_h = imagesc(ZimgXY,[minI maxI]); axis image; axis on
+    if isfield(Data,'ZoomXrange') && isfield(Data,'ZoomYrange')
+        xlim(Data.ZoomXrange);
+        ylim(Data.ZoomYrange);
+    end
+    hold on
+    if isfield(Data.Graph,'segmentstodelete')
+        if sum(ismember(Data.Graph.segmentstodelete,Data.Graph.segno)) ~= 0
+            cn = 'r.';
+            ce = 'r-';
+        elseif Data.Graph.verifiedSegments(Data.Graph.segno) == 1
+            cn = 'g.';
+            ce = 'g-';
+        else
+            cn ='c.';
+            ce = 'c-';
         end
-        hold on
+    else
+        if Data.Graph.verifiedSegments(Data.Graph.segno) == 1
+            cn = 'g.';
+            ce = 'g-';
+        else
+            cn ='c.';
+            ce = 'c-';
+        end
+    end
+    h=plot(nodes(lstseg,1),nodes(lstseg,2),cn);
+    lstseg_edges = find(Data.Graph.segInfo.edgeSegN == Data.Graph.segno);
+    for ii = 1:length(lstseg_edges)
+        h = plot(nodes(edges(lstseg_edges(ii),:),1), nodes(edges(lstseg_edges(ii),:),2), ce);
+    end
+    for uu = 1:length(idx)
         if isfield(Data.Graph,'segmentstodelete')
-            if sum(ismember(Data.Graph.segmentstodelete,Data.Graph.segno)) ~= 0
+            if sum(ismember(Data.Graph.segmentstodelete,idx(uu))) ~= 0
                 cn = 'r.';
                 ce = 'r-';
-            elseif Data.Graph.verifiedSegments(Data.Graph.segno) == 1
-                cn = 'g.';
-                ce = 'g-';
-            else
-                cn ='c.';
-                ce = 'c-';
-            end
-        else
-            if Data.Graph.verifiedSegments(Data.Graph.segno) == 1
-                cn = 'g.';
-                ce = 'g-';
-            else
-                cn ='c.';
-                ce = 'c-';
-            end
-        end
-        h=plot(nodes(lstseg,1),nodes(lstseg,2),cn);
-        lstseg_edges = find(Data.Graph.segInfo.edgeSegN == Data.Graph.segno);
-        for ii = 1:length(lstseg_edges)
-            h = plot(nodes(edges(lstseg_edges(ii),:),1), nodes(edges(lstseg_edges(ii),:),2), ce);
-        end
-        %      for ii=1:length(lstseg)
-        %             lst2 = find(edges(:,1)==lstseg(ii));
-        %             h = plot(nodes(edges(lst2,:),1), nodes(edges(lst2,:),2), ce );
-        % %                h = plot(nodes(edges(lst2,:),1), 'm-' );
-        % %             if get(handles.radiobutton_validateNodes,'Value') == 1 || get(handles.radiobutton_addEdge,'Value') == 1 ...
-        % %                  || get(handles.radiobutton_selectSegment,'Value') == 1 || get(handles.radiobutton_unvalidateNodes,'Value') == 1
-        % %                 set(h, 'ButtonDownFcn', {@axes_ButtonDown, handles});
-        % %             end
-        %      end
-        for uu = 1:length(idx)
-            if isfield(Data.Graph,'segmentstodelete')
-                if sum(ismember(Data.Graph.segmentstodelete,idx(uu))) ~= 0
-                    cn = 'r.';
-                    ce = 'r-';
-                else
-                    cn = 'm.';
-                    ce = 'm-';
-                end
             else
                 cn = 'm.';
                 ce = 'm-';
             end
-            seg_nodes = find(Data.Graph.segInfo.nodeSegN == idx(uu));
-            %          seg_nodes = intersect(seg_nodes,lstvisible);
-            h=plot(nodes(seg_nodes,1),nodes(seg_nodes,2),cn);
-            lstseg_edges = find(Data.Graph.segInfo.edgeSegN == idx(uu));
-            for ii = 1:length(lstseg_edges)
-                h = plot(nodes(edges(lstseg_edges(ii),:),1), nodes(edges(lstseg_edges(ii),:),2), ce );
-            end
-            %          for ii=1:length(seg_nodes)
-            %              lst2 = find(edges(:,1)==seg_nodes(ii));
-            %              h = plot(nodes(edges(lst2,:),1), nodes(edges(lst2,:),2), ce );
-            %          end
+        else
+            cn = 'm.';
+            ce = 'm-';
         end
-        
-        hold off
-        
-        Ximg = squeeze(max(I(:,Ystartframe:Yendframe,:),[],2));
-        subplot(2,2,3); imagesc(Ximg,[minI maxI]); colormap('gray');
-        axis image;
-        axis on
-        if isfield(Data,'ZoomXrange') && isfield(Data,'ZoomYrange')
-            xlim(Data.ZoomXrange);
-            ylim(Data.ZoomZrange);
+        seg_nodes = find(Data.Graph.segInfo.nodeSegN == idx(uu));
+        %          seg_nodes = intersect(seg_nodes,lstvisible);
+        h=plot(nodes(seg_nodes,1),nodes(seg_nodes,2),cn);
+        lstseg_edges = find(Data.Graph.segInfo.edgeSegN == idx(uu));
+        for ii = 1:length(lstseg_edges)
+            h = plot(nodes(edges(lstseg_edges(ii),:),1), nodes(edges(lstseg_edges(ii),:),2), ce );
         end
-        hold on
+    end
+    
+    hold off
+    
+    Ximg = squeeze(max(I(:,Ystartframe:Yendframe,:),[],2));
+    subplot(2,2,3); imagesc(Ximg,[minI maxI]); colormap('gray');
+    axis image;
+    axis on
+    if isfield(Data,'ZoomXrange') && isfield(Data,'ZoomYrange')
+        xlim(Data.ZoomXrange);
+        ylim(Data.ZoomZrange);
+    end
+    hold on
+    if isfield(Data.Graph,'segmentstodelete')
+        if sum(ismember(Data.Graph.segmentstodelete,Data.Graph.segno)) ~= 0
+            cn = 'r.';
+            ce = 'r-';
+        elseif Data.Graph.verifiedSegments(Data.Graph.segno) == 1
+            cn = 'g.';
+            ce = 'g-';
+        else
+            cn ='c.';
+            ce = 'c-';
+        end
+    else
+        if Data.Graph.verifiedSegments(Data.Graph.segno) == 1
+            cn = 'g.';
+            ce = 'g-';
+        else
+            cn ='c.';
+            ce = 'c-';
+        end
+    end
+    x = 1; y= 3;
+    h=plot(nodes(lstseg,x),nodes(lstseg,y),cn);
+    lstseg_edges = find(Data.Graph.segInfo.edgeSegN == Data.Graph.segno);
+    for ii = 1:length(lstseg_edges)
+        h = plot(nodes(edges(lstseg_edges(ii),:),x), nodes(edges(lstseg_edges(ii),:),y), ce);
+    end
+    hold off
+    for uu = 1:length(idx)
         if isfield(Data.Graph,'segmentstodelete')
-            if sum(ismember(Data.Graph.segmentstodelete,Data.Graph.segno)) ~= 0
+            if sum(ismember(Data.Graph.segmentstodelete,idx(uu))) ~= 0
                 cn = 'r.';
                 ce = 'r-';
-            elseif Data.Graph.verifiedSegments(Data.Graph.segno) == 1
-                cn = 'g.';
-                ce = 'g-';
-            else
-                cn ='c.';
-                ce = 'c-';
-            end
-        else
-            if Data.Graph.verifiedSegments(Data.Graph.segno) == 1
-                cn = 'g.';
-                ce = 'g-';
-            else
-                cn ='c.';
-                ce = 'c-';
-            end
-        end
-        x = 1; y= 3;
-        h=plot(nodes(lstseg,x),nodes(lstseg,y),cn);
-        lstseg_edges = find(Data.Graph.segInfo.edgeSegN == Data.Graph.segno);
-        for ii = 1:length(lstseg_edges)
-            h = plot(nodes(edges(lstseg_edges(ii),:),x), nodes(edges(lstseg_edges(ii),:),y), ce);
-        end
-        %          for ii=1:length(lstseg)
-        %              lst2 = find(edges(:,1)==lstseg(ii));
-        %              h = plot(nodes(edges(lst2,:),x), nodes(edges(lst2,:),y), ce );
-        %              %                h = plot(nodes(edges(lst2,:),1), 'm-' );
-        %              %             if get(handles.radiobutton_validateNodes,'Value') == 1 || get(handles.radiobutton_addEdge,'Value') == 1 ...
-        %              %                  || get(handles.radiobutton_selectSegment,'Value') == 1 || get(handles.radiobutton_unvalidateNodes,'Value') == 1
-        %              %                 set(h, 'ButtonDownFcn', {@axes_ButtonDown, handles});
-        %              %             end
-        %          end
-        hold off
-        for uu = 1:length(idx)
-            if isfield(Data.Graph,'segmentstodelete')
-                if sum(ismember(Data.Graph.segmentstodelete,idx(uu))) ~= 0
-                    cn = 'r.';
-                    ce = 'r-';
-                else
-                    cn = 'm.';
-                    ce = 'm-';
-                end
             else
                 cn = 'm.';
                 ce = 'm-';
             end
-            hold on
-            seg_nodes = find(Data.Graph.segInfo.nodeSegN == idx(uu));
-            %          seg_nodes = intersect(seg_nodes,lstvisible);
-            h=plot(nodes(seg_nodes,x),nodes(seg_nodes,y),cn);
-            lstseg_edges = find(Data.Graph.segInfo.edgeSegN == idx(uu));
-            for ii = 1:length(lstseg_edges)
-                h = plot(nodes(edges(lstseg_edges(ii),:),x), nodes(edges(lstseg_edges(ii),:),y), ce );
-            end
-            %              for ii=1:length(seg_nodes)
-            %                  lst2 = find(edges(:,1)==seg_nodes(ii));
-            %                  h = plot(nodes(edges(lst2,:),x), nodes(edges(lst2,:),y), 'm-' );
-            %              end
-            hold off
-        end
-        
-        Yimg = squeeze(max(I(:,:,Xstartframe:Xendframe),[],3));
-        subplot(2,2,2); imagesc(Yimg',[minI maxI]); colormap('gray');
-        axis image;
-        axis on
-        if isfield(Data,'ZoomXrange') && isfield(Data,'ZoomYrange')
-            xlim(Data.ZoomZrange);
-            ylim(Data.ZoomYrange);
+        else
+            cn = 'm.';
+            ce = 'm-';
         end
         hold on
+        seg_nodes = find(Data.Graph.segInfo.nodeSegN == idx(uu));
+        %          seg_nodes = intersect(seg_nodes,lstvisible);
+        h=plot(nodes(seg_nodes,x),nodes(seg_nodes,y),cn);
+        lstseg_edges = find(Data.Graph.segInfo.edgeSegN == idx(uu));
+        for ii = 1:length(lstseg_edges)
+            h = plot(nodes(edges(lstseg_edges(ii),:),x), nodes(edges(lstseg_edges(ii),:),y), ce );
+        end
+        hold off
+    end
+    
+    Yimg = squeeze(max(I(:,:,Xstartframe:Xendframe),[],3));
+    subplot(2,2,2); imagesc(Yimg',[minI maxI]); colormap('gray');
+    axis image;
+    axis on
+    if isfield(Data,'ZoomXrange') && isfield(Data,'ZoomYrange')
+        xlim(Data.ZoomZrange);
+        ylim(Data.ZoomYrange);
+    end
+    hold on
+    if isfield(Data.Graph,'segmentstodelete')
+        if sum(ismember(Data.Graph.segmentstodelete,Data.Graph.segno)) ~= 0
+            cn = 'r.';
+            ce = 'r-';
+        elseif Data.Graph.verifiedSegments(Data.Graph.segno) == 1
+            cn = 'g.';
+            ce = 'g-';
+        else
+            cn ='c.';
+            ce = 'c-';
+        end
+    else
+        if Data.Graph.verifiedSegments(Data.Graph.segno) == 1
+            cn = 'g.';
+            ce = 'g-';
+        else
+            cn ='c.';
+            ce = 'c-';
+        end
+    end
+    x = 3; y= 2;
+    h=plot(nodes(lstseg,x),nodes(lstseg,y),cn);
+    lstseg_edges = find(Data.Graph.segInfo.edgeSegN == Data.Graph.segno);
+    for ii = 1:length(lstseg_edges)
+        h = plot(nodes(edges(lstseg_edges(ii),:),x), nodes(edges(lstseg_edges(ii),:),y), ce);
+    end
+    %          for ii=1:length(lstseg)
+    %              lst2 = find(edges(:,1)==lstseg(ii));
+    %              h = plot(nodes(edges(lst2,:),x), nodes(edges(lst2,:),y), ce );
+    %              %                h = plot(nodes(edges(lst2,:),1), 'm-' );
+    %              %             if get(handles.radiobutton_validateNodes,'Value') == 1 || get(handles.radiobutton_addEdge,'Value') == 1 ...
+    %              %                  || get(handles.radiobutton_selectSegment,'Value') == 1 || get(handles.radiobutton_unvalidateNodes,'Value') == 1
+    %              %                 set(h, 'ButtonDownFcn', {@axes_ButtonDown, handles});
+    %              %             end
+    %          end
+    hold off
+    for uu = 1:length(idx)
         if isfield(Data.Graph,'segmentstodelete')
-            if sum(ismember(Data.Graph.segmentstodelete,Data.Graph.segno)) ~= 0
+            if sum(ismember(Data.Graph.segmentstodelete,idx(uu))) ~= 0
                 cn = 'r.';
                 ce = 'r-';
-            elseif Data.Graph.verifiedSegments(Data.Graph.segno) == 1
-                cn = 'g.';
-                ce = 'g-';
-            else
-                cn ='c.';
-                ce = 'c-';
-            end
-        else
-            if Data.Graph.verifiedSegments(Data.Graph.segno) == 1
-                cn = 'g.';
-                ce = 'g-';
-            else
-                cn ='c.';
-                ce = 'c-';
-            end
-        end
-        x = 3; y= 2;
-        h=plot(nodes(lstseg,x),nodes(lstseg,y),cn);
-        lstseg_edges = find(Data.Graph.segInfo.edgeSegN == Data.Graph.segno);
-        for ii = 1:length(lstseg_edges)
-            h = plot(nodes(edges(lstseg_edges(ii),:),x), nodes(edges(lstseg_edges(ii),:),y), ce);
-        end
-        %          for ii=1:length(lstseg)
-        %              lst2 = find(edges(:,1)==lstseg(ii));
-        %              h = plot(nodes(edges(lst2,:),x), nodes(edges(lst2,:),y), ce );
-        %              %                h = plot(nodes(edges(lst2,:),1), 'm-' );
-        %              %             if get(handles.radiobutton_validateNodes,'Value') == 1 || get(handles.radiobutton_addEdge,'Value') == 1 ...
-        %              %                  || get(handles.radiobutton_selectSegment,'Value') == 1 || get(handles.radiobutton_unvalidateNodes,'Value') == 1
-        %              %                 set(h, 'ButtonDownFcn', {@axes_ButtonDown, handles});
-        %              %             end
-        %          end
-        hold off
-        for uu = 1:length(idx)
-            if isfield(Data.Graph,'segmentstodelete')
-                if sum(ismember(Data.Graph.segmentstodelete,idx(uu))) ~= 0
-                    cn = 'r.';
-                    ce = 'r-';
-                else
-                    cn = 'm.';
-                    ce = 'm-';
-                end
             else
                 cn = 'm.';
                 ce = 'm-';
             end
-            hold on
-            seg_nodes = find(Data.Graph.segInfo.nodeSegN == idx(uu));
-            %          seg_nodes = intersect(seg_nodes,lstvisible);
-            h=plot(nodes(seg_nodes,x),nodes(seg_nodes,y),cn);
-            lstseg_edges = find(Data.Graph.segInfo.edgeSegN == idx(uu));
-            for ii = 1:length(lstseg_edges)
-                h = plot(nodes(edges(lstseg_edges(ii),:),x), nodes(edges(lstseg_edges(ii),:),y), ce );
-            end
-            %              for ii=1:length(seg_nodes)
-            %                  lst2 = find(edges(:,1)==seg_nodes(ii));
-            %                  h = plot(nodes(edges(lst2,:),x), nodes(edges(lst2,:),y), ce );
-            %              end
-            hold off
+        else
+            cn = 'm.';
+            ce = 'm-';
         end
-        if strcmp(get(handles.AllSegments_nBG3,'checked'),'on')
-%             button =uicontrol('Parent',fig_handle,'Style','pushbutton','String','Select Points','Units','normalized','Position',[0.75 0.25 0.1 0.1],'Visible','on');
-            button =uicontrol(fig_handle,'Style','pushbutton','String','Select Points','Units','normalized','Position',[0.75 0.25 0.1 0.1],'Visible','on');
-            button.Callback = @select_points;
+        hold on
+        seg_nodes = find(Data.Graph.segInfo.nodeSegN == idx(uu));
+        %          seg_nodes = intersect(seg_nodes,lstvisible);
+        h=plot(nodes(seg_nodes,x),nodes(seg_nodes,y),cn);
+        lstseg_edges = find(Data.Graph.segInfo.edgeSegN == idx(uu));
+        for ii = 1:length(lstseg_edges)
+            h = plot(nodes(edges(lstseg_edges(ii),:),x), nodes(edges(lstseg_edges(ii),:),y), ce );
         end
-        
-        figure(2)
-        clf
-        n = ceil((Data.ZoomZrange(2)-Data.ZoomZrange(1))/10);
-        n1 = ceil(n/4);
-        for iii = 1:n
+        %              for ii=1:length(seg_nodes)
+        %                  lst2 = find(edges(:,1)==seg_nodes(ii));
+        %                  h = plot(nodes(edges(lst2,:),x), nodes(edges(lst2,:),y), ce );
+        %              end
+        hold off
+    end
+    if strcmp(get(handles.AllSegments_nBG3,'checked'),'on')
+        button =uicontrol(fig_handle,'Style','pushbutton','String','Select Points','Units','normalized','Position',[0.75 0.25 0.1 0.1],'Visible','on');
+        button.Callback = @select_points;
+    end
+    
+    figure(2)
+    clf
+    n = ceil((Data.ZoomZrange(2)-Data.ZoomZrange(1))/10);
+    n1 = ceil(n/4);
+    for iii = 1:n
             ha(iii)=subplot(n1,4,iii);
             colormap('gray')
             img10 = squeeze(max(I(Zstartframe+(iii-1)*10:min(Zstartframe+(iii-1)*10,Zendframe),:,:),[],1));
@@ -836,28 +758,18 @@ if get(handles.checkbox_verifySegments,'Value') && (isfield(Data,'Graph') && isf
             
             hold off
         end
-        %          linkaxes(ha,'xy')
-    end
-    %      uicontrol(guigcf);
     figure(guigcf);
     
 else
     if get(handles.radiobutton_fastDisplay,'Value') && isfield(Data,'angioVolume')
         cmap = gray(255);
-        if 1
-            cmap(254,:) = [1 0 1];
-            cmap(255,:) = [0 1 0];
-            cmap(252,:) = [1 0 1];
-            cmap(253,:) = [0 1 0];
-            cmap(251,:) = [1 1 0];
-        else
-            cmap(254,:) = [1 0 1];
-            cmap(255,:) = [0 1 0];
-            cmap(252,:) = [1 1 0];
-            cmap(253,:) = [1 1 1];
-        end
-        Zimg = squeeze(max(Data.angioVolume(Zstartframe:Zendframe,:,:),[],1));
-        I_h = imagesc(Zimg,[0 256]);
+        cmap(254,:) = [1 0 1];
+        cmap(255,:) = [0 1 0];
+        cmap(252,:) = [1 0 1];
+        cmap(253,:) = [0 1 0];
+        cmap(251,:) = [1 1 0];
+        ZimgXY = squeeze(max(Data.angioVolume(Zstartframe:Zendframe,:,:),[],1));
+        I_h = imagesc(ZimgXY,[0 256]);
         colormap(cmap);
         axis image
         axis on
@@ -874,7 +786,7 @@ else
         maxI = str2double(get(handles.edit_maxI,'String'));
         minI = str2double(get(handles.edit_minI,'String'));
         if get(handles.radiobutton_XYview,'Value')
-            I_h = imagesc(Zimg,[minI maxI]);
+            I_h = imagesc(ZimgXY,[minI maxI]);
         elseif get(handles.radiobutton_XZview,'Value')
             I_h = imagesc(ZimgXZ,[minI maxI]);
         else
@@ -901,19 +813,7 @@ else
             lst = find(nodes(:,1)>=Data.ZoomXrange(1) & nodes(:,1)<=Data.ZoomXrange(2) & ...
                 nodes(:,2)>=Data.ZoomYrange(1) & nodes(:,2)<=Data.ZoomYrange(2) & ...
                 nodes(:,3)>=Zstartframe & nodes(:,3)<=Zendframe );
-            %      if isfield(Data.Graph,'verifiedNodes')
-            %          c = blanks(length(lst));
-            %          c(1:length(lst)) = 'm.';
-            %          lst1 = find(lst & Data.Graph.verifiedNodes == 1);
-            %          c(lst1) = 'g.';
-            %          lst2 = find(lst & Data.Graph.verifiedNodes == 2);
-            %          c(lst2) = 'g*';
-            %      else
-            %          c = 'm.';
-            %      end
-            %     c = 'm.';
             hold on
-            %         h=plot(nodes(lst,1),nodes(lst,2),'m.');
             if get(handles.radiobutton_XYview,'Value')
                 h=plot(nodes(lst,1),nodes(lst,2),'m.');
             elseif get(handles.radiobutton_XZview,'Value')
@@ -921,9 +821,6 @@ else
             else
                 h=plot(nodes(lst,2),nodes(lst,3),'m.');
             end
-            % for u = 1:length(lst)
-            %
-            % end
             
             if isfield(Data.Graph,'verifiedNodes')
                 lstg = find(nodes(:,1)>=Data.ZoomXrange(1) & nodes(:,1)<=Data.ZoomXrange(2) & ...
@@ -987,9 +884,6 @@ else
 %                     end
                 end
                  h=plot(nodes(lstRemove,1),nodes(lstRemove,2),'r.');
-%                  foo = ismember(edges,lstRemove);
-%                 lste = find(sum(foo,2)==2);
-%                 h = plot([nodes(edges(lste,1),1) nodes(edges(lste,2),1)]', [nodes(edges(lste,1),2) nodes(edges(lste,2),2)]', 'r-' );
             end
             if isfield(Data.Graph,'nodeS')
                 if ~isempty(Data.Graph.nodeS)
