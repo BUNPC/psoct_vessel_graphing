@@ -85,7 +85,8 @@ end
 sigma = 1;
 
 % Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.20:0.02:0.26;
+% min_prob = 0.20:0.02:0.26;
+min_prob = 0.23;
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
 
@@ -141,7 +142,10 @@ toc
 %% Initialization of vesGraphValidate
 function [graph_init] = initialize_graph(Graph)
 %%% Perform the manual operations for initializing data in the GUI.
+% Load the graph data
+
 % Run "Verification > get segment info > Update"
+verification_updateBranchInfo_Callback();
 % Run "Update branch info"
 % Save graph prior to down sampling
 
