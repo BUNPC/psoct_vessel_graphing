@@ -81,7 +81,7 @@ end
 %% Segmentation
 
 %%% 2P microscopy voxel will always be [5, 5] micron
-vox_dim = [5, 5];
+vox_dim = [2,2];
 
 %%% Std. Dev. for gaussian filter (range)
 % The value of sigma corresponds to the smallest resolvable radius of the
