@@ -143,10 +143,14 @@ function [graph_init] = initialize_graph(Graph)
 %%% Perform the manual operations for initializing data in the GUI.
 % Run "Verification > get segment info > Update"
 % Run "Update branch info"
+% Save graph prior to down sampling
+
 % Run "Regraph Nodes" to down sample
-% Open GUI with both image and data (graph)
 % Run prune_loops and prune_segment
 % Run straighten
+% Save output
+
+
 graph_init = Graph;
 end
 
