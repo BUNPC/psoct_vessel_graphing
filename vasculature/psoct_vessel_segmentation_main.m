@@ -54,10 +54,11 @@ elseif isunix
 %              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
 %              'NC_8095', 'NC_8653'};
     % Partial subject ID list for testing script on SCC
-    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424'};
+%     subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424'};
 %     subid = {'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126'};
 %     subid = {'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974'};
 %     subid = {'NC_7597','NC_8095', 'NC_8653'};
+    subid = {'AD_10382'};
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
