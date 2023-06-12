@@ -54,7 +54,7 @@ elseif isunix
 %              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
 %              'NC_8095', 'NC_8653'};
     % Partial subject ID list for testing script on SCC
-    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424'};
+    subid = {'AD_10382'};
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
@@ -132,7 +132,7 @@ for ii = 1:length(subid)
                 [Data] = init_graph(graph_nodes_segs);
         
                 % Create new filename for graph and add .MAT extension
-                fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph.mat');
+                fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph_data.mat');
                 fout = strcat(fullpath, fname_graph);
                 save(fout,'Data');
             end
