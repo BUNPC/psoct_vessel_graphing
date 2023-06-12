@@ -142,7 +142,7 @@ for ii = 1:length(subid)
                 % Create new filename for graph and add .MAT extension
                 fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph_data.mat');
                 fout = strcat(fullpath, fname_graph);
-                save(fout,'Data');
+                save(fout,'Data', '-v7.3');
             end
         end
     end
