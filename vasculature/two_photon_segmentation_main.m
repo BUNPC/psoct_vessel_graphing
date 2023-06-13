@@ -15,15 +15,15 @@ clear; clc; close all;
 %{
 minp = [0.2, 0.4, 0.6, 0.8, 0.9];
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\AD_10382_2P\aip';
-file = 'I_seg_sigma_1_3';
-I_seg = load(fullfile(dpath, strcat(file,'.mat')));
-I_seg = I_seg.I_seg;
+file = 'seg_sigma_1_3';
+seg = load(fullfile(dpath, strcat(file,'.mat')));
+seg = seg.seg;
 
 for i=1:length(minp)
     % copy the original 2D frangi filter output
-    tmp = I_seg;
+    tmp = seg;
     % Set anything below threshold equal to zero
-    tmp( I_seg < minp(i)) = 0;
+    tmp( seg < minp(i)) = 0;
     % Save output as .TIF
     fname = strcat(file, 'minp_', num2str(minp(i)));
     fout = fullfile(dpath, strcat(fname, '.tif'));
@@ -87,14 +87,14 @@ vox_dim = [2,2];
 % The value of sigma corresponds to the smallest resolvable radius of the
 % vessels. If sigma equals 1, then the smallest resolvable vessel will be
 % 1*voxel. For 2PM, the smallest resolvable vessel has a radius = 5um
-sigma = [1,3];
+sigma = [1, 3];
 
 %%% Minimum number of voxels to classify as segment
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
 
-%%% Array (or single value) of radii for eroding the mask
-radii = 40;
+%%% Lenght of line in the structuring element (strel) for expanding lines
+line_len = 3;
 
 %%% Boolean for converting segment to graph (0 = don't convert, 1 = convert)
 graph_boolean = 0;
@@ -116,17 +116,17 @@ for ii = 1:length(subid)
         % Convert .tif to .MAT
         vol = TIFF2MAT(filename);
         % Perform segmentation
-        [I_seg, fname_seg] = segment_main(vol, sigma, slicepath, slice_fname);
+        [seg, fname_seg] = segment_main(vol, sigma, slicepath, slice_fname);
 
         %%% Filter output of Frangi filter
-        for k=1:length(radii)
+        for k=1:length(line_len)
             % Remove small segments and apply mask
-            [I_seg_masked, fout] = ...
-                mask(I_seg, min_conn, logical(vol), radii(k), slicepath, slice_fname);
+            [seg_masked, fout] = ...
+                clean_dilate(seg, min_conn, line_len, slicepath, slice_fname);
             %%% Convert masked segmentation to graph
             if graph_boolean
                 % Use masked segmentation to create graph
-                Graph = seg_to_graph(I_seg_masked, vox_dim);
+                Graph = seg_to_graph(seg_masked, vox_dim);
                 
                 % Initialize graph information (work in progress)
                 % Graph = initialize_graph(Graph);
@@ -153,53 +153,57 @@ graph_init = Graph;
 end
 
 %% Apply Mask
-function [I_seg_masked, fout] = mask(I_seg, min_conn, mask, radius, fullpath, fname)
+function [seg_cleaned, fout] =...
+    clean_dilate(seg, min_conn, line_len, fullpath, fname)
 % Remove the edges labeled as vessels.
 %   INPUTS:
-%       I_seg (matrix) - output of segmentation function
+%       seg (matrix) - output of segmentation function
 %       min_conn (double) - minimum number of connections to classify as
 %                           vessel
-%       mask (matrix) - unsegmented volume converted to logicals
-%       radius (double array) - radius of disk for eroding the mask
+%       line_len (double) - length of line for strel
 %       fullpath (string) - absolute directory for saving processed data
 %       fname (string) - filename prior to applying mask
 %   OUTPUTS:
-%       I_seg_masked (matrix) - I_seg with boundaries eroded to remove
+%       seg_masked (matrix) - seg with boundaries eroded to remove
 %           erroneously labeled vessels.
 
 %%% Remove segments with fewer than "min_conn" connected voxels
-[I_seg, ~, ~] = rm_small_seg(I_seg, min_conn);
+figure; imshow(seg); title('Frangi - before processing')
+[seg, ~, ~] = rm_small_seg(seg, min_conn);
+figure; imshow(seg); title('Frangi - small segments removed')
 
-%%% Erode mask to remove small pixels on border that are not part of volume
-se = strel('disk', radius);
-mask = imerode(mask, se);
+%%% Dilate the lines
+% Create perpendicular structure
+se90 = strel('line',line_len,90);
+se0 = strel('line',line_len,0);
+% Dilate gradient mask
+seg_dil = imdilate(seg, [se90 se0]);
+figure; imshow(seg_dil); title('Frangi - Dilated Gradient Mask')
 
-%%% Remove islands of pixels from mask
-% Range of object size to keep
-range = [1e4, 1e8];
-mask = remove_mask_islands(mask, range);
+%%% Fill interior gaps
+seg_fill = imfill(seg_dil,'holes');
+figure; imshow(seg_fill); title('Frangi - Filled Holes')
 
-%%% Apply mask to segmentation volume
-% Convert from logical back to uint16 for matrix multiplication
-mask = uint16(mask);
-% TODO: Element-wise multiply mask and volume
-% We need to first apply thresholding to the image.
-% Then the mask will convert grayscale to binary.
-
+%%% Smooth segmentation
+seD = strel('diamond',1);
+seg_final = imerode(seg_fill,seD);
+seg_final = imerode(seg_final,seD);
+figure; imshow(seg_final); title('Frangi - final');
 
 %%% Save segmented/masked volume as .MAT and .TIF
-% Convert masked image back to tif
-tmp_fname = strcat(fname,'_mask', num2str(radius));
+% Convert processed matrix to tif
+tmp_fname = strcat(fname,'_processed', num2str(radius));
 fout = strcat(fullpath, tmp_fname, '.tif');
-segmat2tif(I_seg_masked, fout);
-% Save vessel segment stack as .MAT for the next step (graph recon)
+segmat2tif(seg_cleaned, fout);
+
+% Save vessel segment stack as .MAT for the next step (graphing)
 fout = strcat(fullpath, tmp_fname, '.mat');
-save(fout, 'I_seg_masked', '-v7.3');
+save(fout, 'seg_cleaned', '-v7.3');
 
 end
 
 %% Segment volume
-function [I_seg, fname] =...
+function [seg, fname] =...
     segment_main(vol, sigma, fullpath, fname)
 % Multiscale vessel segmentation
 %   INPUTS:
@@ -216,7 +220,7 @@ function [I_seg, fname] =...
 %       fname (string) - filename of segmentation
 %       ext (string) - filename extension (.TIF or .MAT)
 %   OUTPUTS:
-%       I_seg - segmentation of vessels (Frangi filter of original volume)
+%       seg - segmentation of vessels (Frangi filter of original volume)
 %       fname (string) - upadted filename prior to applying mask
 
 %% convert volume to double matrix
@@ -226,12 +230,12 @@ I = double(vol);
 options.FrangiScaleRange = sigma;
 
 %%% Segment the original volume
-[I_seg, ~, ~] = FrangiFilter2D(I, options);
+[seg, ~, ~] = FrangiFilter2D(I, options);
 
 %%% Save segmentation
 fname = strcat(fname,'_segment','_sigma_',...
     num2str(sigma(1)), '_', num2str(sigma(2)));
 fout = fullfile(fullpath, strcat(fname, '.tif'));
-segmat2tif(I_seg, fout);
+segmat2tif(seg, fout);
 
 end
