@@ -4,35 +4,59 @@
 
 % Add path and load parameter file
 addpath('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/vol_recon_beta');
-ParameterFile  = '/autofs/cluster/octdata2/users/Chao/caa/caa_22/processed/20211018/20211018_run2_processed/Parameters.mat';
-load(ParameterFile); %Parameters Mosaic3D Scan
+% ParameterFile  = '/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1/Parameters.mat';
+% load(ParameterFile); %Parameters Mosaic3D Scan
 
-%%% Set mosaic parameters
-fprintf(' - Loading Experiment file...\n %s\n', Mosaic3D.Exp);
-S = whos('-file',Mosaic3D.Exp);
-idx = find(contains({S(:).name},'Experiment_Fiji'));
-load(Mosaic3D.Exp,S(idx).name);
-Experiment  = eval(S(idx).name);
-fprintf(' - %s is loaded ...\n %s\n', S(idx).name);
+% %%% Set mosaic parameters
+% fprintf(' - Loading Experiment file...\n %s\n', Mosaic3D.Exp);
+% S = whos('-file',Mosaic3D.Exp);
+% idx = find(contains({S(:).name},'Experiment_Fiji'));
+% load(Mosaic3D.Exp,S(idx).name);
+% Experiment  = eval(S(idx).name);
+% fprintf(' - %s is loaded ...\n %s\n', S(idx).name);
 
 
 %% generating sliceidx for cases with multiple runs
-% template to create variable sliceidx which is important for cases that have multiple runs
-% this section is only need for cases have multiple run
-run1 = 1:9; % 1:[ number of slices for each run ]
-run2 = 1:72; run3 = 1:19; run4 = 1:25; 
+% NOTE: we must manually verify that there are no overlapping slies. To do
+% this, navigate to the directory "StitchingFiji"
+% Verify that slice[final] in run001 is different from slice001 in run002.
+% This can be performed visually. 
+% Perform this validation for all subsequent runs. Alternatively, examine
+% the script from prior steps.
+%
+% We must generate an array of slice indices for each run. These slice
+% indices are stored in the variable "Mosaic3D.sliceidx", which is in the
+% file: /autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1/Parameters.mat'
+% Steps:
+%   - Manually load the parameters file.
+%   - Open Mosaic3D.sliceidx
+%   - This is a 3xN matrix.
+%       First row = slice number within run
+%       second row = overall slice number across all runs
+%       third row = array of ones (always)
+run1 = 1:50; % 1:[ number of slices for each run ]
+run2 = 1:14;
+run3 = 1:14; 
 
-% Processed Directory
-% /autofs/cluster/octdata2/users/Chao/caa/[user ID]/processed/20211018/20211018_run2_processed
+%%% Processed Directory
+% Note that this will vary for each subject, depending on who ran the first
+% processing. Here is one example of the subfolder:
+% /autofs/cluster/octdata2/users/Chao/caa/[subID]/processed/[YYYYMMDD]/[YYYYMMDD]_[run#]_processed/
+% /autofs/cluster/octdata2/users/Chao/caa/[subID]/proces_run#
+% look at the parameters.mat filepath structures
 
-multirun_p.ProcDir = {'/autofs/cluster/octdata2/users/Chao/caa/caa_22/processed/20211018/20211018_run1_processed',...
-    '/autofs/cluster/octdata2/users/Chao/caa/caa_22/processed/20211018/20211018_run2_processed',...
-    '/autofs/cluster/octdata2/users/Chao/caa/caa_22/processed/20211018/20211018_run3_processed',...
-    '/autofs/cluster/octdata2/users/Chao/caa/caa_22/processed/20211018/20211018_run4_processed'};
+multirun_p.ProcDir = {'/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1',...
+    '/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run2',...
+    '/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run3'};
 
-multirun_p.in = [run1 run2 run3 run4];                                                      %sliceid from multiple runs
-multirun_p.out = 1:length(multirun_p.in);             %
-multirun_p.run = [ones(size(run1))*1 ones(size(run2))*2 ones(size(run3))*3 ones(size(run4))*4];
+%%% Generate a slice indexing matri (3xN)
+%    - First row = slice number within run
+%    - second row = overall slice number across all runs
+%    - third row = index of the variable multirun_p.ProcDir. The run number
+%               may not always start at 1.
+multirun_p.in = [run1 run2 run3]; % sliceid from multiple runs
+multirun_p.out = 1:length(multirun_p.in);
+multirun_p.run = [ones(size(run1))*1 ones(size(run2))*2 ones(size(run3))*3];
 sliceidx = [multirun_p.in;multirun_p.out;multirun_p.run];
 
 case_notes = 'need2register';
@@ -48,7 +72,7 @@ switch case_notes
         load(reg_run_file,'crop_idx','tran_idx')
 end
 %% Set Enviroment
-ProcessDir = multirun_p.ProcDir{2};
+ProcessDir = [multirun_p.ProcDir{1} filesep 'dBI'];
 % ProcessDir = '/autofs/space/omega_001/users/caa/CAA26_Occipital/Process_caa26_occipital/mus';
 
 %% generating z stitching parameters
@@ -76,7 +100,7 @@ fprintf('%0.2i + %0.2i = %0.2ipx (%ium) -> slice thickness\n',z_s,z_m,z_sm,z_sm*
 %15 + 25 = 40px (100um)
 
 % load lowest number plus 1 slice (sometimes lowest number slice can have weird intensity drop)
-load([ProcessDir filesep modality '_slice002.mat'],'MosaicFinal');%c
+load([ProcessDir filesep modality '_slice001.mat'],'MosaicFinal');%c
 
 if strcmpi(modality,'mus')
     mus_aip = mean(smooth3(MosaicFinal),3);
