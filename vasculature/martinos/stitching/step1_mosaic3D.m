@@ -7,14 +7,13 @@ For each data collection run:
 %}
 
 %% Initial Parameters
+addpath('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/vol_recon_beta');
 modality = 'mus';
 ParameterFile = '/autofs/cluster/octdata2/users/Chao/caa/caa_6/occipital/process_20220209_run2/Parameters.mat';
-gpu_flag = false;
-isdeployed = 0;
 %%% Call Function
 Mosaic3D_Telesto(ParameterFile, modality, gpu_flag, isdeployed);
 
-function Mosaic3D_Telesto(ParameterFile, modality, gpu_flag, isdeployed)
+function Mosaic3D_Telesto(ParameterFile, modality)
 %%% Load Mosaic3D parameters variable
 load(ParameterFile);
 
@@ -138,8 +137,6 @@ for s = 1:size(sliceidx,2)
                     case 'dBI'
                         data = Imag(:,:,1:MZL); 
                 end
-                
-                     
                 Mosaic(row,columns,:) = Mosaic(row,columns,:)+data.*RampOrig3;
                 Masque(row,columns) = Masque(row,columns)+RampOrig;        
             end

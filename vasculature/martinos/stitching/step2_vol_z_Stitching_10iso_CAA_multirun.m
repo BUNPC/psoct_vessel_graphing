@@ -1,20 +1,19 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions required: do_downsample (path : vol_recon_beta);  
 % %                   imgaussian (path : frangi filter folder)
+
+% Add path and load parameter file
 addpath('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/vol_recon_beta');
-
-
-ParameterFile  = ['/autofs/cluster/octdata2/users/Chao/caa/caa_22/processed/20211018/20211018_run2_processed/Parameters.mat'];
+ParameterFile  = '/autofs/cluster/octdata2/users/Chao/caa/caa_22/processed/20211018/20211018_run2_processed/Parameters.mat';
 load(ParameterFile); %Parameters Mosaic3D Scan
 
-%%%% SETTING MOSAIC PARAMETERS 
-
+%%% Set mosaic parameters
 fprintf(' - Loading Experiment file...\n %s\n', Mosaic3D.Exp);
 S = whos('-file',Mosaic3D.Exp);
 if any(contains({S(:).name},'Experiment_Fiji'))
-    idx = find(contains({S(:).name},'Experiment_Fiji'));    isFiji = true;
+    idx = find(contains({S(:).name},'Experiment_Fiji'));
 elseif any(contains({S(:).name},'Experiment'))
-    idx = find(contains({S(:).name},'Experiment'));         isFiji = false;
+    idx = find(contains({S(:).name},'Experiment'));
 end
 load(Mosaic3D.Exp,S(idx).name);
 Experiment  = eval(S(idx).name);
@@ -120,14 +119,9 @@ tot_z_pix   = z_sm*nb_slices;
 Ma_sz = [row_pxblock, col_pxblock, tot_z_pix];
 Ma_sz = Ma_sz./ds_xyz;                                                     %<<<<<<<<<<<<<<<<<<<<<<<<
 
-    %%% template for stitched block
+%%% template for stitched block
 Ma = zeros(Ma_sz,'single');
-
-
 clear MosaicFinal s ms
-
-
-
 
 %% Begin stitching  
 tic
@@ -213,48 +207,38 @@ for s = 1:length(sliceidx)
         Ma(t1s:t1e,t2s:t2e,zr1) = Ma(t1s:t1e,t2s:t2e,zr1) + I_in(c1s:c1e,c2s:c2e,:);
     end
     disp('Finished slice');
-
-
 end
 
 toc
 
-
+%% Save outputs
+%%% raw output
+resolution      = [0.01 0.01 0.0025];
+resolution_ds10 = resolution .* ds_xyz;
+name = [outdir filesep modality '_mean_10um-iso.slice40px.nii'];
+save_mri(Ma, name, resolution_ds10)
     
+%%% smoothed output
+name_smooth = [outdir filesep modality '_mean_10um-iso.slice40px.sigma1.nii'];
+save_mri(imgaussian(Ma,1), name_smooth, resolution_ds10)
 
+%% Save 20um iso volume
+%{
+disp(' - Downsampling to 20 micron iso (z)...');
 
-    resolution      = [0.01 0.01 0.0025];
-    resolution_ds10 = resolution .* ds_xyz;
-    
-    name = [outdir filesep modality '_mean_10um-iso.slice40px.nii'];
+sx = 1; %20um
+sy = 1; %20um
+sz = 8; %2.5um -> 20um
+ds_xyz = [2, 2, 2]; % sz are loaded from recon.mat
 
-    save_mri(Ma, name, resolution_ds10)
-    
-    %%
+[Id20] = do_downsample(Ma, ds_xyz);
+resolution_ds20 = resolution_ds10 .* ds_xyz;
+name = [outdir filesep modality '_mean_20um-iso.slice40px.nii'];
+save_mri(Id20, name, resolution_ds20)
+%}
 
-    
-%%
-    name_smooth = [outdir filesep modality '_mean_10um-iso.slice40px.sigma1.nii'];
-    save_mri(imgaussian(Ma,1), name_smooth, resolution_ds10)
-
-%% this is for 20um iso volume
-    
-%     disp(' - Downsampling to 20 micron iso (z)...');
-%     
-% %     sx = 1; %20um
-% %     sy = 1; %20um
-% %     sz = 8; %2.5um -> 20um
-%     ds_xyz = [2, 2, 2]; % sz are loaded from recon.mat
-% 
-%     [Id20] = do_downsample(Ma, ds_xyz);
-%     resolution_ds20 = resolution_ds10 .* ds_xyz;
-%     name = [outdir filesep modality '_mean_20um-iso.slice40px.nii'];
-% 
-%     save_mri(Id20, name, resolution_ds20)
-
-%%
 function save_mri(I, name, res)
-    
+% Save stitched output
     disp(' - making hdr...');
     % Make Nifti and header
     colres = res(2); 
