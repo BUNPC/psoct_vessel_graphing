@@ -1,8 +1,13 @@
-function stitch_xy(ParameterFile, modality)
+function [MosaicFinal] = stitch_xy(ParameterFile, modality)
 %% Stitch the x-y tiles for each slice.
 % This script will determine the x-y coordinates for a single slice of a
 % single run. Then, it will apply these coordinates to each subsequent
 % slice in the run.
+% INPUTS:
+%   ParameterFile (string): 
+%   modality (string): 
+% OUTPUTS:
+%   MosaicFinal (matrix): X-Y stitching
 
 %%% Load Mosaic3D parameters variable
 load(ParameterFile, 'Mosaic3D', 'Scan', 'Parameters');

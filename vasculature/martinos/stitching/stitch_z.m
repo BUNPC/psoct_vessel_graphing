@@ -1,20 +1,10 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% functions required: do_downsample (path : vol_recon_beta);  
-% %                   imgaussian (path : frangi filter folder)
-
-% Add path and load parameter file
-addpath('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/vol_recon_beta');
-% ParameterFile  = '/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1/Parameters.mat';
-% load(ParameterFile); %Parameters Mosaic3D Scan
-
-% %%% Set mosaic parameters
-% fprintf(' - Loading Experiment file...\n %s\n', Mosaic3D.Exp);
-% S = whos('-file',Mosaic3D.Exp);
-% idx = find(contains({S(:).name},'Experiment_Fiji'));
-% load(Mosaic3D.Exp,S(idx).name);
-% Experiment  = eval(S(idx).name);
-% fprintf(' - %s is loaded ...\n %s\n', S(idx).name);
-
+function [m_xyz] = stitch_z(mosaic)
+%STITCH_Z stitch the z axis
+%
+% INPUTS:
+%   mosaic (matrix): 
+% OUTPUTS:
+%   m_xyz (matrix): x-y-z stitched mosaic
 
 %% generating sliceidx for cases with multiple runs
 % NOTE: we must manually verify that there are no overlapping slies. To do
@@ -280,4 +270,6 @@ function save_mri(I, name, res)
     % mri.vol = flip(mri.vol,1);
     MRIwrite(mri,name,'float');
     disp(' - done - ');
+end
+
 end

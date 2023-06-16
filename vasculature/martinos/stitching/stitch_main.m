@@ -26,7 +26,27 @@ addpath(genpath(topdir));
 modality = 'mus';
 % Path to parameter file
 ParameterFile = '/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1/Parameters.mat';
-stitch_xy(ParameterFile, modality);
+
+%% Perform stitching
+%%% Step 1: x-y stitching
+[mosaic] = stitch_xy(ParameterFile, modality);
+
+%%% Step 2: z stitching
+% Inputs:
+%   - MosaicFinal (from step 1)
+%   - l
+% create separate function for "save_mri". Remove this function from end of
+% script.
+% Pass output to step 3
+
+%%% Step 3: Frangi segmentation
+
+%%% Step 4: remove pia
+
+%%% Step 5: revise Frangi
+
+%%% Step 6: profits
+sprintf('$$$$$$')
 
 %%% WIP code for serializing function call
 % ParameterFile = {'', '', ''};
