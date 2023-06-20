@@ -87,11 +87,6 @@ save_mri(mask_pia,'Stacked_AIP_pia.nii.gz',[0.01 0.01 0.1],'uchar')
 % Stack 2: minimumIP of convolved/normalized output
 % Ensure boundaries are enclosed around pia
 
-%% [Freeview]  Manually refine the pia and tissue edge mask
-% Note: this step may not be necessary. May be able to just clean agarose mask
-%  input file = 'Stacked_AIP_pia.nii.gz'
-%  output file = 'Stacked_AIP_pia.cleaned.nii.gz'
-
 %% create agarose mask ( MIP -> agar -> nontissue )
 MIP_path = ['/autofs/space/omega_001/users/caa/CAA25_Frontal/Process_caa25_frontal/StackNii/'...
     'Stacked_MIP.nii'];
@@ -145,7 +140,7 @@ save_mri(I,...
 % load "Stacked_nontissue.nii.gz" (this will be edited)
 % overlay Stacked_seg_MIP.nii.gz and Stacked_AIP.nii
 % output = Stacked_nontissue.cleaned.nii.gz
-% This step requires manual intervention.
+% This step requires manual intervention. Currently performed by summer student.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
