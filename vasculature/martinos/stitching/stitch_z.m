@@ -1,13 +1,13 @@
 function [m_xyz] =...
-    stitch_z(mparams, res_ds, ds_xyz, runs, data_dir, regrun, case_notes, modality)
+    stitch_z(mparams, res, ds_xyz, runs, data_dir, regrun, case_notes, modality)
 %STITCH_Z stitch the z axis
 %
 % INPUTS:
 %   mparams (struct): mosaic parameters (input dir., output dir., input
 %                   file type, slice index, etc.)
-%   res_ds (array): downsampled resolution for each axis [x,y,z]
+%   res (array): voxel resolution [x,y,z]
 %   ds_xyz (array): downsampling scalar for each axis [x,y,z]
-%   run (struct): number of slices for each run, eg run(#).slices
+%   runs (struct): slice indices for each run. Ex: run(#).slices = 1:50
 %   data_dir (cell): cell of strings for each directory path to multirun
 %       ex: "/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1/dBI"
 %   regrun (string): [directory]/imregcorr_p.mat
@@ -47,14 +47,28 @@ function [m_xyz] =...
 %                   user chooses to include run 1 or not.
 
 if length(runs) == 1
-    % 1 run
+    %%% 1 run
     sliceidx = mparams.sliceidx(1,:);
 else
-    % Multiple runs (TODO: dynamically create these)
-    multirun_p.in = [run1, run2, run3];
-    multirun_p.out = 1:length(multirun_p.in);
-    multirun_p.run = [ones(size(run1))*1, ones(size(run2))*2, ones(size(run3))*3];
-    sliceidx = [multirun_p.in; multirun_p.out; multirun_p.run];
+    %%% Multiple runs
+    % Input slice indices
+    s_in = [];
+    for ii = 1:length(run)
+        s_in = [s_in, run(ii).slices];
+    end
+    
+    % Output slice indices
+    s_out = 1:length(s_in);
+    
+    % Run index
+    s_run = [];
+    for ii = 1:length(run)
+        s_run = [s_run, ones(length(run(ii).slices)).*ii];
+    end
+        
+    % Final slice index matrix
+    sliceidx = [s_in; s_out; s_run];
+    
     % Load registration parameters (if interrun translation needed)
     if strcmp(case_notes, 'need2register')
         load(regrun,'crop_idx','tran_idx')
@@ -222,11 +236,14 @@ toc
 
 
 %% Save outputs (maybe skip and just pass to Frangi).
-%%% raw output
-name = [outdir filesep modality '_mean_10um-iso.slice40px.nii'];
-save_mri(m_xyz, name, resolution_ds)
+% Calculate downsampled resolution of voxel
+res_ds = res .* ds_xyz;
 
-%%% smoothed output
+% raw output
+name = [outdir filesep modality '_mean_10um-iso.slice40px.nii'];
+save_mri(m_xyz, name, res_ds)
+
+% smoothed output
 name_smooth = [outdir filesep modality '_mean_10um-iso.slice40px.sigma1.nii'];
 save_mri(imgaussian(m_xyz,1), name_smooth, res_ds, 'float')
 

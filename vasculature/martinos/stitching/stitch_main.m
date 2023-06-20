@@ -53,7 +53,9 @@ run(1).slices = 1:50;
 run(2).slices = 1:14;
 run(3).slices = 1:14;
 
-% Downsampling
+% voxel resolution
+res = [0.01 0.01 0.0025];
+% voxel downsampling
 ds_xyz = [1, 1, 4];
 
 % Multirun process directory
