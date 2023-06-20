@@ -1,62 +1,65 @@
-function [MosaicFinal] = stitch_xy(ParameterFile, modality)
+function [mosaic_xy] = stitch_xy(mparams, scan, params, modality)
 %% Stitch the x-y tiles for each slice.
 % This script will determine the x-y coordinates for a single slice of a
 % single run. Then, it will apply these coordinates to each subsequent
 % slice in the run.
 % INPUTS:
-%   ParameterFile (string): 
-%   modality (string): 
+%   mparams (struct): mosaic parameters (input dir., output dir., input
+%                   file type, slice index, etc.)
+%   scan (struct): parameters from scan sequence
+%   params (struct): (slice ID, tile ID, gray range, agar threshold)
+%   modality (string): mus or dBI
 % OUTPUTS:
-%   MosaicFinal (matrix): X-Y stitching
+%   mosaic_xy (matrix): X-Y stitching
 
-%%% Load Mosaic3D parameters variable
-load(ParameterFile, 'Mosaic3D', 'Scan', 'Parameters');
+%% Initalization params
+% Initialize output struct
+mosaic_xy = struct;
 
-%%% SETTING SLICE INPUT 
-sliceidx    = Mosaic3D.sliceidx;
+% slice indices for run
+sliceidx    = mparams.sliceidx;
 
-%%% SETTING MOSAIC PARAMETERS 
-fprintf(' - Loading Experiment file...\n %s\n', Mosaic3D.Exp);
-S = whos('-file',Mosaic3D.Exp);
+% mosaic parameters
+fprintf(' - Loading Experiment file...\n %s\n', mparams.Exp);
+S = whos('-file',mparams.Exp);
 if any(contains({S(:).name},'Experiment_Fiji'))
     idx = find(contains({S(:).name},'Experiment_Fiji'));
 elseif any(contains({S(:).name},'Experiment'))
     idx = find(contains({S(:).name},'Experiment'));
 end
-load(Mosaic3D.Exp,S(idx).name);
+load(mparams.Exp,S(idx).name);
 Experiment  = eval(S(idx).name);
 fprintf(' - %s is loaded ...\n %s\n', S(idx).name);
 
-%%% SETTING DIRECTORIES 
-indir       = Mosaic3D.indir;
-outdir      = Mosaic3D.outdir;
+% input/output directories
+indir       = mparams.indir;
+outdir      = mparams.outdir;
 if ~exist(outdir,'dir')
     mkdir(outdir)
 end
-filetype    = Mosaic3D.InFileType; % 'nifti';
-
+filetype    = mparams.InFileType; % 'nifti';
 fprintf(' - Input directory = \n%s\n',indir{:});
 fprintf(' - Output directory = \n%s\n',outdir);
 
 % Set the x,y clipping (depends on system)
-switch Scan.System
+switch scan.System
     case 'Octopus'
-        XPixClip    = Parameters.YPixClip; %18;
-        YPixClip    = Parameters.XPixClip; %0;
+        XPixClip    = params.YPixClip; %18;
+        YPixClip    = params.XPixClip; %0;
     case 'Telesto'
-        XPixClip    = Parameters.XPixClip; %18;
-        YPixClip    = Parameters.YPixClip; %0;
+        XPixClip    = params.XPixClip; %18;
+        YPixClip    = params.YPixClip; %0;
 end
-fprintf('XPixClip = %i\nYPixClip = %i\nSystem is %s\n\n', XPixClip, YPixClip,Scan.System);
+fprintf('XPixClip = %i\nYPixClip = %i\nSystem is %s\n\n',...
+    XPixClip, YPixClip,scan.System);
 
 % Set other parameters
-MZL     = 40; %Mosaic3D.MZL;
-fprintf('save %ipx of orignal %ipx\n', MZL, Scan.CropDepth);
+MZL     = 40; %mparams.MZL;
+fprintf('save %ipx of orignal %ipx\n', MZL, scan.CropDepth);
 
 %%% 
 NbPix = Experiment.NbPix;
-
-X       = Experiment.X_Mean;           Y       = Experiment.Y_Mean;         % Y = fliplr(Y);
+X       = Experiment.X_Mean;           Y       = Experiment.Y_Mean;
 X       = X-min(X(:))+1;               Y       = Y-min(Y(:))+1;
 sizerow = NbPix-XPixClip;              sizecol = NbPix-YPixClip;
 MXL     = max(X(:))+sizerow-1;         MYL     = max(Y(:))+sizecol-1;
@@ -73,7 +76,7 @@ x(end-ramp_xv)= mat2gray(ramp_xv);     y(end-ramp_yv)= mat2gray(ramp_yv);
 RampOrig=x.'*y;
 RampOrig3 = repmat(RampOrig, [1,1,MZL]);
 
-%% 
+%% Stitching
 tabrow=size(Experiment.MapIndex_Tot,1);
 tabcol=size(Experiment.MapIndex_Tot,2);
 
@@ -86,15 +89,19 @@ for s = 1:size(sliceidx,2)
     sliceid_run = sliceidx(3,s); indir_curr = indir{sliceid_run};
     
     MapIndex = Experiment.MapIndex_Tot_offset+Experiment.First_Tile -1;
-    fprintf('\nStarting %s mosaic slice %d from run %d slice %d ...\n',modality,sliceid_out, sliceid_run, sliceid_in);
+    fprintf('\nStarting %s mosaic slice %d from run %d slice %d ...\n',...
+        modality,sliceid_out, sliceid_run, sliceid_in);
 
     M  = zeros(MXL,MYL,MZL,'single'); %flipped xy for telesto
     Ma = zeros(MXL,MYL,'single');
     Mosaic = zeros(MXL,MYL,MZL,'single');
     Masque = zeros(MXL,MYL,'single');
-    
+
+    % Loop through columns
     for ii=1:tabcol
         fprintf('col %d / %d\n',ii,tabcol)
+
+        % Loop through rows
         for jj=1:tabrow
             if MapIndex(jj,ii)>0 && ~isnan(X(jj,ii))
                 columns =Y(jj,ii):Y(jj,ii)+sizecol-1;
@@ -102,7 +109,7 @@ for s = 1:size(sliceidx,2)
                 currtile = (sliceid_in-1)*Experiment.TilesPerSlice+MapIndex(jj,ii);
                 switch filetype
                     case 'mat'
-                        ftile = [indir_curr filesep modality '_' sprintf('%03i',currtile) '.mat'];
+                        ftile = [indir_curr filesep modality '_' sprintf('%03i',currtilel) '.mat'];
                         S = whos('-file',ftile);
                         load(ftile);
                         Imag = eval(S.name);
@@ -112,7 +119,7 @@ for s = 1:size(sliceidx,2)
                 end  
                 
                 Imag = single(Imag);
-                if strcmpi(Scan.System, 'Octopus');Imag = permute(Imag,[2,1,3]);end              
+                if strcmpi(scan.System, 'Octopus');Imag = permute(Imag,[2,1,3]);end              
                 Imag =  Imag(XPixClip+1:end,YPixClip+1:end,end:-1:1); % clip & flip in z  
                 sz =    size(Imag);
 
@@ -142,30 +149,28 @@ for s = 1:size(sliceidx,2)
 
     %%% Final stitching
     Ma = repmat(Ma, [1,1,MZL]);
-    MosaicFinal=M./(Ma);
-    MosaicFinal(isnan(MosaicFinal))=0;
-    MosaicFinal(isinf(MosaicFinal))=0;
+    m_xy= M./(Ma);
+    m_xy(isnan(m_xy)) = 0;
+    m_xy(isinf(m_xy)) = 0;
     
-    %%% Save MosaicFinal (raw resolution)
+    %%% Add x-y stitched mus to struct (index by slice #)
+    mosaic_xy(s).m_xy = m_xy;
+    mosaic_xy(s).modality = modality;
+
+    %%% Save m_xy (raw resolution)
+    %{
     disp(' - Saving mosaic...');
-    fout = [outdir filesep modality '_slice' sprintf('%03i',sliceid_out) '.mat'];
+    fout = [outdir, filesep, modality, '_slice', sprintf('%03i',sliceid_out), '.mat'];
     fprintf(' %s \n',fout);
     aatic=tic;
-    save(fout, 'MosaicFinal', 'modality', '-v7.3');
+    save(fout, 'm_xy', 'modality', '-v7.3');
     aatoc=toc(aatic);
     fprintf(' - %.1f s to save\n',aatoc);
-
-    % Save the 2D projection
-    if strcmpi(modality, 'mus')
-        fout = [outdir filesep '../StitchingFiji' filesep modality '_slice' sprintf('%03i',sliceid_out(ss)) '.mat'];
-        mus_2d = mean(MosaicFinal(:,:,5:end),3);
-        mus_2d = rot90(mus_2d,-1);
-        save(fout, 'mus_2d');
-    end
+    %}
 
 toc0=toc(tic0);
-disp(['Elapsed time to stitch ' num2str(length(sliceid_out)) ' slices: ']);
-disp(['      ' num2str(toc0) ' seconds']);
+disp(['Elapsed time to stitch ', num2str(length(sliceid_out)), ' slices: ']);
+disp(['      ', num2str(toc0), ' seconds']);
 
 end
 end
