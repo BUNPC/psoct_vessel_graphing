@@ -72,7 +72,7 @@ clear cell_I_padded* cell_I2_m
 
 
 
-%% save partition (maybe remove?)
+%% save partition
 for s = 1:length(cell_I2(:))
     var_name = sprintf('I%i',s);
     eval([var_name ' = cell_I2{s};'])
@@ -87,15 +87,15 @@ save('Ma_partition_cell_padded.mat','cell_I2_main_skirt','-append')
 
 
 %% Image Processing and Frangi Filter
-% TODO: call my Frangi filter function
-
+run('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/proj_m/m20230323_frangi_ves4_I_seg_V2.m')
 
 %% I_seg reconstruct
-load('Ma_partition_cell_padded.mat','reshape_sz','cell_I2_main',...
-    'cell_I2_main_skirt','cell_I2_skirt_lnridx');
+load('Ma_partition_cell_padded.mat','cell_I2_main','reshape_sz','cell_I2_main','cell_I2_main_skirt','cell_I2_skirt_lnridx');
+
 cell_seg = cell(reshape_sz);
 
 for s = 1:length(cell_I2_main(:))
+    
     var_in_name = sprintf('I_seg%i',s);
     load('ves4_padded.mat',var_in_name)
     eval(['I_seg = ' var_in_name ';'])
@@ -108,7 +108,7 @@ end
 
 
 I_seg_all = cell2mat(cell_seg);
-save_mri(I_seg_all, 'mus_mean_10um-iso.slice40px.I_seg.nii', [0.01,0.01,0.01],'uchar')
+save_mri_s(I_seg_all, 'mus_mean_10um-iso.slice40px.I_seg.nii', [0.01,0.01,0.01],'uchar')
 
 %% create_mri_mosaic.py commandline 
 %  create_mri_mosaic.py is Jackson's script to divide large nii image into 
@@ -120,6 +120,8 @@ save_mri(I_seg_all, 'mus_mean_10um-iso.slice40px.I_seg.nii', [0.01,0.01,0.01],'u
 %% create_mri_mosaic.py -> I
 % /autofs/space/tiamat_001/users/jackson/projects/scripts/Python/create_mri_mosaic.py \
 % /autofs/cluster/octdata2/users/Chao/caa/caa_17/occipital/process_run1/mus_vessel/mus_mean_10um-iso.slice40px.t3_9.sigma1.nii 1100 1000 1200 --m_dims 3 3 1   -s --outdir /autofs/cluster/octdata2/users/Chao/caa/caa_17/occipital/process_run1/mus_vessel/nii_split --tile_name I
+
+%% do downsample logic/int datatype
 
 %% cut away the side with only empty cell
 function cellcube = cut_empty_cell(cellcube)
@@ -136,3 +138,23 @@ function matrix_true = true_like(matrix)
     matrix_true = true(size(matrix));
 end
 
+function save_mri_s(I, name, res, datatype)
+    
+    disp(' - making hdr...');
+    % Make Nifti and header
+    colres = res(2); 
+    rowres = res(1); 
+    sliceres = res(3); 
+    % mri.vol = I;
+    mri.volres = [res(1) res(2) res(3)];
+    mri.xsize = rowres;
+    mri.ysize = colres;
+    mri.zsize = sliceres;
+    a = diag([-colres rowres sliceres 1]);
+    mri.vox2ras0 = a;
+    mri.volsize = size(I);
+    mri.vol = I;
+    % mri.vol = flip(mri.vol,1);
+    MRIwrite(mri,name,datatype);
+    disp(' - done - ');
+end
