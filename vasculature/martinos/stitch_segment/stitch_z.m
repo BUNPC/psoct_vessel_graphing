@@ -1,35 +1,47 @@
 function [m_xyz] =...
-    stitch_z(mparams, res, ds_xyz, runs, data_dir, regrun, case_notes, modality)
+    stitch_z(M_xy, mparams, res, ds_xyz, runs, data_dir, case_notes, regrun, modality)
 %STITCH_Z stitch the z axis
+% Takes the X-Y mosaic as an input and stitches together adjacent layers in
+% the z direction. The output is the reconstructed volume (m_xyz).
 %
 % INPUTS:
+%   M_xy (MAT-file obj.): object connected to the MAT-file for x-y mosaic.
+%       This enables memory-efficient access. M_xy will contain an XY
+%       mosaic matrix for each run. For example:
+%           M_xy.run1_m_xy
+%           M_xy.run2_m_xy
+%           ...
+%           M_xy.run[N]_m_xy
+%            
 %   mparams (struct): mosaic parameters (input dir., output dir., input
 %                   file type, slice index, etc.)
+%
 %   res (array): voxel resolution [x,y,z]
+%
 %   ds_xyz (array): downsampling scalar for each axis [x,y,z]
+%
 %   runs (struct): slice indices for each run. Ex: run(#).slices = 1:50
+%
 %   data_dir (cell): cell of strings for each directory path to multirun
-%       ex: "/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1/dBI"
-%   regrun (string): [directory]/imregcorr_p.mat
-%   case_notes (string): 
-%   modality (string): 'dBI' or 'mus'
+%       ex: {'/autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1/dBI'}
+%
+%   case_notes (string): state whether interrun registration is necessary
+%       ex: 'need2register' or 'isuniform'
+%
+%   regrun (string): directory/filename for interrun registration
+%       ex: [directory]/imregcorr_p.mat
+%       This is only needed if interrun registration is needed.
+%
+%   modality (string): imaging modality
+%       'dBI' or 'mus'
+%
 % OUTPUTS:
 %   m_xyz (matrix): x-y-z stitched mosaic
 
 %% TODO:
-% - add inputs:
-%       - regrun (interrun translation file)
-%       - Mosaic3Dz stitching parameters 
-% - dynamically generate multirun_p & sliceidx
-% - add logic to generate sliceidx (multirun or single)
-% - move these notes to main script
-%
+% add logic to iterate over runs in M_xy
 
 %% Generate a slice indexing matrix (3xN)
-% TODO:
-%   - dynamically create multirun_p
-%   - dynamically create sliceidx
-%
 % We must generate an array of slice indices for each run. These slice
 % indices are stored in the variable "Mosaic3D.sliceidx", which is in the
 % file: /autofs/cluster/octdata2/users/Chao/caa/caa_6/frontal/process_run1/Parameters.mat'
@@ -88,17 +100,21 @@ fprintf('%0.2i      %0.2i         %0.2i          %0.2i\n',zoff, z_s,z_m,z_s)
 fprintf('%0.2i + %0.2i = %0.2ipx (%ium) -> slice thickness\n',z_s,z_m,z_sm,z_sm*2.5)
 
 %% Generate WM mask, calc. tissue decay, calc. & blend weights, 
+% This section will use the second slice from first run, since sometimes
+% there can be issues with the first slice. This section will access the
+% MAT-file object M_xy to more efficiently use memory.
 
-%%% Load second slice from first run
-% Reasoning: sometimes first slice has abnormal intensity drop
-fname = 'mus_xy.mat';
-fpath = fullfile(data_dir, fname);
-% Create MAT-file from mus_xy.mat
-M = matfile(fpath);
-mus_slice = M.run3_mosaic_xy(1,2);
-m_xy = mus_slice.m_xy;
+% Get fieldnames of M_xy MAT-file Object
+fields = fieldnames(M_xy);
+% Take first field name, which corresponds to first run, even in the case
+% of a single run.
+run1_m_xy = M_xy(fields{1});
+% Take second slice from first run
+m_xy = run1_m_xy(1,2);
 
+% If using scattering coefficient, then calculate tissue decay
 if strcmpi(modality,'mus')
+    %%% Calculate average intensity projection (AIP) of XY mosaic slice
     mus_aip = mean(smooth3(m_xy), 3);
     thresh = multithresh(mus_aip,2); % output will be [agar-gm gm-wm]
     figure;subplot(1,2,1);imshow(mus_aip,[thresh(2),prctile(mus_aip(:),98)]); title('wm');
@@ -138,42 +154,49 @@ elseif strcmpi(modality,'conv')
     w3 = (1:z_m)*0+1; w3 = w3(:).';
 end
 
+%%% Calculate size of XYZ mosaic
 nb_slices   = size(sliceidx,2);
 [row_pxblock, col_pxblock] = size(m_xy,[1 2]);
 tot_z_pix   = z_sm * nb_slices;
 Ma_sz = [row_pxblock, col_pxblock, tot_z_pix];
 Ma_sz = Ma_sz ./ ds_xyz;
 
-%%% template for stitched block
+%%% initialize stitched xyz mosaic
 m_xyz = zeros(Ma_sz,'single');
 clear m_xy s ms
 
-%% Begin stitching  
-tic
+%%% Set input/output directories
+% Print input directory
+for ii = 1:length(data_dir)
+    fprintf(' - Input directory = \n%s\n',data_dir{ii})
+end
 
 % Set output directory
-outdir = '/autofs/space/omega_001/users/caa/CAA26_Occipital/Process_caa26_occipital/mus_vessel';
+outdir = mparams.outdir;
 if ~exist(outdir, 'dir')
     mkdir(outdir)
 end
 fprintf(' - Output directory = \n%s\n',outdir);
 
-% Set input directory
-in_dir = data_dir;
-for ii = 1:length(in_dir)
-    fprintf(' - Input directory = \n%s\n',in_dir{ii})
-end
 
-%%% Iterate over slices
+
+%% Begin stitching  
+% Idea:
+%   - add outer for-loop to iterate over runs. 
+%   - create counter for slice index
+%   - load slice from run
+% 
+tic
+% Iterate over slices
 for s = 1:length(sliceidx)
     s_in = sliceidx(1,s);
     s_out = sliceidx(2,s);
     s_run = sliceidx(3,s);
     fprintf('\tslice %d in run %d \tslice %d in all runs\n',s_in,s_run,s_out);
-    indir = in_dir{s_run};
+    indir = data_dir{s_run};
 
-    % load slice
-    % TODO: logic to iterate over slices from different runs
+    % TODO: load slice from MAT-file object
+    
 
     fdata = [indir filesep modality '_slice' sprintf('%03i',s_in) '.mat'];
     load(fdata,'MosaicFinal');
@@ -233,18 +256,4 @@ for s = 1:length(sliceidx)
 end
 
 toc
-
-
-%% Save outputs (maybe skip and just pass to Frangi).
-% Calculate downsampled resolution of voxel
-res_ds = res .* ds_xyz;
-
-% raw output
-name = [outdir filesep modality '_mean_10um-iso.slice40px.nii'];
-save_mri(m_xyz, name, res_ds)
-
-% smoothed output
-name_smooth = [outdir filesep modality '_mean_10um-iso.slice40px.sigma1.nii'];
-save_mri(imgaussian(m_xyz,1), name_smooth, res_ds, 'float')
-
 end
