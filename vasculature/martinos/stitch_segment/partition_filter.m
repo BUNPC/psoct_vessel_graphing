@@ -56,12 +56,7 @@ addpath(genpath(topdir));
 %% Load output of stitching
 fname = 'mus_mean_10um-iso.slice40px.nii';
 fout = 'mus_mean_10um-iso.slice40px.I_seg.nii';
-
-if ispc
-    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\CAA25_Frontal\Process_caa25_frontal\mus_vessel\';
-else
-    dpath = '/projectnb/npbssmic/ns/CAA25_Frontal/Process_caa25_frontal/mus_vessel/';
-end
+dpath = '/autofs/space/omega_001/users/caa/CAA26_Occipital/Process_caa26_occipital/mus_vessel';
 
 % Create path to save partitions in same folder as original data
 partition_path = strcat(dpath, 'Ma_partition_cell_padded.mat');
