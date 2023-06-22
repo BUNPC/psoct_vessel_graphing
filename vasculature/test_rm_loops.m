@@ -1,21 +1,20 @@
-%% This script is for testing the "rm_loops" function
-% TODO:
-%       test with graph from entire volume + determine run time
+%% Debug the "rm_loops" function
+%{
+TODO:
+- test with graph from entire volume + determine run time
+
+%}
+
 
 %% Graph struct from PSOCT graph.
 clear; clc; close all;
 
 % Load PSOCT graph
-dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Ann_Mckee_samples_10T\AD_20832\dist_corrected\volume';
+dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\AD_20832\dist_corrected\volume';
 fname = 'ref_4ds_norm_inv_cropped_segment_sigma1_thresh0.25_graph.mat';
 load(fullfile(dpath, fname));
 vox = Graph.vox;
-
-% Downsample
-% v = zeros(length(Graph.nodes),1);
-% [nodes, edges,verifiedNodes,verifiedEdges] =...
-%     downsample_nodes(Graph.nodes, Graph.edges, v, vox(1), vox(3));
-
+% Retrieve nodes/edges
 nodes = Graph.nodes;
 edges = Graph.edges;
 
