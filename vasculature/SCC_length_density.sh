@@ -16,11 +16,11 @@
 #$ -l h_rt=24:00:00
 
 # Name of job
-#$ -N segment
+#$ -N len_dens
 
 # Combine output/error files into single file
 #$ -j y
 
 module load matlab/2022b
-matlab -nodisplay -singleCompThread -r "psoct_vessel_segmentation_main; exit"
+matlab -nodisplay -singleCompThread -r "length_density_main; exit"
 

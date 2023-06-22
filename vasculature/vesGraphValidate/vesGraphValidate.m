@@ -1445,17 +1445,17 @@ elseif get(handles.radiobutton_selectSegment,'Value') == 1
     seg_node = idx(min_idx);
     undoDelete_flag = 0;
     idx_seg = find(Data.Graph.segInfo.segEndNodes(:,1) == seg_node | Data.Graph.segInfo.segEndNodes(:,2) == seg_node);
-    if length(idx_seg) <= 1
+    if length(idx_seg) < 1
         selected_segment = Data.Graph.segInfo.nodeSegN(seg_node);
     else
         ambiguityflag = 1;
-%         for u = 1:length(idx_seg)
-%             if length(find(Data.Graph.segInfo.nodeSegN == idx_seg(u))) <= 2
-%                 selected_segment = idx_seg(u);
-%                  ambiguityflag = 0;
-%                  break;
-%             end
-%         end
+        for u = 1:length(idx_seg)
+            if length(find(Data.Graph.segInfo.nodeSegN == idx_seg(u))) <= 2
+                selected_segment = idx_seg(u);
+                 ambiguityflag = 0;
+                 break;
+            end
+        end
         if ambiguityflag == 1
             f = msgbox('Please select different node,current node is part of multiple segments');
             uiwait(f);
@@ -4772,10 +4772,12 @@ if isfield(Data.Graph,'segmentstodelete')
 
     % loops through the end nodes to make attached segments into one
     % segments and delete other
+    segmentstodelete = [];
      for v = 1:length(noteEndNodes)
         Enode = noteEndNodes(v);
         segs = find(Data.Graph.segInfo.segEndNodes(:,1) == Enode | Data.Graph.segInfo.segEndNodes(:,2) == Enode);
         if length(segs) == 2 %length should be 2 but just in case...
+            segmenttodelete = [segmentstodelete; segs(2)];
             nodes_idx = find(Data.Graph.segInfo.nodeSegN == segs(2));
             Data.Graph.segInfo.nodeSegN(nodes_idx) = segs(1);
             edges_idx = find(Data.Graph.segInfo.edgeSegN == segs(2));

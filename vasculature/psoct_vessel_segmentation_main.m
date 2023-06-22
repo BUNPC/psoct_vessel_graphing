@@ -15,7 +15,6 @@ To Do:
     - remove segments ()
 %}
 clear; clc; close all;
-tic
 
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
@@ -37,9 +36,9 @@ addpath(genpath(topdir));
 % Check if running on local machine for debugging or on SCC for processing
 if ispc
     %%% Local machine
-    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Ann_Mckee_samples_10T\';
+    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
-    subid = {'AD_20832'};
+    subid = {'CTE_7019'};
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
     fname = 'ref_4ds_norm_inv_cropped';
@@ -49,12 +48,13 @@ elseif isunix
     %%% Computing cluster (SCC)
     % Path to top-level directory
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
-    % Subject IDs
+    % Complete subject ID list for Ann_Mckee_samples_10T
 %     subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
 %              'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
 %              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
 %              'NC_8095', 'NC_8653'};
-    subid = {'AD_10382'};
+    % Partial subject ID list for testing script on SCC
+    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424'};
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
@@ -85,7 +85,7 @@ end
 sigma = 1;
 
 % Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.21:0.02:0.25;
+min_prob = 0.20:0.02:0.26;
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
 
@@ -106,16 +106,7 @@ for ii = 1:length(subid)
     for j = 1:length(min_prob)
         [I_seg, fname_seg] = ...
             segment_main(vol, sigma, min_prob(j), min_conn, fullpath, fname);
-        if graph_boolean
-            % Create graph of unmasked segmentation
-            Graph = seg_to_graph(I_seg, vox_dim);
-            
-            % Save unmasked Graph
-            fname_graph = strcat(fname_seg,'_graph.mat');
-            fout = strcat(fullpath, fname_graph);
-            save(fout,'Graph');
-        end
-
+        
         %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
         % The function for creating the mask requires a radius. This for-loop will
         % iterate over an array of radii. For each radius, it will create a mask,
@@ -137,7 +128,7 @@ for ii = 1:length(subid)
                 % Initialize graph information (work in progress)
                 % Graph = initialize_graph(Graph);
         
-                % Save Graph
+                % Create new filename for graph and add .MAT extension
                 fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph.mat');
                 fout = strcat(fullpath, fname_graph);
                 save(fout,'Graph');
@@ -149,22 +140,16 @@ toc
 
 %% Initialization of vesGraphValidate
 function [graph_init] = initialize_graph(Graph)
-%%% Down sample (regraph) graph (see if built-in Matlab function)
-% Create array of verified segments (required input)
-v = zeros(length(Graph.edges));
-[nodes, edges,verifiedNodes,verifiedEdges] = regraphNodes_new(Graph.nodes, Graph.edges, v, 30);
-
-% Prune Loops from nodes/edges
-
-% Prune segments
-
-% Run straighten (see if built-in Matlab function)
-
-
+%%% Perform the manual operations for initializing data in the GUI.
 % Run "Verification > get segment info > Update"
 % Run "Update branch info"
+% Save graph prior to down sampling
 
-% Open GUI with both image and data (graph)
+% Run "Regraph Nodes" to down sample
+% Run prune_loops and prune_segment
+% Run straighten
+% Save output
+
 
 graph_init = Graph;
 end
