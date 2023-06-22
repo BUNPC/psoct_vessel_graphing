@@ -67,8 +67,8 @@ mri.vol = single(mri.vol);
 % (i.e.  divide entire volume into (3x3x2))
 [xarray, yarray, zarray] = calc_part_dim(mri.vol);
 cell_I = mat2cell(mri.vol, xarray, yarray, zarray);
-% cell_I = mat2cell(mri.vol,[1000,1000,879],[1000,1000,613],[300, 390]);
-% clear mri
+clear mri
+
 %% Initialize padded partitions
 cell_I_padded = cell(size(cell_I)+2);
 cell_I_padded = cellfun(@single,cell_I_padded,'UniformOutput',false);
