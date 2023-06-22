@@ -4,14 +4,10 @@ This is to ensure that a computer has sufficient memory for applying
 the Frangi filter.
 
 TODO:
-- this is currently breaking on line 166 of MRIread.m because the header is
-      empty.
 - programatically determine mat2cell variables
 - programatically change hte skirt size.
 	- skirt size = (# in conv3D(I,#) in Frangi filter / 2)
 	- line "I = conv3D(I,40)" in "frangi_ves4_..m"
-- Create function for running BASH:
-	- change both input and output names
 
 %% create_mri_mosaic.py commandline 
 %  create_mri_mosaic.py is Jackson's script to divide large nii image into 
@@ -50,18 +46,18 @@ elseif isunix
     idcs = strfind(mydir,'/');
 end
 % Truncate path to reach top-level directory (psoct_vessel_graphing)
-topdir = mydir(1:idcs(end));
+topdir = mydir(1:idcs(end-2));
 addpath(genpath(topdir));
 
-%% Load output of stitching
+%% Set paths 
 fname = 'mus_mean_10um-iso.slice40px.nii';
 fout = 'mus_mean_10um-iso.slice40px.I_seg.nii';
-dpath = '/autofs/space/omega_001/users/caa/CAA26_Occipital/Process_caa26_occipital/mus_vessel';
+dpath = '/autofs/space/omega_001/users/caa/CAA26_Occipital/Process_caa26_occipital/mus_vessel/';
 
 % Create path to save partitions in same folder as original data
 partition_path = strcat(dpath, 'Ma_partition_cell_padded.mat');
 
-%{
+%% Load output of stitching
 mri = MRIread(strcat(dpath, fname));
 fprintf('mri loaded.\n')
 mri.vol = single(mri.vol);
@@ -69,9 +65,10 @@ mri.vol = single(mri.vol);
 %% Divide volume into smaller sections for memory management.
 % Programatically select these values to generate 18 volumes.
 % (i.e.  divide entire volume into (3x3x2))
-
-cell_I = mat2cell(mri.vol,[1000,1000,879],[1000,1000,613],[300, 390]);
-clear mri
+[xarray, yarray, zarray] = calc_part_dim(mri.vol);
+cell_I = mat2cell(mri.vol, xarray, yarray, zarray);
+% cell_I = mat2cell(mri.vol,[1000,1000,879],[1000,1000,613],[300, 390]);
+% clear mri
 %% Initialize padded partitions
 cell_I_padded = cell(size(cell_I)+2);
 cell_I_padded = cellfun(@single,cell_I_padded,'UniformOutput',false);
@@ -151,8 +148,9 @@ save(partition_path,'cell_I2_skirt_lnridx','-append')
 save(partition_path,'cell_I2_main','-append')
 save(partition_path,'cell_I2_main_skirt','-append')
 
-%}
 %% Image Processing and Frangi Filter
+% TODO:
+% - check if I can directly pass cell_I2_main into frangi_partitions
 frangi_partitions(dpath, partition_path);
 
 %% I_seg reconstruction
@@ -176,7 +174,8 @@ end
 I_seg_all = cell2mat(cell_seg);
 
 % Save to same directory as original data
-save_mri_s(I_seg_all, strcat(dpath, fout), [0.01,0.01,0.01], 'uchar')
+fname = 'mus_mean_10um-iso.slice40px.I_seg.nii';
+save_mri(I_seg_all, strcat(dpath, fname), [0.01,0.01,0.01], 'uchar');
 
 %% Smooth volume, convert to gray, normalize, Frangi filter
 function frangi_partitions(dpath, ppath)
@@ -197,7 +196,7 @@ for s = 1:length(cell_I2_main(:))
     tic
     var_in_name = sprintf('I%i',s);
     load(ppath,var_in_name)
-    eval(['I = ' var_in_name ';'])
+    I = eval(var_in_name);
     eval(['clear ' var_in_name])
     
     I = smooth3(I,'gaussian',9,5);  % smooth sigma = 5
@@ -209,9 +208,14 @@ for s = 1:length(cell_I2_main(:))
     toc
     tic
     var_out_name = sprintf('I_seg%i',s);
+    % TODO: should this just be
+    % var_out_name = I_seg; ???
     eval([var_out_name ' = I_seg;'])
     clear I_seg
+
+    % Save padded output
     save(strcat(dpath,'ves4_padded.mat'),var_out_name,'-append')
+    % Clear the variable
     eval(['clear ' var_in_name])
     toc
 end
@@ -263,27 +267,6 @@ function matrix_true = true_like(matrix)
     matrix_true = true(size(matrix));
 end
 
-%% Save MRI output
-function save_mri_s(I, name, res, datatype)
-    disp(' - making hdr...');
-    % Make Nifti and header
-    colres = res(2); 
-    rowres = res(1); 
-    sliceres = res(3); 
-    % mri.vol = I;
-    mri.volres = [res(1) res(2) res(3)];
-    mri.xsize = rowres;
-    mri.ysize = colres;
-    mri.zsize = sliceres;
-    a = diag([-colres rowres sliceres 1]);
-    mri.vox2ras0 = a;
-    mri.volsize = size(I);
-    mri.vol = I;
-    % mri.vol = flip(mri.vol,1);
-    MRIwrite(mri,name,datatype);
-    disp(' - done - ');
-end
-
 %% Calcualte dimensions for partitioning volume
 function [xarray, yarray, zarray] = calc_part_dim(vol)
 % Calculate partition dimensions
@@ -297,9 +280,9 @@ function [xarray, yarray, zarray] = calc_part_dim(vol)
 
 %%% Find memory available for jobs
 % Check available memory
-m = memory;
+% m = memory;
 % Convert bytes to gigabytes
-m_gb = (m.MemAvailableAllArrays) / 1e9;
+% m_gb = (m.MemAvailableAllArrays) / 1e9;
 
 %%% Calculate partitions
 % Find x,y,z dimensions of entire volume

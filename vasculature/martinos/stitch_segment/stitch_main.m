@@ -87,6 +87,8 @@ regrun = 'None';
 
 %% Step 1: x-y stitching
 
+% CAA 26 - occipital
+%{
 %%% Initialization Parameters
 % Scan Parameters
 run1_param_dir = '/autofs/space/omega_001/users/caa/CAA26_Occipital/Process_caa26_occipital/Parameters.mat';
@@ -103,6 +105,7 @@ fout = fullfile(run1_outdir, fname);
 save(fout, 'run1_mosaic_xy', 'modality', '-v7.3');
 % Create MAT-file object of run1_mosaic_xy
 M_xy = matfile(fout,'Writable',true);
+%}
 
 % CAA6_frontal
 %{
@@ -162,7 +165,7 @@ run3_mxy = matfile(fout,'Writable',true);
 %% Step 2: z stitching
 % TODO: determine if I should create a MAT-file Object of m_xyz to pass
 % into the Frangi filter script. Unsure if the Mat file would be too large.
-
+%{
 [m_xyz] = stitch_z(M_xy, run1_mparams, res, ds_xyz,...
     run, data_dir, case_notes, regrun, modality);
 
@@ -176,8 +179,10 @@ save_mri(m_xyz, fout, res_ds)
 fname = strcat(modality, '_mean_10um-iso.slice40px.sigma1.nii');
 fout = fullfile(run1_outdir, fname);
 save_mri(mgaussian(m_xyz,1), fout, res_ds, 'float')
+%}
 
 %% Step 3: Frangi segmentation
+
 
 %% Step 4: remove pia
 
