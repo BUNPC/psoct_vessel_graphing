@@ -205,14 +205,14 @@ for s = 1:length(sliceidx)
 
     switch case_notes
         case 'need2register'
-            c1s=crop_idx(i_run,1);
-            c1e=crop_idx(i_run,2);
-            c2s=crop_idx(i_run,3);
-            c2e=crop_idx(i_run,4);
-            t1s=tran_idx(i_run,1);
-            t1e=(c1e-c1s) + tran_idx(i_run,1); % crop length + translation index
-            t2s=tran_idx(i_run,2);
-            t2e=(c2e-c2s) + tran_idx(i_run,2);
+            c1s=crop_idx(s_run,1);
+            c1e=crop_idx(s_run,2);
+            c2s=crop_idx(s_run,3);
+            c2e=crop_idx(s_run,4);
+            t1s=tran_idx(s_run,1);
+            t1e=(c1e-c1s) + tran_idx(s_run,1); % crop length + translation index
+            t2s=tran_idx(s_run,2);
+            t2e=(c2e-c2s) + tran_idx(s_run,2);
         case 'isuniform'
             c1s=1;
             c1e=ddims(1);
