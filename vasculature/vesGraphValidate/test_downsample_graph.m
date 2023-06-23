@@ -10,8 +10,8 @@ clear; clc; close all;
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\AD_20832\dist_corrected\volume';
 fname = 'ref_4ds_norm_inv_cropped_segment_sigma1_thresh0.25_graph.mat';
 load(fullfile(dpath, fname));
+% Voxel resolution [x, y, z] (microns)
 vox = Graph.vox;
-
 % Retrieve nodes/edges
 nodes = Graph.nodes;
 edges = Graph.edges;
@@ -23,16 +23,16 @@ t = edges(:,2); % target node
 % Create standard Matlab graph
 g = graph(s, t);
 % Plot graph. This extracts the [x,y,z] of each node.
-% figure;
-% p = plot(g, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
-% title('Graph Before Downsample'); xlabel('x'); ylabel('y'); zlabel('z')
-% view(3);
+figure;
+p = plot(g, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
+title('Graph Before Downsample'); xlabel('x'); ylabel('y'); zlabel('z')
+view(3);
 
 %% Downsample
 
 v = zeros(length(Graph.nodes),1);
 [nodes_ds, edges_ds, ~, ~] =...
-    downsample_graph(nodes, edges, v, vox(1), vox(3));
+    downsample_graph(nodes, edges, vox(1), vox(3));
 
 %%% Create matlab graph data structure.
 % Copy edges into standard format
