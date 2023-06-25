@@ -28,8 +28,7 @@ p = plot(g, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
 title('Graph Before Downsample'); xlabel('x'); ylabel('y'); zlabel('z')
 view(3);
 
-%% Downsample
-
+%% Downsample w/ new matlab function
 v = zeros(length(Graph.nodes),1);
 [nodes_ds, edges_ds, ~, ~] =...
     downsample_graph(nodes, edges, vox(1), vox(3));
