@@ -1,8 +1,9 @@
-function [graph] = seg_to_graph(angio, vox_dim)
+function [graph] = seg_to_graph(angio, vox_dim, min_ves)
 %seg_to_graph Convert the vessel segments to a graph (nodes + vertices)
 %%% INPUTS:
 %       angio (matrix): segmented volume
 %       vox_dim (array): voxel dimensions (x, y, z) (micron)
+%       min_ves (int): minimum vessel length to convert to skeleton
 %%% OUTPUTS:
 %       Graph (struct): nodes and edges for graph of segmentation
 
@@ -12,7 +13,7 @@ vessel_mask = logical(angio);
 
 %% Create graph from binary vessel mask
 % Reduce 3-D binary volume to a curve skeleton
-vessel_skl = bwskel(vessel_mask,'MinBranchLength',1);
+vessel_skl = bwskel(vessel_mask,'MinBranchLength', min_ves);
 % Compute graph from skeleton
 vessel_graph = fun_skeleton_to_graph(vessel_skl);
 
@@ -51,12 +52,15 @@ for u = 1:length(vessel_graph.node.cc_ind)
     for v = 1:length(vessel_graph.node.connected_link_label{u})
         connected_link = vessel_graph.node.connected_link_label{u}(v);
         connected_link_endnodes = [vessel_graph.link.cc_ind{connected_link}(1) vessel_graph.link.cc_ind{connected_link}(end)];
+        
+        % Calculate euclidean distance between node and endnode
         [n1,n2,n3] = ind2sub(angio_size,temp_node);
         for w = 1:2
             [l1,l2,l3] = ind2sub(angio_size,connected_link_endnodes(w));
             d(w) = sqrt((n1-l1)^2+(n2-l2)^2+(n3-l3)^2);
         end
         [~,min_idx] = min(d);
+
         edges_ind(edge_idx,:) = [temp_node connected_link_endnodes(min_idx(1))];
         if link_cc_ind(connected_link) == 0
             link_length = length(vessel_graph.link.cc_ind{connected_link});
@@ -64,7 +68,7 @@ for u = 1:length(vessel_graph.node.cc_ind)
             edges_ind(edge_idx+1:edge_idx+link_length-1,2) = vessel_graph.link.cc_ind{connected_link}(2:end);
             edge_idx = edge_idx+link_length;
             nodes_ind(node_idx+1:node_idx+link_length) = vessel_graph.link.cc_ind{connected_link};
-            isa = ismember(nodes_ind(node_idx+1:node_idx+link_length),0);
+
             tttt = [tttt, node_idx+1:node_idx+link_length];
             node_idx = node_idx+link_length;
             link_cc_ind(connected_link) = 1;
@@ -83,8 +87,8 @@ for u = 1:length(idx)
     edges_ind(edge_idx+1:edge_idx+link_length-1,2) = vessel_graph.link.cc_ind{idx(u)}(2:end);
     edge_idx = edge_idx+link_length;
     nodes_ind(node_idx+1:node_idx+link_length) = vessel_graph.link.cc_ind{idx(u)};
-    isa = ismember(nodes_ind(node_idx+1:node_idx+link_length),0);
-    tttt = [tttt node_idx+1:node_idx+link_length];
+
+    tttt = [tttt, (node_idx + 1) : (node_idx + link_length)];
     node_idx = node_idx+link_length;
 end
 
