@@ -50,8 +50,8 @@ addpath(genpath(topdir));
 % Check if running on local machine for debugging or on SCC for processing
 if ispc
     %%% Local machine
-%     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T';
-    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\BA4445_samples_16T';
+    dpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\'...
+        'test_data\BA4445_samples_16T'];
     % Subject IDs
     subid = {'\BA4445_I38_2PM'};
     subdir = '\aip\';
@@ -78,8 +78,51 @@ elseif isunix
     ext = '.tif';
 end
 
-%% Segmentation
+%% Frangi 2P Segmentation (Mathworks fibermetric)
 
+% vessel thickness (pixels)
+vth = 8;
+
+% Minimum number of voxels to classify as segment
+% A segment with < "min_conn" voxels will be removed
+min_conn = 30;
+
+% Length of line in the structuring element (strel) for expanding lines
+line_len = 3;
+
+% Iterate subjects
+for ii = 1:length(subid)
+    % Iterate slices
+    for j = 1:length(slices)
+        % Define filename for slice
+        slice_fname = strcat(fname,'-',num2str(slices(j)),'_16b_cropped');
+        % Define entire filepath 
+        subpath = fullfile(dpath, subid{ii}, subdir);
+        filename = strcat(subpath, strcat(slice_fname, ext));
+        % Make sub-directory for slice
+        slicepath = fullfile(subpath, strcat('slice_', num2str(slices(j))));
+        if not(isfolder(slicepath))
+            mkdir(slicepath)
+        end
+        % Convert .tif to .MAT
+        vol = TIFF2MAT(filename);
+        % Perform segmentation
+        volmask = fibermetric(vol);
+        % Dilate vessel mask
+        [volmask_clean, fout] = clean_dilate(volmask, min_conn, line_len, subpath, slice_fname);
+    end
+end
+
+%% Plot output of fibermetric
+% Plot frangi output
+figure; imshow(volmask)
+
+% Binarize and overlay mask
+bw = imbinarize(volmask);
+figure; imshow(bw);
+figure; imshow(labeloverlay(vol, bw));
+
+%% Frangi 2P Segmentation (custom scripts)
 %%% 2P microscopy voxel will always be [5, 5] micron
 vox_dim = [2,2];
 
@@ -192,7 +235,7 @@ figure; imshow(seg_final); title('Frangi - final');
 
 %%% Save segmented/masked volume as .MAT and .TIF
 % Convert processed matrix to tif
-tmp_fname = strcat(fname,'_processed', num2str(radius));
+tmp_fname = strcat(fname,'_processed');
 fout = strcat(fullpath, tmp_fname, '.tif');
 segmat2tif(seg_cleaned, fout);
 
