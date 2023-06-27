@@ -17,6 +17,10 @@ skel=padarray(skel,[1 1 1]);
 
 % create label matrix for different skeletons
 cc_skel=bwconncomp(skel);
+
+% Remove connected components w/ fewer than 10 connections
+
+
 lm=labelmatrix(cc_skel);
 
 % image dimensions
@@ -52,7 +56,7 @@ cans = list_canal(sum_nh==3);
 can_nh_idx = pk_get_nh_idx(skel,cans);
 can_nh = pk_get_nh(skel,cans);
 
-% remove center of 3x3 cube
+% remove center of 3x3x3 cube
 can_nh_idx(:,14)=[];
 can_nh(:,14)=[];
 

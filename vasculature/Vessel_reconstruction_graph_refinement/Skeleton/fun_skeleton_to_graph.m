@@ -203,9 +203,6 @@ if isempty(l_nd_idx)
     return;
 end 
 node_cc = fun_cc_in_sparse_matrix(voxel_list(l_nd_idx), mask_size);
-% tmp_mask = false(num.mask_size);
-% tmp_mask(voxel_list(l_nd_idx)) = true;
-% node_cc_1 = bwconncomp(tmp_mask);
 
 % Node information should be processed here because node can become link
 % voxel if a short link with one endpoint is removed. 
