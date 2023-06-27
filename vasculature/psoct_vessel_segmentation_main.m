@@ -15,7 +15,6 @@ To Do:
     - remove segments ()
 %}
 clear; clc; close all;
-tic
 
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
@@ -37,29 +36,30 @@ addpath(genpath(topdir));
 % Check if running on local machine for debugging or on SCC for processing
 if ispc
     %%% Local machine
-    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200218depthnorm\';
+    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
-    subid = {'sub_00'};
+    subid = {'CTE_7019'};
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
-    fname = 'volume_ori_inv_cropped';
+    fname = 'ref_4ds_norm_inv_cropped';
     % filename extension
     ext = '.tif';
 elseif isunix
     %%% Computing cluster (SCC)
     % Path to top-level directory
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
-    % Subject IDs
+    % Complete subject ID list for Ann_Mckee_samples_10T
 %     subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
 %              'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
 %              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
 %              'NC_8095', 'NC_8653'};
-    subid = {'AD_20969', 'AD_21354'};
+    % Partial subject ID list for testing script on SCC
+    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424'};
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
-    fname = 'ref_4ds_norm';
+    fname = 'ref_4ds_norm_inv';
     % filename extension
-    ext = '.btf';    
+    ext = '.tif';
 end
 
 %% Initialization parameters
@@ -85,7 +85,7 @@ end
 sigma = 1;
 
 % Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.1:0.05:0.25;
+min_prob = 0.20:0.02:0.26;
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
 
@@ -143,10 +143,14 @@ function [graph_init] = initialize_graph(Graph)
 %%% Perform the manual operations for initializing data in the GUI.
 % Run "Verification > get segment info > Update"
 % Run "Update branch info"
+% Save graph prior to down sampling
+
 % Run "Regraph Nodes" to down sample
-% Open GUI with both image and data (graph)
 % Run prune_loops and prune_segment
 % Run straighten
+% Save output
+
+
 graph_init = Graph;
 end
 
