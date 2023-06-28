@@ -16,7 +16,8 @@ ves = logical(ves);
 % Voxel dimensions
 vox_dim = [12, 12, 15];
 
-%%% Remove segments with fewer than N connected voxels
+%%% Prune the 3D vessel segmentation binary mask
+% Remove segments with fewer than N connected voxels
 vmin = 10;
 cc = bwconncomp(ves);
 for ii = 1:length(cc.PixelIdxList)
@@ -24,25 +25,48 @@ for ii = 1:length(cc.PixelIdxList)
         ves(cc.PixelIdxList{ii}) = 0;
     end
 end
-% Save pruned output
-% tifout = 'ref_4ds_norm_inv_cropped_segment_sigma1_thresh0.25_crop2_pruned.tif';
-% ves_tif = im2uint8(ves);
-% segmat2tif(ves_tif, fullfile(dpath, tifout))
+
+% Remove isolated voxels
+ves = bwmorph3(ves, 'clean');
+
+% Fill holes in segments to avoid loops
+ves = bwmorph3(ves, 'fill');
+
+%%% Save pruned output
+tifout = 'ref_4ds_norm_inv_cropped_segment_sigma1_thresh0.25_crop2_pruned.tif';
+ves_tif = im2uint8(ves);
+segmat2tif(ves_tif, fullfile(dpath, tifout))
 
 %%% Convert mask to skeleton
 % Minimum branch length for skeletonization
 min_branch_len = 20;
 ves_skel = bwskel(ves,'MinBranchLength', min_branch_len);
 % Convert to skeleton to .TIFF for visualization
-% tifout = 'ref_4ds_norm_inv_cropped_segment_sigma1_thresh0.25_crop2_pruned_skel.tif';
-% ves_skel_im = im2uint8(ves_skel);
-% segmat2tif(ves_skel_im, fullfile(dpath, tifout))
+tifout = 'ref_4ds_norm_inv_cropped_segment_sigma1_thresh0.25_crop2_pruned_skel.tif';
+ves_skel_im = im2uint8(ves_skel);
+segmat2tif(ves_skel_im, fullfile(dpath, tifout))
 
 %% Calculate region properties of 3D vessel mask
 ves_stats = regionprops3(ves, 'all');
 skel_stats = regionprops3(ves_skel, 'all');
 
-%% Convert skeleton to graph
+%% Convert skeleton to graph (new method)
+% Find connected pixels
+cc = bwconncomp(ves_skel);
+% Find end points and branch points in each connection
+for ii = 1:cc.NumObjects
+    %%% Create subvolume from connected voxels
+    
+    
+    %%% Find end points and branch points in connected vessel
+    bp = bwmorph3(subves, 'branchpoints');
+    ep = bwmorph3(subves, 'endpoints');
+
+    %%% BFS 
+end
+
+
+%% Convert skeleton to graph (old methods)
 % Minimum length of skeleton to convert to graph
 skel_min_len = 20;
 
