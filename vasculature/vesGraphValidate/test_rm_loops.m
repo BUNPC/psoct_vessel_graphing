@@ -6,17 +6,23 @@ TODO:
 %}
 
 
-%% Graph struct from PSOCT graph.
+%% Create graph from PSOCT mask.
 clear; clc; close all;
 
 % Load PSOCT graph
-dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\AD_20832\dist_corrected\volume';
-fname = 'ref_4ds_norm_inv_cropped_segment_sigma1_thresh0.25_graph.mat';
-load(fullfile(dpath, fname));
-vox = Graph.vox;
+dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\AD_20832\dist_corrected\volume\';
+fname = 'ref_4ds_norm_inv_cropped_segment_sigma1_thresh0.25_crop2_pruned.tif';
+ves_mask = TIFF2MAT(fullfile(dpath, fname));
+vox_dim = [12, 12, 15];
+min_branch_len = 20;
+
+% Convert mask to graph
+g = seg_to_graph(ves_mask, vox_dim, 10);
+
 % Retrieve nodes/edges
-nodes = Graph.nodes;
-edges = Graph.edges;
+vox = g.vox;
+nodes = g.nodes;
+edges = g.edges;
 
 % Copy edges into standard format
 s = edges(:,1); % source node
@@ -27,7 +33,7 @@ g = graph(s, t);
 
 % Plot graph before removing loops
 figure;
-p = plot(g, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
+p = plot(g, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
 title('Graph Before Removing Loops'); xlabel('x'); ylabel('y'); zlabel('z')
 view(3);
 
@@ -41,7 +47,7 @@ for ii=1:length(edgecycles)
     highlight(p,'Edges',edgecycles{ii},'EdgeColor','r','LineWidth',1.5,'NodeColor','r','MarkerSize',6)
 end
 
-%%% Delete nodes that are part of cycles in graph
+%%% Matrix of cycles in graph
 % Convert cell to matrix
 cyclical = [];
 for i=1:length(cycles)
@@ -58,12 +64,30 @@ nodes(u,:) = [];
 
 %%% Plot updated graph
 figure;
-p = plot(H, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
+p = plot(H, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
 title('Graph after removing loops'); xlabel('x'); ylabel('y'); zlabel('z')
 view(3)
 
+%% Find intersection of cycle and segment
+%{
+Deleting the cycle results in a discontinuity in the vessel. To ensure a
+continuous vessel, we must first locate the intersections between the cycle
+and the segment, then we must create an edge between these points.
+%}
 
+% Find connected components of binary vessel mask
+ves_skl = bwskel(ves_mask,'MinBranchLength', min_branch_len);   
+cc = bwconncomp(ves_skl);
 
+% Find branch points within connected component (vessel)
+bw = bwmorph3(ves_skl, 'branchpoints');
+
+% Find which 2 branch points belong to the same cycle
+% n1, n2
+
+% Remove cycles from graph
+
+% Connect the two branch points that are in the same vessel
 
 
 
