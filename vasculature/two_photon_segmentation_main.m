@@ -88,7 +88,7 @@ slicepath = fullfile(subpath, strcat('slice_10'));
 slice_freq = fftshift(fft2(slice));
 freq_amp = log(abs(slice_freq));
 
-%% Low Pass and High Pass
+%% Frequency filters (LPF, HPF)
 %%% Plot FFT prior to filtering
 figure; imshow(freq_amp, [])
 figure;
@@ -125,6 +125,36 @@ slice_hpf = real(ifft2(ifftshift(slice_freq_hpf)));
 subplot(3,1,2); imshow(slice_lpf, []); title('LPF image')
 subplot(3,1,3); imshow(slice_hpf, []); title('HPF image')
 
+%% Filter with elipsoid
+
+%% Filter noise peaks above threshold
+% Find frequency components w/ amp > threshold
+th = 16.5;
+fpeaks = freq_amp > th;
+figure;
+subplot(1,2,1); imshow(freq_amp, []); title('FFT')
+subplot(1,2,2); imshow(fpeaks, []); title('Peaks of FFT')
+
+%%% Add rectangle to mask
+% Initialize ones matrix size of freq matrix
+noise_mask = ones(size(slice_freq));
+% Add zeros at higher intensities at high frequencies
+% Left side
+noise_mask(2838:3004, 1:188) = 0;
+noise_mask(4724:4900, 1:650) = 0;
+noise_mask(3796:3954, 634:931) = 0;
+% Right side
+noise_mask(2852:3000, 10039:10608) = 0;
+noise_mask(4724:4863, 10420:10608) = 0;
+noise_mask(3796:3954, 9666:10006) = 0;
+
+figure; imagesc(noise_mask); axis on;
+
+%%% Apply filter to FFT
+slice_filt = noise_mask .* slice_freq;
+figure;
+slice_filt_real = real(ifft2(ifftshift(slice_filt)));
+imshow(slice_filt_real,[])
 
 
 
