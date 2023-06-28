@@ -11,25 +11,6 @@ This script performs the following:
 %}
 clear; clc; close all;
 
-%% Threshold the 2PM segmentations (debugging)
-%{
-minp = [0.2, 0.4, 0.6, 0.8, 0.9];
-dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\AD_10382_2P\aip';
-file = 'seg_sigma_1_3';
-seg = load(fullfile(dpath, strcat(file,'.mat')));
-seg = seg.seg;
-
-for i=1:length(minp)
-    % copy the original 2D frangi filter output
-    tmp = seg;
-    % Set anything below threshold equal to zero
-    tmp( seg < minp(i)) = 0;
-    % Save output as .TIF
-    fname = strcat(file, 'minp_', num2str(minp(i)));
-    fout = fullfile(dpath, strcat(fname, '.tif'));
-    segmat2tif(tmp, fout);
-end
-%}
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
 
@@ -78,11 +59,7 @@ elseif isunix
     ext = '.tif';
 end
 
-%% Frangi 2P Segmentation (Mathworks fibermetric)
-
-% vessel thickness (pixels)
-vth = 8;
-
+%% Post-processing parameters
 % Minimum number of voxels to classify as segment
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
@@ -90,9 +67,73 @@ min_conn = 30;
 % Length of line in the structuring element (strel) for expanding lines
 line_len = 3;
 
-% Iterate subjects
+% Disk radius
+dr = 3;
+
+%% FFT + Edge detection filters
+%%% Preliminary file paths
+meth = {'Sobel', 'Prewitt', 'Roberts', 'log', 'zerocross', 'Canny'};
+% Define filename for slice
+slice_fname = 'channel1-10_16b_cropped';
+% Define entire filepath 
+subpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\BA4445_samples_16T\BA4445_I38_2PM\aip\';
+% Filepath for input .TIF
+input = fullfile(subpath, strcat(slice_fname,'.tif'));
+% Convert .tif to .MAT
+slice = TIFF2MAT(input);
+% sub-directory for filtered outputs
+slicepath = fullfile(subpath, strcat('slice_10'));
+
+%%% FFT (remove background signals)
+slice_freq = fftshift(fft2(slice));
+freq_amp = log(abs(slice_freq));
+figure;
+subplot(2,2,1); imshow(freq_amp, []);
+axis on;
+
+%%% Low pass filter
+% Create disk for frequency domain LPF
+lp = fspecial('disk',1000);
+% Pad matrix to equal dimensions of slice
+rows = size(slice_freq, 1);
+cols = size(slice_freq, 2);
+xdif = rows - length(lp);
+
+slice_lp = lp .* slice_freq;
+subplot(2,2,2); imshow(slice_lp, []);
+
+%%% Convert back to spatial domain
+slice_spatial = real(ifft2(ifftshift(slice_lp)));
+
+%%% Iterate through edge detection filters
+for ii = 1:length(meth)
+    % Segment
+    volmask = edge(slice, meth{ii});
+    % Clean + dilate segmentation
+    volmask_clean = clean_dilate(volmask, min_conn, dr, subpath, slice_fname);
+
+    %%% Save outputs (segmented & cleaned)
+    % Base name
+    proc = strcat(slice_fname,'_',meth{ii});
+    % save segmented
+    filename = fullfile(slicepath, strcat(proc, ext));
+    imwrite(uint16(volmask), filename);
+end
+
+%% Frangi 2P Segmentation (Mathworks fibermetric)
+
+%%% Frangi Filter Parameters
+% vessel thickness (pixels). default: [4 6 8 10 12 14]
+thick = 8;
+% StructureSensitivity: vessel contrast threshold.
+% default = 0.01*diff(getrangefromclass(I))
+sense = 2;
+% ObjectPolarity: 'bright' (default) or 'dark'
+op = {'bright', 'dark'};
+
+%%% Iterate subjects
 for ii = 1:length(subid)
-    % Iterate slices
+    %%% Iterate slices
     for j = 1:length(slices)
         % Define filename for slice
         slice_fname = strcat(fname,'-',num2str(slices(j)),'_16b_cropped');
@@ -105,24 +146,35 @@ for ii = 1:length(subid)
             mkdir(slicepath)
         end
         % Convert .tif to .MAT
-        vol = TIFF2MAT(filename);
-        % Perform segmentation
-        volmask = fibermetric(vol);
-        % Dilate vessel mask
-        [volmask_clean, fout] = clean_dilate(volmask, min_conn, line_len, subpath, slice_fname);
+        slice = TIFF2MAT(filename);
+        for k = 1:length(thick)
+            for c = 1:2
+                %%% Frangi filter + clean
+                % Segment
+                volmask = fibermetric(slice, thick(k),'ObjectPolarity',op{c});
+                % Clean + dilate segmentation
+                volmask_clean = clean_dilate(volmask, min_conn, dr, subpath, slice_fname);
+        
+                %%% Save outputs (segmented & cleaned)
+                % Base name
+                proc = strcat(slice_fname,'_frangi_',op{c},'_',num2str(thick(k)));
+
+                % save segmented
+                filename = fullfile(slicepath, strcat(proc, ext));
+                imwrite(uint16(volmask), filename);
+        
+                % save segmented + cleaned
+                tmp_name = strcat(proc,'_cleaned');
+                filename = fullfile(slicepath, strcat(tmp_name, ext));
+                imwrite(uint16(volmask_clean), filename);
+            end
+        end
     end
 end
 
-%% Plot output of fibermetric
-% Plot frangi output
-figure; imshow(volmask)
-
-% Binarize and overlay mask
-bw = imbinarize(volmask);
-figure; imshow(bw);
-figure; imshow(labeloverlay(vol, bw));
 
 %% Frangi 2P Segmentation (custom scripts)
+%{
 %%% 2P microscopy voxel will always be [5, 5] micron
 vox_dim = [2,2];
 
@@ -157,9 +209,9 @@ for ii = 1:length(subid)
             mkdir(slicepath)
         end
         % Convert .tif to .MAT
-        vol = TIFF2MAT(filename);
+        slice = TIFF2MAT(filename);
         % Perform segmentation
-        [seg, fname_seg] = segment_main(vol, sigma, slicepath, slice_fname);
+        [seg, fname_seg] = segment_main(slice, sigma, slicepath, slice_fname);
 
         %%% Filter output of Frangi filter
         for k=1:length(line_len)
@@ -182,6 +234,71 @@ for ii = 1:length(subid)
         end
     end
 end
+%}
+
+%% Apply Mask
+function [seg_final] =...
+    clean_dilate(seg, min_conn, dr, fullpath, fname, vth)
+% Remove the edges labeled as vessels.
+%   INPUTS:
+%       seg (matrix) - output of segmentation function
+%       min_conn (double) - minimum number of connections to classify as
+%                           vessel
+%       line_len (double) - length of line for strel
+%       fullpath (string) - absolute directory for saving processed data
+%       fname (string) - filename prior to applying mask
+%       vth (int) - width threshold in pixels
+%   OUTPUTS:
+%       seg_masked (matrix) - seg with boundaries eroded to remove
+%           erroneously labeled vessels.
+
+%%% Remove segments with fewer than "min_conn" connected voxels
+figure; imshow(seg); title('Frangi - before processing')
+[seg, ~, ~] = rm_small_seg(seg, min_conn);
+figure; imshow(seg); title('Frangi - small segments removed')
+
+%%% Dilate the lines
+%%% Dilate with perpendicular lines
+% Create perpendicular structure
+% se90 = strel('line',line_len,90);
+% se0 = strel('line',line_len,0);
+% Dilate gradient mask
+% seg_dil = imdilate(seg, [se90 se0]);
+
+%%% Dilate with disk
+se = strel("disk", dr);
+seg_dil = imdilate(seg, se);
+figure; imshow(seg_dil); title('Frangi - Dilated Gradient Mask')
+
+%%% Fill interior gaps
+seg_fill = imfill(seg_dil,'holes');
+figure; imshow(seg_fill); title('Frangi - Filled Holes')
+
+%%% Smooth segmentation
+seD = strel('diamond',1);
+seg_final = imerode(seg_fill,seD);
+figure; imshow(seg_fill); title('Frangi - Eroded')
+
+% figure; 
+% bw = imbinarize(seg_final);
+% figure; imshow(labeloverlay(seg_final, bw)); title('Frangi - Final')
+
+%%% Remove small segments
+[seg_final, ~, ~] = rm_small_seg(seg_final, min_conn);
+figure; imshow(seg_fill); title('Frangi - Small Segments Removed')
+
+%%% Save segmented/masked volume as .MAT and .TIF
+%{
+% Convert processed matrix to tif
+tmp_fname = strcat(fname,'_frangi',vth);
+fout = strcat(fullpath, tmp_fname, '.tif');
+segmat2tif(seg_cleaned, fout);
+
+% Save vessel segment stack as .MAT for the next step (graphing)
+fout = strcat(fullpath, tmp_fname, '.mat');
+save(fout, 'seg_cleaned', '-v7.3');
+%}
+end
 
 %% Initialization of vesGraphValidate
 function [graph_init] = initialize_graph(Graph)
@@ -195,62 +312,12 @@ function [graph_init] = initialize_graph(Graph)
 graph_init = Graph;
 end
 
-%% Apply Mask
-function [seg_cleaned, fout] =...
-    clean_dilate(seg, min_conn, line_len, fullpath, fname)
-% Remove the edges labeled as vessels.
-%   INPUTS:
-%       seg (matrix) - output of segmentation function
-%       min_conn (double) - minimum number of connections to classify as
-%                           vessel
-%       line_len (double) - length of line for strel
-%       fullpath (string) - absolute directory for saving processed data
-%       fname (string) - filename prior to applying mask
-%   OUTPUTS:
-%       seg_masked (matrix) - seg with boundaries eroded to remove
-%           erroneously labeled vessels.
-
-%%% Remove segments with fewer than "min_conn" connected voxels
-figure; imshow(seg); title('Frangi - before processing')
-[seg, ~, ~] = rm_small_seg(seg, min_conn);
-figure; imshow(seg); title('Frangi - small segments removed')
-
-%%% Dilate the lines
-% Create perpendicular structure
-se90 = strel('line',line_len,90);
-se0 = strel('line',line_len,0);
-% Dilate gradient mask
-seg_dil = imdilate(seg, [se90 se0]);
-figure; imshow(seg_dil); title('Frangi - Dilated Gradient Mask')
-
-%%% Fill interior gaps
-seg_fill = imfill(seg_dil,'holes');
-figure; imshow(seg_fill); title('Frangi - Filled Holes')
-
-%%% Smooth segmentation
-seD = strel('diamond',1);
-seg_final = imerode(seg_fill,seD);
-seg_final = imerode(seg_final,seD);
-figure; imshow(seg_final); title('Frangi - final');
-
-%%% Save segmented/masked volume as .MAT and .TIF
-% Convert processed matrix to tif
-tmp_fname = strcat(fname,'_processed');
-fout = strcat(fullpath, tmp_fname, '.tif');
-segmat2tif(seg_cleaned, fout);
-
-% Save vessel segment stack as .MAT for the next step (graphing)
-fout = strcat(fullpath, tmp_fname, '.mat');
-save(fout, 'seg_cleaned', '-v7.3');
-
-end
-
 %% Segment volume
 function [seg, fname] =...
-    segment_main(vol, sigma, fullpath, fname)
+    segment_main(slice, sigma, fullpath, fname)
 % Multiscale vessel segmentation
 %   INPUTS:
-%       vol (matrix) - the original volume prior to segmentation
+%       slice (matrix) - the original volume prior to segmentation
 %       FrangiScaleRange (array) - range of std. dev. values of gaussian
 %            filter to calcualte hessian matrix at each voxel
 %       min_prob - threshold to determine which voxel belongs to a vessel.
@@ -267,7 +334,7 @@ function [seg, fname] =...
 %       fname (string) - upadted filename prior to applying mask
 
 %% convert volume to double matrix
-I = double(vol);
+I = double(slice);
 
 %%% Range of sigma values
 options.FrangiScaleRange = sigma;
