@@ -59,7 +59,8 @@ elseif isunix
     ext = '.tif';
 end
 
-%% Post-processing parameters
+%% Initializatoin
+%%% Post-processing parameters
 % Minimum number of voxels to classify as segment
 % A segment with < "min_conn" voxels will be removed
 min_conn = 30;
@@ -70,7 +71,6 @@ line_len = 3;
 % Disk radius
 dr = 3;
 
-%% FFT + Edge detection filters
 %%% Preliminary file paths
 meth = {'Sobel', 'Prewitt', 'Roberts', 'log', 'zerocross', 'Canny'};
 % Define filename for slice
@@ -84,28 +84,51 @@ slice = TIFF2MAT(input);
 % sub-directory for filtered outputs
 slicepath = fullfile(subpath, strcat('slice_10'));
 
-%%% FFT (remove background signals)
+%%% FFT
 slice_freq = fftshift(fft2(slice));
 freq_amp = log(abs(slice_freq));
-figure;
-subplot(2,2,1); imshow(freq_amp, []);
-axis on;
 
-%%% Low pass filter
-% Create disk for frequency domain LPF
-lp = fspecial('disk',1000);
-% Pad matrix to equal dimensions of slice
+%% Low Pass and High Pass
+%%% Plot FFT prior to filtering
+figure; imshow(freq_amp, [])
+figure;
+subplot(3,1,1); imshow(freq_amp, []); axis on; title('FFT of slice')
+
+%%% Create circular mask (LPF and HPF)
 rows = size(slice_freq, 1);
 cols = size(slice_freq, 2);
-xdif = rows - length(lp);
+[x, y] = meshgrid(1:cols, 1:rows);
+% Create matrix of zeros
+lpf = zeros(rows, cols);
+c_x0 = cols./2;
+c_y0 = rows./2;
+r = 500;
+% Define inside circle as 1 (low pass filter)
+lpf((x - c_x0).^2 + (y - c_y0).^2 <= r.^2) = 1; 
+% Define high pass filter
+hpf = ~lpf;
 
-slice_lp = lp .* slice_freq;
-subplot(2,2,2); imshow(slice_lp, []);
+%%% Apply LPF & HPF filters
+% Multiply LPF frequency filter with FFT of slice
+slice_freq_lpf = lpf .* slice_freq;
+subplot(3,1,2); imshow(log(abs(slice_freq_lpf)),[]); axis on; title('LPF')
+% Multiply HPF frequency filter with FFT of slice
+slice_freq_hpf = hpf .* slice_freq;
+subplot(3,1,3); imshow(log(abs(slice_freq_hpf)),[]); axis on; title('HPF')
 
-%%% Convert back to spatial domain
-slice_spatial = real(ifft2(ifftshift(slice_lp)));
+%%% Plot original and filtered images
+figure;
+subplot(3,1,1); imshow(slice, []); axis on; title('Original Slice')
+% Convert filtered frequency images back to spatial domain
+slice_lpf = real(ifft2(ifftshift(slice_freq_lpf)));
+slice_hpf = real(ifft2(ifftshift(slice_freq_hpf)));
+subplot(3,1,2); imshow(slice_lpf, []); title('LPF image')
+subplot(3,1,3); imshow(slice_hpf, []); title('HPF image')
 
-%%% Iterate through edge detection filters
+
+
+
+%% Iterate through edge detection filters
 for ii = 1:length(meth)
     % Segment
     volmask = edge(slice, meth{ii});
@@ -148,16 +171,16 @@ for ii = 1:length(subid)
         % Convert .tif to .MAT
         slice = TIFF2MAT(filename);
         for k = 1:length(thick)
-            for c = 1:2
+            for lpf = 1:2
                 %%% Frangi filter + clean
                 % Segment
-                volmask = fibermetric(slice, thick(k),'ObjectPolarity',op{c});
+                volmask = fibermetric(slice, thick(k),'ObjectPolarity',op{lpf});
                 % Clean + dilate segmentation
                 volmask_clean = clean_dilate(volmask, min_conn, dr, subpath, slice_fname);
         
                 %%% Save outputs (segmented & cleaned)
                 % Base name
-                proc = strcat(slice_fname,'_frangi_',op{c},'_',num2str(thick(k)));
+                proc = strcat(slice_fname,'_frangi_',op{lpf},'_',num2str(thick(k)));
 
                 % save segmented
                 filename = fullfile(slicepath, strcat(proc, ext));
