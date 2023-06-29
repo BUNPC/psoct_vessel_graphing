@@ -17,7 +17,7 @@ vox_dim = [12, 12, 15];
 min_branch_len = 20;
 
 % Convert mask to graph
-g = seg_to_graph(ves_mask, vox_dim, 10);
+g = seg_to_graph(ves_mask, vox_dim);
 
 % Retrieve nodes/edges
 vox = g.vox;
@@ -42,9 +42,14 @@ view(3);
 % [cycles,edgecycles] = allcycles(g, 'MaxNumCycles', 100, 'MaxCycleLength', 100);
 [cycles,edgecycles] = allcycles(g);
 
-% Highlight edges
+%%% Highlight edge cycles
 for ii=1:length(edgecycles)
     highlight(p,'Edges',edgecycles{ii},'EdgeColor','r','LineWidth',1.5,'NodeColor','r','MarkerSize',6)
+end
+
+%%% Highlight cycles
+for ii=1:length(cycles)
+    highlight(p,'Edges',cycles{ii},'EdgeColor','g','LineWidth',1.5,'NodeColor','g','MarkerSize',6)
 end
 
 %%% Matrix of cycles in graph
@@ -76,14 +81,26 @@ and the segment, then we must create an edge between these points.
 %}
 
 % Find connected components of binary vessel mask
-ves_skl = bwskel(ves_mask,'MinBranchLength', min_branch_len);   
+ves_skl = bwskel(logical(ves_mask),'MinBranchLength', min_branch_len);   
 cc = bwconncomp(ves_skl);
 
-% Find branch points within connected component (vessel)
-bw = bwmorph3(ves_skl, 'branchpoints');
+%%% Find branch points within connected component (vessel)
+br = bwmorph3(ves_skl, 'branchpoints');
+% Find matrix indices of branch points
+brix = find(br);
 
-% Find which 2 branch points belong to the same cycle
-% n1, n2
+%%% Find 2 branch points (n1, n2) belonging to the same cycle
+% Struct for storing branch points for each segment
+bruct = struct();
+
+%%% Iterate over cycles (or groups, or edgecycles?)
+for ii = 1:length(cycles)
+    % Find branchpoint indices within the group
+    ctmp = cycles{ii};
+    idx = find(ismember(brix, ctmp));
+    % Convert from brix index to ves_skl matrix index
+    bruct(ii).idx = brix(idx);
+end
 
 % Remove cycles from graph
 
