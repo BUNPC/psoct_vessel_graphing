@@ -5,15 +5,18 @@ addpath('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/matlab_fun')
 %  non-downsampled Graph is outputed
 % 
 %
-%%
+%% Load nifti and account for artifacts
 nii = MRIread('/autofs/space/omega_001/users/caa/CAA25_Frontal/Process_caa25_frontal/mus_vessel/mus_mean_10um-iso.slice40px.nii');
 mus = nii.vol;
+% Remove artifacts
 mus(:,:,431:450) = 10; % to counter artifact [floating slice]
 mus(:,:,571:end) = 10; % to ignore all data in this range [end of tissue]
+% Gaussian smooth
 mus = smooth3(mus,'gaussian',5,1.5);
 view3D(mus)
-
+% Add to nifti struct
 nii.vol = mus;
+% Save nifti to linux machine
 MRIwrite(nii,'/autofs/space/omega_001/users/caa/CAA25_Frontal/Process_caa25_frontal/mus_vessel/mus_mean_10um-iso.slice40px.sigma1p5.nii','float')
 
 %% select tile from mosaic
