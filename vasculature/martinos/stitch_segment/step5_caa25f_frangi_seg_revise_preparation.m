@@ -1,3 +1,18 @@
+%% Step 5 - make visual aid for manual annotation
+% The purpose of this script is to create a visual aide for assisting with
+% manual annotation. This script performs a minIP of the mus for PSOCT and
+% MIP of the skeleton.
+% These are both overlaid with the output of the Frangi segmentation.
+% This is accomplished with the following:
+%   - Crop frangi output into separate volumes
+%   - Convert to skeleton
+%   - perform minIP and MIP
+% After performing manually annotation, the skeleton will be recerated from
+% the annotated Frangi segmentation.
+%
+% NOTE: only use Gaussian smoothing in this step if not used in prior
+% steps!!!
+
 addpath(genpath('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/ves2graph'))
 addpath('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/vol_recon_beta');
 addpath('/autofs/cluster/octdata2/users/Hui/tools/dg_utils/matlab_fun')

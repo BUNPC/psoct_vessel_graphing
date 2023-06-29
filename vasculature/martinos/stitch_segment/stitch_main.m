@@ -7,6 +7,15 @@ For each data collection run:
 To Do:
     - Test step 2 output with MAT-file object
 
+This script should have the following input parameters:
+- resolution
+- slice thickness
+- multirun
+- needregistration
+- slice intake number (start:stop)
+- floating slice index (index of slices w/ artifacts)
+- mosaic dimensions for each run (e.g. 10*11 tiles)
+
 % Manually verify that there are no overlapping slies.
 % 1) Navigate to the directory "StitchingFiji"
 % 2) Using Fiji, open the following images:
