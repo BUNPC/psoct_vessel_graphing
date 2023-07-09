@@ -116,21 +116,7 @@ w_thresh(w>=pmin) = 1;
 
 %% Remove small disconnected segments via connectivity analysis
 % Remove segments that are composed of fewer than 30 voxels.
+I_seg = rm_short_vessels(w_thresh, voxmin);
 
-% Run built-in matlab function to perform connectivity analysis
-cc = bwconncomp(w_thresh);
-% Define output variable
-I_seg = w_thresh;
-% Counter to track number of vessels that are removed
-cnt = 0;
-for ii = 1:length(cc.PixelIdxList)
-    if length(cc.PixelIdxList{ii}) < voxmin
-        I_seg(cc.PixelIdxList{ii}) = 0;
-        cnt = cnt + 1;
-    end
-end
 
-sprintf('Segments before connectivity analysis = %d', cc.NumObjects)
-sprintf('Segments removed during connectivity analysis = %d', cnt)
-sprintf('Segments after connectivity analysis = %d', (cc.NumObjects - cnt))
 
