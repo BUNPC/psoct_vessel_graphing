@@ -1,29 +1,33 @@
-function [Dxx, Dyy, Dzz, Dxy, Dxz, Dyz] = Hessian3D(Volume,Sigma)
+function [Dxx, Dyy, Dzz, Dxy, Dxz, Dyz] = Hessian3D(Volume, gsigma, gsize)
 %  This function Hessian3D filters the image with an Gaussian kernel
 %  followed by calculation of 2nd order gradients, which aprroximates the
 %  2nd order derivatives of the image.
 % 
-% [Dxx, Dyy, Dzz, Dxy, Dxz, Dyz] = Hessian3D(I,Sigma)
+% [Dxx, Dyy, Dzz, Dxy, Dxz, Dyz] = Hessian3D(I,gsigma)
 % 
-% inputs,
+% INPUTS:
 %   I : The image volume, class preferable double or single
-%   Sigma : The sigma of the gaussian kernel used. If sigma is zero
-%           no gaussian filtering.
+%   gsigma (array) : The sigma of the 3D gaussian kernel.
+%       gsize (vector): Size of the 3D gaussian kernel (voxels). Must be
+%                       either a single positive, odd integer, or a
+%                       3-element array of positive, odd integers. If a
+%                       single positive, odd integer is specified (Q), then
+%                       the gsize will be [Q, Q, Q].
 %
-% outputs,
+% OUTPUTS:
 %   Dxx, Dyy, Dzz, Dxy, Dxz, Dyz: The 2nd derivatives
 %
 % Function is written by D.Kroon University of Twente (June 2009)
-% defaults
-if nargin < 2, Sigma = 1; end
 
-% TODO: imgaussian can be replaced with builtin Matlab function
-% imgaussfilt3
-if(Sigma>0)
-    F=imgaussian(Volume,Sigma,60);
-else
-    F=Volume;
+% Set default parameters
+if nargin < 3
+    error('The Hessian3D filter is missing input arguments.')
 end
+
+
+
+% Apply 3D gaussian filter
+F = imgaussfilt3(Volume, gsigma, 'FilterSize', gsize);
 
 % Create first and second order diferentiations
 Dz=gradient3(F,'z');

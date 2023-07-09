@@ -72,8 +72,6 @@ end
 % Downasample factor = 4 --> Voxel = [12, 12, 15] micron
 % Downasample factor = 10 --> Voxel = [30, 30, 35] micron
 % 2P microscopy pixel will always be [2, 2] micron
-
-% Set voxel dimensions from filename
 if regexp(fname, '4ds')
     vox_dim = [12, 12, 15];
 elseif regexp(fname, '10ds')
@@ -82,34 +80,73 @@ else
     vox_dim = [30, 30, 35];
 end
 
-% Std. Dev. for gaussian filter (one value or array)
-% The value of sigma corresponds to the smallest resolvable radius of the
-% vessels. If sigma==1, then the smallest resolvable vessel will be
-% 1*voxel. In our case, the smallest resolvable vessel has a radius = 12um
-sigma = 1;
+%%% Std. Dev. for gaussian filter (one value or array)
+gsigma = [1, 2];
 
-% Minimum fringi filter probability to classify voxel as vessel
+%%% Size of the Gaussian kernel. This should be a 3-element array of
+% positive, odd integers. Default size is 2*ceil(2*gsigma)+1
+gsize = 2.*ceil(2.*gsigma)+1;
+
+%%% Minimum fringi filter probability to classify voxel as vessel
 % min_prob = 0.20:0.01:0.26;
-min_prob = 0.231;
-% A segment with < "min_conn" voxels will be removed
+min_prob = [0.2, 0.22];
+
+%%% A segment with < "min_conn" voxels will be removed
 min_conn = 30;
-% Array (or single value) of radii for eroding the mask
+
+%%% Array (or single value) of radii for eroding the mask
 radii = 40;
-% Boolean for converting segment to graph (0 = do not convert. 1 = convert)
+
+%%% Boolean for converting segment to graph (0 = do not convert. 1 = convert)
 graph_boolean = 1;
 
 for ii = 1:length(subid)
-    %% Segment the volume
+    %% Load raw volume (TIF) and convert to MAT
     % Define entire filepath 
     fullpath = fullfile(dpath, subid{ii}, subdir);
     filename = strcat(fullpath, strcat(fname, ext));
     % Convert .tif to .MAT
     vol = TIFF2MAT(filename);
+
+    %%% Create subfolder for Gaussian sigma and kernel size
+    % Create string of Gaussian sigmas
+    gsigma_str = num2str(gsigma);
+    % Replace spaces with hyphens
+    gsigma_str = strrep(gsigma_str, '  ', '-');
+    gsigma_subfolder = strcat('gsigma_',gsigma_str);
+    
+    % Create string of Gaussian kernel sizes
+    gsize_str = num2str(gsize);
+    % Replace spaces with hyphens
+    gsize_str = strrep(gsize_str, '  ', '-');
+    gsize_subfolder = strcat('_gsize_',gsize_str);
+
+    % concatenate sigma and kernel into single directory
+    subfolder = strcat(gsigma_subfolder, gsize_subfolder);
+
+    % Create string for entire directory path to subfolder
+    fullpath = fullfile(fullpath, subfolder);
+    
+    % Create subfolder with Gaussian sigma and kernel size
+    if ~exist(fullpath, 'dir')
+       mkdir(fullpath)
+       % Add metadata text file
+       metadata = {strcat('gaussian sigma =  ', num2str(gsigma)),...
+           strcat('gaussian kernel =  ', num2str(gsize)),...
+           strcat('minimum probability =  ', num2str(min_prob)),...
+           };
+       writelines(metadata, fullfile(fullpath, 'metadata.txt'));
+    end
+
+    %%% move segmentation here
     
     for j = 1:length(min_prob)
+        %%% Segment the volume
         [I_seg, fname_seg] = ...
-            segment_main(vol, sigma, min_prob(j), min_conn, fullpath, fname);
+            segment_main(vol, gsigma, gsize, min_prob(j), min_conn, fullpath, fname);
         
+        %%% move probability thresholding here
+
         %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
         % The function for creating the mask requires a radius. This for-loop will
         % iterate over an array of radii. For each radius, it will create a mask,
@@ -121,7 +158,8 @@ for ii = 1:length(subid)
         mask = logical(vol);
         for k = 1:length(radii)
             %%% Apply mask and save .MAT and .TIF
-            [I_seg_masked] = mask_segments(I_seg, mask, radii(k), fullpath, fname_seg);
+            [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
+                                            fullpath, fname_seg);
             
             %%% Convert masked segmentation to graph
             if graph_boolean
@@ -140,8 +178,8 @@ for ii = 1:length(subid)
                 Data.angio = angio;
 
                 % Create new filename for graph and add .MAT extension
-                fname_graph = strcat(fname_seg,'_mask', num2str(radii(k)),'_graph_data.mat');
-                fout = strcat(fullpath, fname_graph);
+                fname_graph = strcat(fname_seg,'_mask_', num2str(radii(k)),'_graph_data.mat');
+                fout = fullfile(fullpath, fname_graph);
                 save(fout,'Data', '-v7.3');
             end
         end
@@ -181,22 +219,29 @@ I_seg_masked = uint8(I_seg_masked);
 %%% Save segmented/masked volume as .MAT and .TIF
 % Convert masked image back to tif
 tmp_fname = strcat(fname,'_mask', num2str(radius));
-fout = strcat(fullpath, tmp_fname, '.tif');
+fout = fullfile(fullpath, tmp_fname);
+fout = strcat(fout, '.tif');
 segmat2tif(I_seg_masked, fout);
 % Save vessel segment stack as .MAT for the next step (graph recon)
-fout = strcat(fullpath, tmp_fname, '.mat');
+fout = fullfile(fullpath, tmp_fname);
+fout = strcat(fout, '.mat');
 save(fout, 'I_seg_masked', '-v7.3');
 
 end
 
 %% Segment volume
 function [I_seg, fname] =...
-    segment_main(vol, sigma, min_prob, min_conn, fullpath, fname)
+    segment_main(vol, gsigma, gsize, min_prob, min_conn, fullpath, fname)
 % Multiscale vessel segmentation
 %   INPUTS:
 %       vol (matrix) - the original volume prior to segmentation
-%       sigma (array) - vector of std. dev. values of gaussian filter to
+%       gsigma (array) - vector of std. dev. values of gaussian filter to
 %           calcualte hessian matrix at each voxel
+%       gsize (vector): Size of the 3D gaussian kernel (voxels). Must be
+%                       either a single positive, odd integer, or a
+%                       3-element array of positive, odd integers. If a
+%                       single positive, odd integer is specified (Q), then
+%                       the gsize will be [Q, Q, Q].
 %       thres - threshold to determine which voxel belongs to a vessel.
 %           Applied to probability matrix from frangi filter output
 %       min_conn - vesSegment uses the function bwconncomp to determine the
@@ -214,13 +259,14 @@ function [I_seg, fname] =...
 I = double(vol);
 
 %%% Segment the original volume
-[~, I_seg] = vesSegment(I, sigma, min_prob, min_conn);
+[pmat, I_seg] = vesSegment(I, gsigma, gsize, min_prob, min_conn);
 % Convert segmentation to 8-bit to reduce file size and computations.
 I_seg = uint8(I_seg);
 
 %%% Save segmentation
-fname = strcat(fname,'_segment','_sigma', num2str(sigma), '_thresh', num2str(min_prob));
-fout = strcat(fullpath, fname, '.tif');
+fname = strcat(fname,'_segment_pmin_',num2str(min_prob));
+fout = fullfile(fullpath, fname);
+fout = strcat(fout, '.tif');
 segmat2tif(I_seg, fout);
 
 end
