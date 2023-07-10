@@ -117,6 +117,7 @@ w_thresh(w>=pmin) = 1;
 %% Remove small disconnected segments via connectivity analysis
 % Remove segments that are composed of fewer than 30 voxels.
 I_seg = rm_short_vessels(w_thresh, voxmin);
+disp('Done segmentation')
 
 
 

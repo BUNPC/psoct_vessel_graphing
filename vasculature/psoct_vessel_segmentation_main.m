@@ -138,14 +138,32 @@ for ii = 1:length(subid)
        writelines(metadata, fullfile(fullpath, 'metadata.txt'));
     end
 
-    %%% move segmentation here
+
+    %% Segment volume
+    % convert volume to double matrix
+    vol = double(vol);
+    % Segment volume. Threshold with first element of probability matrix.
+    [pmat, seg] = vesSegment(vol, gsigma, gsize, min_prob(1), min_conn);
     
     for j = 1:length(min_prob)
-        %%% Segment the volume
-        [I_seg, fname_seg] = ...
-            segment_main(vol, gsigma, gsize, min_prob(j), min_conn, fullpath, fname);
-        
-        %%% move probability thresholding here
+        %%% Threshold probability matrix with min_prob array
+        I_seg = pmat;
+        I_seg(pmat < min_prob(j)) = 0;
+        I_seg(pmat >= min_prob(j)) = 1;
+        % Convert binary matrix to unsigned 8-bit to save memory
+        I_seg = uint8(I_seg);
+        % Remove segments with fewer than voxmin connected voxels
+        I_seg = rm_short_vessels(I_seg, min_conn);
+
+        %%% Save unmasked & thresholded segmentation to TIF
+        % Create filename for probability
+        fname_seg = strcat(fname,'_segment_pmin_',num2str(min_prob(j)));
+        fout = strcat(fullfile(fullpath, fname_seg), '.tif');
+        segmat2tif(I_seg, fout);
+
+        if graph_boolean
+            seg_graph_init(I_seg, vox_dim, fullpath, fname_seg);
+        end
 
         %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
         % The function for creating the mask requires a radius. This for-loop will
@@ -163,27 +181,36 @@ for ii = 1:length(subid)
             
             %%% Convert masked segmentation to graph
             if graph_boolean
-                % Use masked segmentation to create graph. This will output
-                % a struct with just the nodes and segments, but none of
-                % the metadata about the graph.
-                graph_nodes_segs = seg_to_graph(I_seg_masked, vox_dim);
-                
-                % Initialize graph metadata (Graph.Data)
-                [Data] = init_graph(graph_nodes_segs);
-
-                %%% Append "angio" data (segmentation matrix)
-                % Rearrange [x,y,z] --> [z,x,y]. This is the standard in
-                % the graph validation GUI.
-                angio = permute(I_seg_masked, [3,1,2]);
-                Data.angio = angio;
-
-                % Create new filename for graph and add .MAT extension
-                fname_graph = strcat(fname_seg,'_mask_', num2str(radii(k)),'_graph_data.mat');
-                fout = fullfile(fullpath, fname_graph);
-                save(fout,'Data', '-v7.3');
+                fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
+                seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked);
             end
         end
     end
+end
+
+function seg_graph_init(seg, vox_dim, fullpath, fname_seg)
+% Initialize graph from segmentation
+% INPUTS:
+%   seg (mat): segmentation matrix
+%   vox_dim (array): 3-element array of voxel dimensions (microns)
+%
+
+%%% Convert segmentation to graph (just the nodes and segments)
+graph_nodes_segs = seg_to_graph(seg, vox_dim);
+
+%%% Initialize graph metadata (Graph.Data)
+[Data] = init_graph(graph_nodes_segs);
+
+%%% Append "angio" data (segmentation matrix)
+% Rearrange [x,y,z] --> [z,x,y]. This is the standard in
+% the graph validation GUI.
+angio = permute(seg, [3,1,2]);
+Data.angio = angio;
+
+% Create new filename for graph and add .MAT extension
+fname_graph = strcat(fname_seg, '_graph_data.mat');
+fout = fullfile(fullpath, fname_graph);
+save(fout,'Data', '-v7.3');
 end
 
 %% Apply Mask
@@ -226,47 +253,5 @@ segmat2tif(I_seg_masked, fout);
 fout = fullfile(fullpath, tmp_fname);
 fout = strcat(fout, '.mat');
 save(fout, 'I_seg_masked', '-v7.3');
-
-end
-
-%% Segment volume
-function [I_seg, fname] =...
-    segment_main(vol, gsigma, gsize, min_prob, min_conn, fullpath, fname)
-% Multiscale vessel segmentation
-%   INPUTS:
-%       vol (matrix) - the original volume prior to segmentation
-%       gsigma (array) - vector of std. dev. values of gaussian filter to
-%           calcualte hessian matrix at each voxel
-%       gsize (vector): Size of the 3D gaussian kernel (voxels). Must be
-%                       either a single positive, odd integer, or a
-%                       3-element array of positive, odd integers. If a
-%                       single positive, odd integer is specified (Q), then
-%                       the gsize will be [Q, Q, Q].
-%       thres - threshold to determine which voxel belongs to a vessel.
-%           Applied to probability matrix from frangi filter output
-%       min_conn - vesSegment uses the function bwconncomp to determine the
-%               number of connected voxels for each segment. If the number
-%               of voxels is less than this threshold, then the segment
-%               will be removed.
-%       fullpath (string) - absolute directory for saving processed data
-%       fname (string) - filename of segmentation
-%       ext (string) - filename extension (.TIF or .MAT)
-%   OUTPUTS:
-%       I_seg - segmentation of vessels (Frangi filter of original volume)
-%       fname (string) - upadted filename prior to applying mask
-
-%% convert volume to double matrix
-I = double(vol);
-
-%%% Segment the original volume
-[pmat, I_seg] = vesSegment(I, gsigma, gsize, min_prob, min_conn);
-% Convert segmentation to 8-bit to reduce file size and computations.
-I_seg = uint8(I_seg);
-
-%%% Save segmentation
-fname = strcat(fname,'_segment_pmin_',num2str(min_prob));
-fout = fullfile(fullpath, fname);
-fout = strcat(fout, '.tif');
-segmat2tif(I_seg, fout);
 
 end
