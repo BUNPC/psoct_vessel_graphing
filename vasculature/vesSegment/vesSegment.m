@@ -1,20 +1,24 @@
-function [w, I_seg] = vesSegment(I, sigma, thres, min_conn)
+function [w, I_seg] = vesSegment(I, gsigma, gsize, pmin, voxmin)
 % This function performs 3D vessel enhancemnt, filtering, and thesholding
 % to segment the vessels from the surrounding tissue.
 %
 % INPUTS:
-%   I - inverted 3D angiogram (white = vessel, non-white = tissue).
-%   sigma - vector of standard deviation values of gaussian filter to
-%           calcualte hessian matrix at each voxel
-%   thres - threshold to determine which voxel belongs to a vessel. This is
+%   I (matrix) - inverted 3D angiogram (white = vessel, non-white = tissue).
+%   gsigma (array): vector of standard deviation values for gaussian filter
+%   gsize (vector): Size of the 3D gaussian kernel (voxels). Must be
+%                       either a single positive, odd integer, or a
+%                       3-element array of positive, odd integers. If a
+%                       single positive, odd integer is specified (Q), then
+%                       the gsize will be [Q, Q, Q].
+%   pmin - threshold to determine which voxel belongs to a vessel. This is
 %           applied to the probability matrix from the output of the frangi
 %           filter. The threshold belongs to [0, 1].
-%   vox_dim - voxel dimensions [x,y,z] (microns)
+%   voxmin - minimum number of connected voxels to classify as vessels
 %
 % OUTPUTS:
-%   w () - likelihood of voxel belonging to vessel
-%   I_seg () - binary matrix. 1 = vessel. 0 = non-vessel tissue. This
-%               matrix is the result of applying the threshold to w.
+%   w (matrix) - probability of voxel belonging to vessel
+%   I_seg (matrix) - binary matrix. 1 = vessel. 0 = non-vessel tissue. This
+%               matrix is the result of thresholding the matrix w.
 %{
 Copyright (c) 2011, Zhang Jiang
 All rights reserved.
@@ -55,12 +59,12 @@ w = zeros(k,l,m);
 
 %% Vessel enhancement filtering (frangi filter)
 h = waitbar(0,'Performing vessel enhancement');
-for i = 1:length(sigma)
-    waitbar((i-1)/length(sigma));
+for ii = 1:length(gsigma)
+    waitbar((ii-1)/length(gsigma));
     
     % Apply Hessian3D filter (Gaussian kernel) then calculate 2nd order
     % gradients (approximation of 2nd order derivatives of image).
-    [Dxx, Dyy, Dzz, Dxy, Dxz, Dyz] = Hessian3D(I,sigma(i));
+    [Dxx, Dyy, Dzz, Dxy, Dxz, Dyz] = Hessian3D(I, gsigma(ii), gsize(ii));
     
     %%% Calculate eigenvalues (L1, L2, L3) of image Hessians
     % Call executable depending on operating system
@@ -90,7 +94,7 @@ for i = 1:length(sigma)
     %%% Take maximum likelihood values for each vesselness measure (w)
     % If there is only one sigma value, then set w equal to the first
     % output of Lamba123
-    if i == 1
+    if ii == 1
         w = Lambda123;
     else
         w = max(w, Lambda123);
@@ -103,30 +107,17 @@ w = (w-min(w(:))) / (max(w(:))-min(w(:)));
 
 %% Apply threshold to probability matrix.
 % The matrix w represents the likelihood each voxel belongs to a vessel.
-% The threshold (thres) determines the cutoff for this likelihood.
-% w < thres = 0 (non-vessel)
-% w < thres = 0 (vessel vessel)
+% The threshold (pmin) determines the cutoff for this likelihood.
+% w < pmin = 0 (non-vessel)
+% w < pmin = 0 (vessel vessel)
 w_thresh = w;
-w_thresh(w<thres) = 0;
-w_thresh(w>=thres) = 1;
+w_thresh(w<pmin) = 0;
+w_thresh(w>=pmin) = 1;
 
 %% Remove small disconnected segments via connectivity analysis
 % Remove segments that are composed of fewer than 30 voxels.
+I_seg = rm_short_vessels(w_thresh, voxmin);
+disp('Done segmentation')
 
-% Run built-in matlab function to perform connectivity analysis
-cc = bwconncomp(w_thresh);
-% Define output variable
-I_seg = w_thresh;
-% Counter to track number of vessels that are removed
-cnt = 0;
-for ii = 1:length(cc.PixelIdxList)
-    if length(cc.PixelIdxList{ii}) < min_conn
-        I_seg(cc.PixelIdxList{ii}) = 0;
-        cnt = cnt + 1;
-    end
-end
 
-sprintf('Segments before connectivity analysis = %d', cc.NumObjects)
-sprintf('Segments removed during connectivity analysis = %d', cnt)
-sprintf('Segments after connectivity analysis = %d', (cc.NumObjects - cnt))
 
