@@ -81,15 +81,16 @@ else
 end
 
 %%% Std. Dev. for gaussian filter (one value or array)
-gsigma = [1, 2];
+gsigma = [3, 5, 7, 9];
+% gsigma = [1, 2];
 
 %%% Size of the Gaussian kernel. This should be a 3-element array of
 % positive, odd integers. Default size is 2*ceil(2*gsigma)+1
 gsize = 2.*ceil(2.*gsigma)+1;
 
 %%% Minimum fringi filter probability to classify voxel as vessel
-% min_prob = 0.20:0.01:0.26;
-min_prob = [0.2, 0.22];
+min_prob = 0.20:0.01:0.26;
+% min_prob = [0.2, 0.22];
 
 %%% A segment with < "min_conn" voxels will be removed
 min_conn = 30;
@@ -144,6 +145,9 @@ for ii = 1:length(subid)
     vol = double(vol);
     % Segment volume. Threshold with first element of probability matrix.
     [pmat, seg] = vesSegment(vol, gsigma, gsize, min_prob(1), min_conn);
+    % Save probability map for posterity
+    fout = strcat(fullfile(fullpath, 'probability_map'), '.mat');
+    save(fout, 'pmat', '-v7.3');
     
     for j = 1:length(min_prob)
         %%% Threshold probability matrix with min_prob array
