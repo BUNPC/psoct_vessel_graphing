@@ -199,8 +199,8 @@ function [I_seg, fname] =...
 % Multiscale vessel segmentation
 %   INPUTS:
 %       vol (matrix) - the original volume prior to segmentation
-%       sigma (array) - vector of std. dev. values of gaussian filter to
-%           calcualte hessian matrix at each voxel
+%       sigma (array) - vector of std. dev. values of gaussian filter. This
+%                   is used prior to the Hessian matrix.
 %       thres - threshold to determine which voxel belongs to a vessel.
 %           Applied to probability matrix from frangi filter output
 %       min_conn - vesSegment uses the function bwconncomp to determine the

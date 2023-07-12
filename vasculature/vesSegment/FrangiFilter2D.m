@@ -101,7 +101,7 @@ for i = 1:length(sigmas),
 end
 % Return for every pixel the value of the scale(sigma) with the maximum 
 % output pixel value
-if length(sigmas) > 1,
+if length(sigmas) > 1
     [outIm,whatScale] = max(ALLfiltered,[],3);
     outIm = reshape(outIm,size(I));
     if(nargout>1)

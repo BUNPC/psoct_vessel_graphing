@@ -80,15 +80,42 @@ subpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\
 % Filepath for input .TIF
 input = fullfile(subpath, strcat(slice_fname,'.tif'));
 % Convert .tif to .MAT
+im = imread(input);
 slice = TIFF2MAT(input);
 % sub-directory for filtered outputs
 slicepath = fullfile(subpath, strcat('slice_10'));
 
+%% Denoising (Gaussian)
+% Sigma for standard deviation of Gaussian filter
+sigma = [0.5, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+% Initialize matrix for storing filtered output
+ig = uint16(zeros([size(im), length(sigma)]));
+% Iterate over sigmas
+for ii = 1:length(sigma)
+    ig(:,:,ii) = imgaussfilt(im, sigma(ii), 'FilterDomain','auto');
+    figure;
+    subplot(1,2,1); imshow(im);
+    subplot(1,2,2); imshow(ig(:,:,ii));
+    title(strcat('Gaussian \sigma = ', num2str(sigma(ii))))
+end
+
+%% Denoising (Wavelet)
+% Wavelet name (% https://www.mathworks.com/help/wavelet/ref/wfilters.html)
+%{
+% denoising level
+lvl = 1:10;
+% initialize denoised output matrix
+imden = zeros(size(slice), length(lvl));
+for ii = 1:length(lvl)
+    imden(:, :, ii) = wdenoise2(slice, lvl(ii));
+end
+%}
+%% Frequency filters (LPF, HPF)
+%{
 %%% FFT
 slice_freq = fftshift(fft2(slice));
 freq_amp = log(abs(slice_freq));
 
-%% Frequency filters (LPF, HPF)
 %%% Plot FFT prior to filtering
 figure; imshow(freq_amp, [])
 figure;
@@ -125,9 +152,9 @@ slice_hpf = real(ifft2(ifftshift(slice_freq_hpf)));
 subplot(3,1,2); imshow(slice_lpf, []); title('LPF image')
 subplot(3,1,3); imshow(slice_hpf, []); title('HPF image')
 
-%% Filter with elipsoid
+%%% Filter with elipsoid
 
-%% Filter noise peaks above threshold
+%%% Filter noise peaks above threshold
 % Find frequency components w/ amp > threshold
 th = 16.5;
 fpeaks = freq_amp > th;
@@ -155,10 +182,11 @@ slice_filt = noise_mask .* slice_freq;
 figure;
 slice_filt_real = real(ifft2(ifftshift(slice_filt)));
 imshow(slice_filt_real,[])
-
+%}
 
 
 %% Iterate through edge detection filters
+%{
 for ii = 1:length(meth)
     % Segment
     volmask = edge(slice, meth{ii});
@@ -172,9 +200,9 @@ for ii = 1:length(meth)
     filename = fullfile(slicepath, strcat(proc, ext));
     imwrite(uint16(volmask), filename);
 end
-
+%}
 %% Frangi 2P Segmentation (Mathworks fibermetric)
-
+%{
 %%% Frangi Filter Parameters
 % vessel thickness (pixels). default: [4 6 8 10 12 14]
 thick = 8;
@@ -224,10 +252,10 @@ for ii = 1:length(subid)
         end
     end
 end
-
+%}
 
 %% Frangi 2P Segmentation (custom scripts)
-%{
+
 %%% 2P microscopy voxel will always be [5, 5] micron
 vox_dim = [2,2];
 
