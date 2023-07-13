@@ -31,8 +31,7 @@ end
 topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
-%% Import volume (.TIF or .BTF) & convert to MAT 
-
+%% Initialize data path for linux or personal machine
 % Check if running on local machine for debugging or on SCC for processing
 if ispc
     %%% Local machine
