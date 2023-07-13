@@ -14,10 +14,10 @@ function [ov] = overlay_vol_seg(vol, seg, color)
 zdim = size(vol, 3);
 
 % Preallocate space for overlaid image
-ov = zeros([size(vol)]);
+ov = zeros([size(vol), 3]);
 
 % Overlay each slice separately
 for ii = 1:zdim
-    ov(:,:,ii) = imoverlay(vol(:,:,ii), seg(:,:,ii), color);
+    ov(:,:,ii,:) = imoverlay(vol(:,:,ii), seg(:,:,ii), color);
 end
 
