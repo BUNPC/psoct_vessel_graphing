@@ -27,7 +27,7 @@ end
 
 
 % Apply 3D gaussian filter
-F = imgaussfilt3(Volume, gsigma, 'FilterSize', gsize);
+F = imgaussfilt3(Volume, gsigma, 'FilterSize', gsize,'FilterDomain','spatial');
 
 % Create first and second order diferentiations
 Dz=gradient3(F,'z');
