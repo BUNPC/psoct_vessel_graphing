@@ -94,7 +94,11 @@ for ii = 1:length(subid)
     voxels = sum(tissue_logical(:));
     % Convert voxels to metric volume (cubic microns)
     vol = voxels .* vox_vol;
-    % Save total volume to struct
+    
+    %%% Save subject ID to struct
+    met(ii).subID = string(subid{ii});
+    
+    %%% Save total volume to struct
     met(ii).volume = vol;
 
     %%% Load segmentation
@@ -174,8 +178,8 @@ cte_total_len = vertcat(cte.total_length);
 nc_total_len = vertcat(nc.total_length);
 total_len = vertcat(ad_total_len, cte_total_len, nc_total_len);
 figure('units','normalized','outerposition',[0 0 1 1])
-x = categorical({'AD 10382', 'AD 20832', 'AD 20969', 'AD 21354',...
-                'AD 21424','CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
+x = categorical({'AD 10382', 'AD 20832', 'AD 20969', 'AD 21354','AD 21424',...
+                'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
                 'NC 6839','NC 8095', 'NC 8653', 'NC 21499'});
 b = bar(x, total_len);
 title('Total Vasculature Length (\mum)')
@@ -184,7 +188,7 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-3:end, :) = [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'total_length_bar');
@@ -207,7 +211,7 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-3:end, :) = [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'avg_length_bar');
@@ -230,7 +234,7 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-3:end, :) = [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'length_density_bar');
@@ -252,12 +256,11 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-3:end, :) = [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'total_vessels_bar');
 saveas(gca, mout, 'png')
-%}
 
 %%% tortuosity (unitless)
 ad_tort = vertcat(ad.tortuosity);
@@ -275,15 +278,15 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-3:end, :) = [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'tortuosity_bar');
 saveas(gca, mout, 'png')
-
+%}
 
 %% Calcuate average + std. dev of metrics
-
+%{
 %%%% load metrics for AD & CTE
 met = load(ad_cte_fout);
 met = met.met;
@@ -347,6 +350,105 @@ b = boxplot(x, g,'Labels',{'AD', 'CTE', 'NC'});
 title('Tortuosity (\mum)')
 set(gca, 'FontSize', 30)
 set(b,'LineWidth',4)
+%}
+
+
+%% Calculate ANOVA for: length density, total length, total # vessels
+
+%%% Load the AD,CTE struct and the NC struct
+% load metrics for AD & CTE
+met = load(ad_cte_fout);
+met = met.met;
+% Indices in matrix corresponding to AD and CTE
+ad_idx = 1:5;
+cte_idx = 6:9;
+% Separate CTE and AD
+ad = met(ad_idx);
+cte = met(cte_idx);
+
+% load metrics for NC ('NC_6839','NC_8095', 'NC_8653', 'NC_21499')
+met = load(nc_fout);
+met = met.met;
+nc = met(2:end);
+
+%%% Define sample size for each group
+n_ad = 5;
+n_cte = 4;
+n_nc = 4;
+
+%%% Define arrays for unbalanced ANOVA
+% Factor name arrays
+g_ad_nc = [repmat("AD",n_ad,1); repmat("NC",n_nc,1)];
+g_cte_nc = [repmat("CTE",n_cte,1); repmat("NC",n_nc,1)];
+g_ad_cte = [repmat("AD",n_ad,1); repmat("CTE",n_cte,1)];
+
+% Length density arrays
+ad_nc_den = [ad_lenden', nc_lenden'];
+cte_nc_den = [cte_lenden', nc_lenden'];
+ad_cte_den = [ad_lenden', cte_lenden'];
+
+% Total length arrays
+ad_nc_len = [ad_total_len', nc_total_len'];
+cte_nc_len = [cte_total_len', nc_total_len'];
+ad_cte_len = [ad_total_len', cte_total_len'];
+
+% Total number vessels
+ad_nc_nves = [ad_nves', nc_nves'];
+cte_nc_nves = [cte_nves', nc_nves'];
+ad_cte_nves = [ad_nves',cte_nves'];
+
+%%% Perform one-way unbalanced ANOVA (AD vs. NC, CTE vs. NC)
+% Length density
+aov.ad_lenden = anova1(ad_nc_den, g_ad_nc);
+aov.cte_lenden = anova1(cte_nc_den, g_cte_nc);
+aov.ad_cte_lenden = anova1(ad_nc_den, g_ad_cte);
+
+% Total length
+aov.ad_lentot = anova1(ad_nc_len, g_ad_nc);
+aov.cte_lentot = anova1(cte_nc_len, g_cte_nc);
+aov.ad_cte_lentot = anova1(ad_cte_len, g_ad_cte);
+
+% Total number vessels
+aov.ad_nves = anova1(ad_nc_nves, g_ad_nc);
+aov.cte_nves = anova1(cte_nc_nves, g_cte_nc);
+aov.ad_cte_nves = anova1(ad_cte_nves, g_ad_cte);
+
+
+
+
+
+
+
+
+%% Calculate average + std of age
+%{
+% AD = 'AD 10382', 'AD 20832', 'AD 20969', 'AD 21354','AD 21424
+% CTE = 'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126'
+% NC = 'NC 6839','NC 8095', 'NC 8653', 'NC 21499
+
+age_ad = [84, 87, 83, 86];
+age_cte = [75, 78, 86, 81];
+age_nc = [71, 67 80, 88];
+age_all_groups = [age_ad, age_cte, age_nc];
+
+% AD
+age.ad_mean = mean(age_ad);
+age.ad_std = std(age_ad);
+
+% CTE
+age.cte_mean = mean(age_cte);
+age.cte_std = std(age_cte);
+
+% NC
+age.nc_mean = mean(age_nc);
+age.nc_std = std(age_nc);
+
+% Overall age stats
+age.mean = mean(age_all_groups);
+age.std = std(age_all_groups);
+age.min = min(age_all_groups);
+age.max = max(age_all_groups);
+%}
 
 
 
