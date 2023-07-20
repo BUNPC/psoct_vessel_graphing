@@ -22,7 +22,7 @@
 #$ -j y
 
 # Declare array job (create new job for each)
-#$ -t 1-2
+#$ -t 13-14
 
 echo "Starting task number $SGE_TASK_ID"
 module load matlab/2022b

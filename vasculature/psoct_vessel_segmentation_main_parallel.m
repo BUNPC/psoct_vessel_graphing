@@ -73,8 +73,10 @@ else
 end
 
 %%% Std. Dev. for gaussian filter (one value or array)
-gsigma = [3, 5, 7, 9];
-% gsigma = [1, 2];
+% The standard sigma array is [1, 3, 5]
+gsigma = [1, 3, 5];
+% Large vessel sigma array [9, 15, 21]
+gsigma = [9, 15, 21];
 
 %%% Size of the Gaussian kernel. This should be a 3-element array of
 % positive, odd integers. Default size is 2*ceil(2*gsigma)+1
