@@ -39,5 +39,5 @@ subid_idx=${paramsArray[0]}
 # Assign second element of line to gaussian sigma array index
 gauss_idx=${paramsArray[1]}
 
-matlab -nodisplay -batch "psoct_vessel_segmentation_main" $subid_idx $gauss_idx
+matlab -nodisplay -batch "scc_parallel_test" $subid_idx $gauss_idx
 
