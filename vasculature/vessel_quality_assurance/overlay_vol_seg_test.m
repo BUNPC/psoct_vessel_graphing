@@ -1,4 +1,4 @@
-%% Main script to overlay segmentation and original volume.
+%% Main test script to overlay segmentation and original volume.
 %{
 The purpose of this script is to overlay the vessel segmentation and the
 PS-OCT volume (each slice).
@@ -36,22 +36,19 @@ if ispc
     
     % Filename to parse (this is test data)
     segname = 'ref_4ds_norm_inv_segment_pmin_0.23_mask40';
-    % Probability matrix range
-    pmin = 0.20 : 0.01 : 0.26;
+
     % filename extension
     ext = '.tif';
 
 elseif isunix
-    % Path to top-level directory
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
-
+    error('Sorry, bruh. This is designed just for testing locally.')
 end
 
 %% Overlay
 %%% Load PSOCT volume (TIF) and convert to MAT
 for ii = 1:length(subid)
     %%% Load segmentation
-    % Define entire filepath 
+    % Define entire filepath
     fullpath = fullfile(dpath, subid{ii}, segdir);
     % Define filename of original ps-oct volume
     filename = strcat(fullpath, strcat(segname, ext));
@@ -64,21 +61,13 @@ for ii = 1:length(subid)
     filename = strcat(fullpath, strcat(volname, ext));
     % Convert .tif to .MAT
     vol = TIFF2MAT(filename);
-    pause(0.1)
-
-    %%% Overlay segmentation and probaiblity
-    tmp = imoverlay(vol(:,:,1), seg(:,:,1), 'green');
-    ov = overlay_vol_seg(vol, seg, 'green');
+    
+    %%% Make filepath
     % Save output volume
     fullpath = fullfile(dpath, subid{ii}, segdir);
     % Define filename of original ps-oct volume
     filename = strcat(fullpath, strcat(volname, '_overlay', ext));
-    segmat2tif(ov, filename)
     
-    %%% Overlay segmentation across range of probabilities
-
+    %%% Call overlay function
+    overlay_vol_seg(vol, seg, 'green', filename);
 end
-
-
-
-

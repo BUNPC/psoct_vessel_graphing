@@ -164,6 +164,13 @@ for ii = 1:length(subid)
         fout = strcat(fullfile(fullpath, fname_seg), '.tif');
         segmat2tif(I_seg, fout);
 
+        %%% Overlay mask volume (grayscale) and unmasked segmentation (green)
+        % Create output filename
+        overlay_name = strcat(fname_seg, '_overlay.tif');
+        overlay_fout = fullfile(fullpath, overlay_name);
+        % Call function to overlay mask and segmentation
+        overlay_vol_seg(vol, I_seg, 'green', overlay_fout);
+
         if graph_boolean
             seg_graph_init(I_seg, vox_dim, fullpath, fname_seg);
         end
@@ -182,6 +189,13 @@ for ii = 1:length(subid)
             [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
                                             fullpath, fname_seg);
             
+            %%% Overlay mask volume (grayscale) and segmentation (green)
+            % Create output filename
+            overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
+            overlay_fout = fullfile(fullpath, overlay_name);
+            % Call function to overlay mask and segmentation
+            overlay_vol_seg(vol, I_seg_masked, 'green', overlay_fout);
+
             %%% Convert masked segmentation to graph
             if graph_boolean
                 fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
