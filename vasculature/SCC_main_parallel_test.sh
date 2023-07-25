@@ -18,7 +18,7 @@
 ### Declare array job (create new job for each)
 # There are 17 subjects and 3 gaussian sigma arrays
 # (small, medium, large) for a total of 51 jobs. 
-#$ -t 1-2
+#$ -t 1-9
 
 # Keep track of information related to the current job
 echo "=========================================================="
