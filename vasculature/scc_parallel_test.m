@@ -8,8 +8,11 @@ This script performs the following:
 %}
 clear; clc; close all;
 
-%% Input variable from bash script
+%% Print the batch_idx
+batch_idx
 
+%% Input variable from bash script
+%{
 %%% Define subject ID based upon the subid_idx from the bash script
 subid_lst = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
              'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
@@ -31,3 +34,4 @@ gsigma = sigma_lst(gauss_idx,:);
 %%% Print output
 sprintf(subid)
 sprintf(gsigma)
+%}
