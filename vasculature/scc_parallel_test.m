@@ -10,7 +10,7 @@ clear; clc; close all;
 
 %% Print the batch_idx
 % The batch_idx is an index of the job array
-batch_idx = getenv('SGE_TASK_ID');
+batch_idx = str2double(getenv('SGE_TASK_ID'));
 
 sub_sigma = {...
     % AD_10382
