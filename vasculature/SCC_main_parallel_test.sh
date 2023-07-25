@@ -39,5 +39,9 @@ subid_idx=${paramsArray[0]}
 # Assign second element of line to gaussian sigma array index
 gauss_idx=${paramsArray[1]}
 
-matlab -nodisplay -batch "scc_parallel_test" $subid_idx $gauss_idx
+# The next line did not pass in the arguments subid_idx and gauss_idx
+# matlab -nodisplay -batch "scc_parallel_test" $subid_idx $gauss_idx
+
+# Attempt a different syntax
+matlab -nodisplay -batch "subid_idx='$subid_idx'; gauss_idx='$gauss_idx'; scc_parallel_test"
 
