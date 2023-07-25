@@ -9,7 +9,8 @@ This script performs the following:
 clear; clc; close all;
 
 %% Print the batch_idx
-batch_idx
+batch_idx = getenv('$SGE_TASK_ID');
+sprintf(num2str(batch_idx))
 
 %% Input variable from bash script
 %{

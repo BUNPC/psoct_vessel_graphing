@@ -30,7 +30,7 @@ echo "=========================================================="
 module load matlab/2022b
 
 ### Attempt simple SGE_TASK_ID syntax
-matlab -nodisplay -batch "batch_idx='$SGE_TASK_ID'; scc_parallel_test"
+matlab -nodisplay -batch scc_parallel_test $SGE_TASK_ID
 
 ### Attempts at iterating a list of two variables
 # Retrieve contents of line number $SGE_TASK_ID from the text file subject_sigma_index_list
