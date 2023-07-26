@@ -99,8 +99,6 @@ elseif isunix
     else
         gsigma = [7, 9, 11];
     end
-
-    
 end
 
 %% Initialization parameters (same for both 
