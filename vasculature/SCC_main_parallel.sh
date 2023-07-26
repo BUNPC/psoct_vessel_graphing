@@ -28,4 +28,4 @@
 
 echo "Starting task number $SGE_TASK_ID"
 module load matlab/2022b
-matlab -nodisplay -batch  scc_parallel_test $SGE_TASK_ID
+matlab -nodisplay -batch  psoct_vessel_segmentation_main $SGE_TASK_ID
