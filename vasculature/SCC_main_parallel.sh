@@ -22,6 +22,8 @@
 #$ -j y
 
 # Declare array job (create new job for each)
+# Iterate over all subjects and use smallest sigma (1-51:3)
+# Iterate over all subjects and use all sigma (1-51)
 #$ -t 38-39
 
 echo "Starting task number $SGE_TASK_ID"
