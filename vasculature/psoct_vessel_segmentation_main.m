@@ -37,7 +37,7 @@ addpath(genpath(topdir));
 if ispc
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
-    subid = {'CTE_7019'};
+    subid = 'NC_6839';
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
     fname = 'ref_4ds_norm_inv_cropped';
@@ -97,6 +97,7 @@ elseif isunix
         [subid, gsigma] = sub_sigma{batch_idx, :};
     % Otherwise, set the Gaussian sigma manually
     else
+        subid = 'NC_6839';
         gsigma = [7, 9, 11];
     end
 end
@@ -137,7 +138,7 @@ graph_boolean = 1;
 fullpath = fullfile(dpath, subid, subdir);
 filename = strcat(fullpath, strcat(fname, ext));
 % Convert .tif to .MAT
-vol = TIFF2MAT(filename);
+vol_uint16 = TIFF2MAT(filename);
 
 %%% Create subfolder for Gaussian sigma and kernel size
 % Create string of Gaussian sigmas
@@ -172,7 +173,7 @@ end
 
 %% Segment volume
 % convert volume to double matrix
-vol = double(vol);
+vol = double(vol_uint16);
 % Segment volume. Threshold with first element of probability matrix.
 [pmat, seg] = vesSegment(vol, gsigma, gsize, min_prob(1), min_conn);
 % Save probability map for posterity
@@ -200,7 +201,7 @@ for j = 1:length(min_prob)
     overlay_name = strcat(fname_seg, '_overlay.tif');
     overlay_fout = fullfile(fullpath, overlay_name);
     % Call function to overlay mask and segmentation
-    overlay_vol_seg(vol, I_seg, 'green', overlay_fout);
+    overlay_vol_seg(vol_uint16, I_seg, 'green', overlay_fout);
 
     if graph_boolean
         seg_graph_init(I_seg, vox_dim, fullpath, fname_seg);
@@ -225,7 +226,7 @@ for j = 1:length(min_prob)
         overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
         overlay_fout = fullfile(fullpath, overlay_name);
         % Call function to overlay mask and segmentation
-        overlay_vol_seg(vol, I_seg_masked, 'green', overlay_fout);
+        overlay_vol_seg(vol_uint16, I_seg_masked, 'green', overlay_fout);
 
         %%% Convert masked segmentation to graph
         if graph_boolean

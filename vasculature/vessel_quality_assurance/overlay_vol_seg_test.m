@@ -30,7 +30,7 @@ if ispc
     volname = 'ref_4ds_norm_inv';
 
     % Directory to segmentation
-    segdir = '\dist_corrected\volume\gsigma_1-2-3-4-5_gsize_5--9-13-17-21\';
+    segdir = '\dist_corrected\volume\gsigma_13-15-17_gsize_53-61-69\';
     % Subject IDs
     subid = {'NC_6839'};
     
@@ -66,7 +66,7 @@ for ii = 1:length(subid)
     % Save output volume
     fullpath = fullfile(dpath, subid{ii}, segdir);
     % Define filename of original ps-oct volume
-    filename = strcat(fullpath, strcat(volname, '_overlay', ext));
+    filename = strcat(fullpath, strcat(segname, '_overlay', ext));
     
     %%% Call overlay function
     overlay_vol_seg(vol, seg, 'green', filename);
