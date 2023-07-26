@@ -31,10 +31,10 @@ end
 topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
-%% Initialize data path for linux or personal machine
-% Check if running on local machine for debugging or on SCC for processing
+%% Initialize data path for linux or personal machine (debugging)
+
+%%% Local machine
 if ispc
-    %%% Local machine
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
     subid = {'CTE_7019'};
@@ -43,29 +43,67 @@ if ispc
     fname = 'ref_4ds_norm_inv_cropped';
     % filename extension
     ext = '.tif';
+    % sigma for Gaussian smoothing
+    gsigma = [7, 9, 11];
+
+%%% Computing cluster (SCC)
 elseif isunix
-    %%% Computing cluster (SCC)
     % Path to top-level directory
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
-    % Complete subject ID list for Ann_Mckee_samples_10T
-%     subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
-%              'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
-%              'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
-%              'NC_8095', 'NC_8653'};
-    % Partial subject ID list for testing script on SCC
-%     subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424'};
-%     subid = {'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126'};
-%     subid = {'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974'};
-%     subid = {'NC_7597','NC_8095', 'NC_8653'};
-    subid = {'AD_10382'};
+    % Subfolder containing data
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
     % filename extension
     ext = '.tif';
+    
+    % Complete subject ID list for Ann_Mckee_samples_10T
+    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
+             'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
+             'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
+             'NC_8095', 'NC_8653'};
+    
+    % Gaussian sigma arrays:
+    % Small vessel sigma array = [1, 3, 5]
+    % Medium vessel sigma array = [7, 9, 11]
+    % Large vessel sigma array = [13, 15, 17]
+    sigmas = [1, 3, 5; 7, 9, 11; 13, 15, 17];
+    
+    %%% Create cell array of subject ID and sigma for job array on the SCC 
+    nrow = length(subid)*size(sigmas,2);
+    nsigma = size(sigmas,2);
+    sub_sigma = cell(length(subid).*size(sigmas,2), 2);
+    idx = 1;
+    % Fill sub_sigma cell array with each sigma array for each subject
+    for i = 1:3:nrow
+        sub_sigma{i,1} = subid{idx};
+        sub_sigma{(i+1),1} = subid{idx};
+        sub_sigma{(i+2),1} = subid{idx};
+        idx = idx + 1;
+        for j = 1:nsigma
+            sub_sigma{(i+j-1),2} = sigmas(j,:);
+        end
+    end
+    
+    %%% Reassign subid and sigma based on job array counter
+    % Retrieve SGE_TASK_ID from system (job array index)
+    batch_idx = getenv('SGE_TASK_ID');
+    
+    % If this is a job array, then batch_idx will not be empty.
+    if ~isempty(batch_idx)
+        % Convert from ASCII to double
+        batch_idx = str2double(batch_idx);
+        % Retrieve corresponding row from sub_sigma
+        [subid, gsigma] = sub_sigma{batch_idx, :};
+    % Otherwise, set the Gaussian sigma manually
+    else
+        gsigma = [7, 9, 11];
+    end
+
+    
 end
 
-%% Initialization parameters
+%% Initialization parameters (same for both 
 
 %%% Assign PS-OCT voxel dimension [x, y, z] according to downsample factor
 % Downasample factor = 4 --> Voxel = [12, 12, 15] micron
@@ -79,17 +117,12 @@ else
     vox_dim = [30, 30, 35];
 end
 
-%%% Std. Dev. for gaussian filter (one value or array)
-gsigma = [3, 5, 7, 9];
-% gsigma = [1, 2];
-
 %%% Size of the Gaussian kernel. This should be a 3-element array of
 % positive, odd integers. Default size is 2*ceil(2*gsigma)+1
 gsize = 2.*ceil(2.*gsigma)+1;
 
 %%% Minimum fringi filter probability to classify voxel as vessel
 min_prob = 0.20:0.01:0.26;
-% min_prob = [0.2, 0.22];
 
 %%% A segment with < "min_conn" voxels will be removed
 min_conn = 30;
