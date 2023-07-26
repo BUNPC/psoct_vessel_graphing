@@ -22,14 +22,8 @@
 #$ -j y
 
 # Declare array job (create new job for each)
-#$ -t 13-14
+#$ -t 1-2
 
 echo "Starting task number $SGE_TASK_ID"
 module load matlab/2022b
-matlab -nodisplay -batch "subid_idx='$SGE_TASK_ID'; psoct_vessel_segmentation_main"
-
-
-#for subject_id in $(seq $SGE_TASK_ID $(( $SGE_TASK_ID + $SGE_TASK_STEPSIZE - 1 )) ); do
-#    echo "Subtask $subtask_id of task $SGE_TASK_ID"
-#    ./myprog $subject_id
-#done
+matlab -nodisplay -batch  scc_parallel_test $SGE_TASK_ID
