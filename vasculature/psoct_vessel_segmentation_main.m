@@ -131,107 +131,106 @@ radii = 40;
 %%% Boolean for converting segment to graph (0 = do not convert. 1 = convert)
 graph_boolean = 1;
 
-for ii = 1:length(subid)
-    %% Load raw volume (TIF) and convert to MAT
-    % Define entire filepath 
-    fullpath = fullfile(dpath, subid{ii}, subdir);
-    filename = strcat(fullpath, strcat(fname, ext));
-    % Convert .tif to .MAT
-    vol = TIFF2MAT(filename);
 
-    %%% Create subfolder for Gaussian sigma and kernel size
-    % Create string of Gaussian sigmas
-    gsigma_str = num2str(gsigma);
-    % Replace spaces with hyphens
-    gsigma_str = strrep(gsigma_str, '  ', '-');
-    gsigma_subfolder = strcat('gsigma_',gsigma_str);
-    
-    % Create string of Gaussian kernel sizes
-    gsize_str = num2str(gsize);
-    % Replace spaces with hyphens
-    gsize_str = strrep(gsize_str, '  ', '-');
-    gsize_subfolder = strcat('_gsize_',gsize_str);
+%% Load raw volume (TIF) and convert to MAT
+% Define entire filepath 
+fullpath = fullfile(dpath, subid, subdir);
+filename = strcat(fullpath, strcat(fname, ext));
+% Convert .tif to .MAT
+vol = TIFF2MAT(filename);
 
-    % concatenate sigma and kernel into single directory
-    subfolder = strcat(gsigma_subfolder, gsize_subfolder);
+%%% Create subfolder for Gaussian sigma and kernel size
+% Create string of Gaussian sigmas
+gsigma_str = num2str(gsigma);
+% Replace spaces with hyphens
+gsigma_str = strrep(gsigma_str, '  ', '-');
+gsigma_subfolder = strcat('gsigma_',gsigma_str);
 
-    % Create string for entire directory path to subfolder
-    fullpath = fullfile(fullpath, subfolder);
-    
-    % Create subfolder with Gaussian sigma and kernel size
-    if ~exist(fullpath, 'dir')
-       mkdir(fullpath)
-       % Add metadata text file
-       metadata = {strcat('gaussian sigma =  ', num2str(gsigma)),...
-           strcat('gaussian kernel =  ', num2str(gsize)),...
-           strcat('minimum probability =  ', num2str(min_prob)),...
-           };
-       writelines(metadata, fullfile(fullpath, 'metadata.txt'));
+% Create string of Gaussian kernel sizes
+gsize_str = num2str(gsize);
+% Replace spaces with hyphens
+gsize_str = strrep(gsize_str, '  ', '-');
+gsize_subfolder = strcat('_gsize_',gsize_str);
+
+% concatenate sigma and kernel into single directory
+subfolder = strcat(gsigma_subfolder, gsize_subfolder);
+
+% Create string for entire directory path to subfolder
+fullpath = fullfile(fullpath, subfolder);
+
+% Create subfolder with Gaussian sigma and kernel size
+if ~exist(fullpath, 'dir')
+   mkdir(fullpath)
+   % Add metadata text file
+   metadata = {strcat('gaussian sigma =  ', num2str(gsigma)),...
+       strcat('gaussian kernel =  ', num2str(gsize)),...
+       strcat('minimum probability =  ', num2str(min_prob)),...
+       };
+   writelines(metadata, fullfile(fullpath, 'metadata.txt'));
+end
+
+
+%% Segment volume
+% convert volume to double matrix
+vol = double(vol);
+% Segment volume. Threshold with first element of probability matrix.
+[pmat, seg] = vesSegment(vol, gsigma, gsize, min_prob(1), min_conn);
+% Save probability map for posterity
+fout = strcat(fullfile(fullpath, 'probability_map'), '.mat');
+save(fout, 'pmat', '-v7.3');
+
+for j = 1:length(min_prob)
+    %%% Threshold probability matrix with min_prob array
+    I_seg = pmat;
+    I_seg(pmat < min_prob(j)) = 0;
+    I_seg(pmat >= min_prob(j)) = 1;
+    % Convert binary matrix to unsigned 8-bit to save memory
+    I_seg = uint8(I_seg);
+    % Remove segments with fewer than voxmin connected voxels
+    I_seg = rm_short_vessels(I_seg, min_conn);
+
+    %%% Save unmasked & thresholded segmentation to TIF
+    % Create filename for probability
+    fname_seg = strcat(fname,'_segment_pmin_',num2str(min_prob(j)));
+    fout = strcat(fullfile(fullpath, fname_seg), '.tif');
+    segmat2tif(I_seg, fout);
+
+    %%% Overlay mask volume (grayscale) and unmasked segmentation (green)
+    % Create output filename
+    overlay_name = strcat(fname_seg, '_overlay.tif');
+    overlay_fout = fullfile(fullpath, overlay_name);
+    % Call function to overlay mask and segmentation
+    overlay_vol_seg(vol, I_seg, 'green', overlay_fout);
+
+    if graph_boolean
+        seg_graph_init(I_seg, vox_dim, fullpath, fname_seg);
     end
 
+    %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
+    % The function for creating the mask requires a radius. This for-loop will
+    % iterate over an array of radii. For each radius, it will create a mask,
+    % apply the mask to the segmentation volume, and save the output.
+    % If the graph_boolean is true (1), then the masked segmentation will be
+    % converted to a graph.
 
-    %% Segment volume
-    % convert volume to double matrix
-    vol = double(vol);
-    % Segment volume. Threshold with first element of probability matrix.
-    [pmat, seg] = vesSegment(vol, gsigma, gsize, min_prob(1), min_conn);
-    % Save probability map for posterity
-    fout = strcat(fullfile(fullpath, 'probability_map'), '.mat');
-    save(fout, 'pmat', '-v7.3');
-    
-    for j = 1:length(min_prob)
-        %%% Threshold probability matrix with min_prob array
-        I_seg = pmat;
-        I_seg(pmat < min_prob(j)) = 0;
-        I_seg(pmat >= min_prob(j)) = 1;
-        % Convert binary matrix to unsigned 8-bit to save memory
-        I_seg = uint8(I_seg);
-        % Remove segments with fewer than voxmin connected voxels
-        I_seg = rm_short_vessels(I_seg, min_conn);
-
-        %%% Save unmasked & thresholded segmentation to TIF
-        % Create filename for probability
-        fname_seg = strcat(fname,'_segment_pmin_',num2str(min_prob(j)));
-        fout = strcat(fullfile(fullpath, fname_seg), '.tif');
-        segmat2tif(I_seg, fout);
-
-        %%% Overlay mask volume (grayscale) and unmasked segmentation (green)
+    % Create 3D mask from original volume
+    mask = logical(vol);
+    for k = 1:length(radii)
+        %%% Apply mask and save .MAT and .TIF
+        [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
+                                        fullpath, fname_seg);
+        
+        %%% Overlay mask volume (grayscale) and segmentation (green)
         % Create output filename
-        overlay_name = strcat(fname_seg, '_overlay.tif');
+        overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
         overlay_fout = fullfile(fullpath, overlay_name);
         % Call function to overlay mask and segmentation
-        overlay_vol_seg(vol, I_seg, 'green', overlay_fout);
+        overlay_vol_seg(vol, I_seg_masked, 'green', overlay_fout);
 
+        %%% Convert masked segmentation to graph
         if graph_boolean
-            seg_graph_init(I_seg, vox_dim, fullpath, fname_seg);
-        end
-
-        %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
-        % The function for creating the mask requires a radius. This for-loop will
-        % iterate over an array of radii. For each radius, it will create a mask,
-        % apply the mask to the segmentation volume, and save the output.
-        % If the graph_boolean is true (1), then the masked segmentation will be
-        % converted to a graph.
-    
-        % Create 3D mask from original volume
-        mask = logical(vol);
-        for k = 1:length(radii)
-            %%% Apply mask and save .MAT and .TIF
-            [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
-                                            fullpath, fname_seg);
-            
-            %%% Overlay mask volume (grayscale) and segmentation (green)
-            % Create output filename
-            overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
-            overlay_fout = fullfile(fullpath, overlay_name);
-            % Call function to overlay mask and segmentation
-            overlay_vol_seg(vol, I_seg_masked, 'green', overlay_fout);
-
-            %%% Convert masked segmentation to graph
-            if graph_boolean
-                fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
-                seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked);
-            end
+            fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
+            seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked);
         end
     end
 end
