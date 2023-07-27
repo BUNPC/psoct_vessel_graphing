@@ -76,7 +76,7 @@ segdir = {
 
 
 %% Calculate metrics (total length, length density, mean length, tortuosity)
-%{
+
 %%% Initialize struct for storing metrics
 met = struct();
 
@@ -107,7 +107,7 @@ for ii = 1:length(subid)
     filename = strcat(fullpath, graphname);
     %%% Load Data struct
     Data = load(filename, 'Data');
-    % Load grapha and seg
+    % Load graph and seg
     graph = Data.Data.Graph;
     seg = Data.Data.angio;
     % Load end nodes
