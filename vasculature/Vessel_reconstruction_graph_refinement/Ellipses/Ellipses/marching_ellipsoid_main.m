@@ -1,50 +1,134 @@
-%% load fiber data
-V=TIFF2MAT('E:\Jiarui\Data\190426volume\volume\vessel_filtered_masked.tif');
-V=double(V(241:440,31:230,:));
-% MAT2TIFF(V,'E:\Jiarui\Data\190426volume\volume\fiber_sub.tif');
-V=(double(V)-min(V(:)))./(max(V(:))-min(V(:)));
+%% Main script for performing marching ellipsoid
+%{
+This package was initially created by collaborators of David Boas. It has
+been modified over the years. This main script is still a work in progress.
+%}
 
-%figure;histogram(V(:));
-% I_seg=TIFF2MAT('fiber.tif');
-% I_seg=I_seg(241:440,31:230,:);
-% MAT2TIFF(I_seg,'seg.tif');
+%% Add top-level directory of code repository to path
+% This allows Matlab to find the functions in the project folders
+
+% Start in current directory
+mydir  = pwd;
+% Find indices of slashes separating directories
+if ispc
+    idcs = strfind(mydir,'\');
+elseif isunix
+    idcs = strfind(mydir,'/');
+end
+% Truncate path to reach top-level directory (psoct_vessel_graphing)
+topdir = mydir(1:idcs(end));
+addpath(genpath(topdir));
+
+%% Initialize data path for linux or personal machine (debugging)
+
+%%% Local machine
+if ispc
+    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
+    % Subject IDs
+    subid = 'NC_6839';
+    subdir = '\dist_corrected\volume\gsigma_7--9-11_gsize_29-37-45\';
+    % Filename to parse (this is test data)
+    fname = 'ref_4ds_norm_inv_segment_pmin_0.23_mask_40_graph_data';
+    % filename extension
+    ext = '.mat';
+%%% Computing cluster (SCC)
+elseif isunix
+    % Path to top-level directory
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
+    % Subfolder containing data
+    subdir = '/dist_corrected/volume/';
+    % Filename to parse (this will be the same for each subject)
+    fname = 'ref_4ds_norm_inv';
+    % filename extension
+    ext = '.tif';
+    % Complete subject ID list for Ann_Mckee_samples_10T
+    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
+             'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
+             'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
+             'NC_8095', 'NC_8653'};
+        
+    %%% Create cell array of subject ID and sigma for job array on the SCC 
+    nrow = length(subid)*size(sigmas,2);
+    nsigma = size(sigmas,2);
+    sub_sigma = cell(length(subid).*size(sigmas,2), 2);
+    idx = 1;
+    % Fill sub_sigma cell array with each sigma array for each subject
+    for i = 1:3:nrow
+        sub_sigma{i,1} = subid{idx};
+        sub_sigma{(i+1),1} = subid{idx};
+        sub_sigma{(i+2),1} = subid{idx};
+        idx = idx + 1;
+        for j = 1:nsigma
+            sub_sigma{(i+j-1),2} = sigmas(j,:);
+        end
+    end
+    
+    %%% Reassign subid and sigma based on job array counter
+    % Retrieve SGE_TASK_ID from system (job array index)
+    batch_idx = getenv('SGE_TASK_ID');
+    
+    % If this is a job array, then batch_idx will not be empty.
+    if ~isempty(batch_idx)
+        % Convert from ASCII to double
+        batch_idx = str2double(batch_idx);
+        % Retrieve corresponding row from sub_sigma
+        [subid, gsigma] = sub_sigma{batch_idx, :};
+    % Otherwise, set the Gaussian sigma manually
+    else
+        subid = 'NC_6839';
+        gsigma = [7, 9, 11];
+    end
+end
+
+%% Load segmentation volume and graph from Data
+% Define entire filepath 
+fullpath = fullfile(dpath, subid, subdir);
+filename = strcat(fullpath, strcat(fname, ext));
+
+% Load Data
+Data = load(filename, 'Data');
+
+% Extract angio (segmentation (uint8)) from Data
+seg = Data.Data.angio;
+graph = Data.Data.Graph;
+
+% Normalize segmentation
+seg = (seg-min(seg(:)))./(max(seg(:))-min(seg(:)));
 
 %% generate coordinates of seed points based on intensity threshold
-% % load the graph
- load('E:\Jiarui\Data\190426volume\volume\graph.mat','Graph');
-% %load('E:\Jiarui\Data\code\longest_seg.mat','Graph');
-
-% % apply threshold for each xy slice
-% min_th=0.5;
-% max_th=0.55;
-% th_step=(max_th-min_th)/64;
-% thresh=min_th:th_step:max_th;
-% idx1=[];
-% idx2=[];
-% idx3=[];
-% V_bi=zeros(size(V));
-% for z=1:size(V,3)
-%     rl_depth=mod(z-1,65)+1;
-%     tmp=squeeze(V(:,:,z));
-%     tmp2=zeros(size(tmp));
-%     tmp=(tmp-min(tmp(:)))./(max(tmp(:))-min(tmp(:)));
-%     if(z==1)
-%         k=find(tmp(:)>0.3);
-%     else
-%         k=find(tmp(:)>thresh(rl_depth));
-%     end
-%     tmp2(k)=1;
-%     % m(z)=length(k);
-%     [tidx1,tidx2]=ind2sub(size(tmp),k);
-%     V_bi(:,:,z)=tmp2;
-%     idx1=[idx1; tidx1];
-%     idx2=[idx2; tidx2];
-%     idx3=[idx3; ones(length(tidx1),1).*z];
-% end
-% MAT2TIFF(V_bi,'th_bi.tif');
-%k=find(V(:)>thresh);
-%[idx1,idx2,idx3]=ind2sub(size(V),k);
-% Graph.nodes=[idx1,idx2,idx3];
+%{
+% apply threshold for each xy slice
+min_th=0.5;
+max_th=0.55;
+th_step=(max_th-min_th)/64;
+thresh=min_th:th_step:max_th;
+idx1=[];
+idx2=[];
+idx3=[];
+V_bi=zeros(size(V));
+for z=1:size(V,3)
+    rl_depth=mod(z-1,65)+1;
+    tmp=squeeze(V(:,:,z));
+    tmp2=zeros(size(tmp));
+    tmp=(tmp-min(tmp(:)))./(max(tmp(:))-min(tmp(:)));
+    if(z==1)
+        k=find(tmp(:)>0.3);
+    else
+        k=find(tmp(:)>thresh(rl_depth));
+    end
+    tmp2(k)=1;
+    % m(z)=length(k);
+    [tidx1,tidx2]=ind2sub(size(tmp),k);
+    V_bi(:,:,z)=tmp2;
+    idx1=[idx1; tidx1];
+    idx2=[idx2; tidx2];
+    idx3=[idx3; ones(length(tidx1),1).*z];
+end
+MAT2TIFF(V_bi,'th_bi.tif');
+k=find(V(:)>thresh);
+[idx1,idx2,idx3]=ind2sub(size(V),k);
+Graph.nodes=[idx1,idx2,idx3];
+%}
 %% perform marching ellipsoid to generate a new graph
 flag_seeds=zeros(1,size(Graph.nodes,1));
 Graph_new.nodes=[];
