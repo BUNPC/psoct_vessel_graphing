@@ -2,6 +2,9 @@
 %{
 This package was initially created by collaborators of David Boas. It has
 been modified over the years. This main script is still a work in progress.
+
+This script was run with a subset of a larger graph. The code did not
+compute the graph2.edges. Need to debug this.
 %}
 clear; clc; close all;
 %% Add top-level directory of code repository to path
