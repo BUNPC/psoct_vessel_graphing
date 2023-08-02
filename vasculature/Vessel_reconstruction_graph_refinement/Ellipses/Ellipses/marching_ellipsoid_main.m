@@ -3,7 +3,7 @@
 This package was initially created by collaborators of David Boas. It has
 been modified over the years. This main script is still a work in progress.
 
-This script was run with a subset of a larger graph. The code did not
+This script was run with a subset of a larger g. The code did not
 compute the graph2.edges. Need to debug this.
 %}
 clear; clc; close all;
@@ -31,7 +31,7 @@ if ispc
     subid = 'NC_6839';
     subdir = '\dist_corrected\volume\gsigma_1-2-3-4-5_gsize_5--9-13-17-21\';
     % Segmentation filename
-    seg_name = 'ref_4ds_norm_inv_segment_pmin_0.23_mask40_crop';
+    seg_name = 'ref_4ds_norm_inv_segment_pmin_0.23_mask40_crop3';
     % filename extension
     ext = '.tif';
 %%% Computing cluster (SCC)
@@ -83,16 +83,31 @@ elseif isunix
     end
 end
 
-%% Load segmentation volume and graph from Data
+%% Load segmentation volume and g from Data
 vox_dim = [12, 12, 15];
 
-%%% Convert segment to graph
+%%% Convert segment to g
 fullpath = fullfile(dpath, subid, subdir);
 filename = strcat(fullpath, strcat(seg_name, ext));
 seg = TIFF2MAT(filename);
-graph = seg_to_graph(seg, vox_dim);
+g = seg_to_graph(seg, vox_dim);
+nodes = g.nodes;
+edges = g.edges;
 
-%%% Load segmentation and graph
+% Copy edges into standard format
+s = edges(:,1); % source node
+t = edges(:,2); % target node
+
+% Create standard Matlab g
+g_mat = graph(s, t);
+
+% Plot g before removing loops
+figure;
+p = plot(g_mat, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
+title('Graph Before Removing Loops'); xlabel('x'); ylabel('y'); zlabel('z')
+view(3);
+
+%%% Load segmentation and g
 %{
 % Define entire filepath 
 fullpath = fullfile(dpath, subid, subdir);
@@ -103,7 +118,7 @@ Data = load(filename, 'Data');
 
 % Extract angio (segmentation (uint8)) from Data
 seg = Data.Data.angio;
-graph = Data.Data.Graph;
+g = Data.Data.Graph;
 
 % Reorder the angio
 seg = permute(seg, [3,2,1]);
@@ -150,10 +165,10 @@ end
 % MAT2TIFF(V_bi,'th_bi.tif');
 k = find(seg(:) > thresh);
 [idx1,idx2,idx3] = ind2sub(size(seg),k);
-graph.nodes = [idx1,idx2,idx3];
+g.nodes = [idx1,idx2,idx3];
 %}
-%% perform marching ellipsoid to generate a new graph
-flag_seeds = zeros(1, size(graph.nodes,1));
+%% perform marching ellipsoid to generate a new g
+flag_seeds = zeros(1, size(g.nodes,1));
 graph2.nodes = [];
 graph2.edges = [];
 % cut off distance for neighboring node detection (voxels)
@@ -172,8 +187,8 @@ ori = [];
 % axis tight manual % this ensures that getframe() returns a consistent size
 % filename = 'marchinging3.gif';
 
-%%% Iterate over each node in the graph
-while sum(flag_seeds) < size(graph.nodes,1)
+%%% Iterate over each node in the g
+while sum(flag_seeds) < size(g.nodes,1)
     %%% pick a random node as seed point
     % Iterate number of segments tested
     i = i+1;
@@ -187,7 +202,7 @@ while sum(flag_seeds) < size(graph.nodes,1)
     flag_seeds(idx(seed_idx)) = 1;
     
     % seed = node coordinates of the seed_idx
-    seed = round(graph.nodes(idx(seed_idx),:));
+    seed = round(g.nodes(idx(seed_idx),:));
 
     % Round the coordinates (this may be unecessary)
     cen_x = seed(1); cen_x = max(min(cen_x,size(seg,1)), 1);
@@ -239,7 +254,7 @@ while sum(flag_seeds) < size(graph.nodes,1)
         % determine the maximum axis, travel along that axis
         [~,axis_idx]=max(a);
         vec_pre=vec;
-        % first add the centroid into nodes list of new graph
+        % first add the centroid into nodes list of new g
         graph2.nodes=[graph2.nodes; round(s.mu)'];
         nodes = unique(graph2.nodes,'rows','stable');
         % if reached local minimal (repeating fitting on the same
@@ -271,11 +286,11 @@ while sum(flag_seeds) < size(graph.nodes,1)
         end
         
         % flag all the nodes within this ellipsoid
-        % find all adjacent nodes from vesselness filter graph
+        % find all adjacent nodes from vesselness filter g
         for num=1:length(idx)
-            dist=sqrt(sum(graph.nodes(idx(num),:) - [cen_x cen_y cen_z]).^2);
+            dist=sqrt(sum(g.nodes(idx(num),:) - [cen_x cen_y cen_z]).^2);
             if dist < cutoff_dist
-                node=graph.nodes(idx(num),:);
+                node=g.nodes(idx(num),:);
                 [Xvec,Yvec,Zvec]=dir_vec(s);
                 if abs((node- [cen_x cen_y cen_z])*Yvec)<a(2) && abs((node- [cen_x cen_y cen_z])*Xvec)<a(1) && abs((node- [cen_x cen_y cen_z])*Zvec)<a(3)
                     % looks at scalar vector products to decide if point is inside cylinder...
@@ -323,7 +338,7 @@ while sum(flag_seeds) < size(graph.nodes,1)
         % determine the maximum axis, travel along that axis
         [~,axis_idx]=max(a);
         vec_pre=vec;
-        % first add the centroid into nodes list of new graph       
+        % first add the centroid into nodes list of new g       
         graph2.nodes=[graph2.nodes; round(s.mu)'];
         nodes = unique(graph2.nodes,'rows','stable');
         % if reached local minimal (repeating fitting on the same
@@ -363,9 +378,9 @@ while sum(flag_seeds) < size(graph.nodes,1)
         
         % flag all the nodes within this ellipsoid
         for num=1:length(idx)
-            dist=sqrt(sum(graph.nodes(idx(num),:) - [cen_x cen_y cen_z]).^2);
+            dist=sqrt(sum(g.nodes(idx(num),:) - [cen_x cen_y cen_z]).^2);
             if dist < cutoff_dist
-                node=graph.nodes(idx(num),:);
+                node=g.nodes(idx(num),:);
                 [Xvec,Yvec,Zvec]=dir_vec(s);
                 if abs((node- [cen_x cen_y cen_z])*Yvec)<a(2) && abs((node- [cen_x cen_y cen_z])*Xvec)<a(1) && abs((node- [cen_x cen_y cen_z])*Zvec)<a(3)
                     % looks at scalar vector products to decide if point is inside cylinder...
@@ -396,19 +411,19 @@ while sum(flag_seeds) < size(graph.nodes,1)
     disp(['Finish searching segment No.' num2str(i)]);
 end
 
-graph = [];
-graph.nodes = graph2.nodes;
-graph.edges = graph2.edges;
+g = [];
+g.nodes = graph2.nodes;
+g.edges = graph2.edges;
 
-%% remove unconnected components in the graph
+%% remove unconnected components in the g
 sameEdgeIdx = [];
-for u = 1:size(graph.edges,1)
-    if graph.edges(u,1) == graph.edges(u,2)
+for u = 1:size(g.edges,1)
+    if g.edges(u,1) == g.edges(u,2)
         sameEdgeIdx = [sameEdgeIdx; u];
     end
 end
-graph.edges(sameEdgeIdx,:) = [];
+g.edges(sameEdgeIdx,:) = [];
 
-%% save the final graph
-save('Graph_ellipsoid.mat','graph');
+%% save the final g
+save('Graph_ellipsoid.mat','g');
 
