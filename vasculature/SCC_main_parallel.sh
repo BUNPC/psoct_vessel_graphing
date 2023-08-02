@@ -24,7 +24,14 @@
 # Declare array job (create new job for each)
 # Iterate over all subjects and use smallest sigma (1-51:3)
 # Iterate over all subjects and use all sigma (1-51)
-#$ -t 38-39
+#$ -t 19-21
+
+# Keep track of information related to the current job
+echo "=========================================================="
+echo "Start date : $(date)"
+echo "Job name : $JOB_NAME"
+echo "Job ID : $JOB_ID  $SGE_TASK_ID"
+echo "=========================================================="
 
 echo "Starting task number $SGE_TASK_ID"
 module load matlab/2022b
