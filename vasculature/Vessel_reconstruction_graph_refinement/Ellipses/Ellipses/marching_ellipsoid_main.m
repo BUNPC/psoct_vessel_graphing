@@ -26,14 +26,11 @@ if ispc
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
     subid = 'NC_6839';
-    subdir = '\dist_corrected\volume\gsigma_7--9-11_gsize_29-37-45\';
-    % Graph filename
-    fname = 'ref_4ds_norm_inv_segment_pmin_0.23_mask_40_graph_data';
-    graph_name = 'ref_4ds_norm_inv_segment_pmin_0.23_mask_40_graph_data';
-    % Volume filename
-    vol_name = 'ref_4ds_norm_inv_segment_pmin_0.23_mask_40';
+    subdir = '\dist_corrected\volume\gsigma_1-2-3-4-5_gsize_5--9-13-17-21\';
+    % Segmentation filename
+    seg_name = 'ref_4ds_norm_inv_segment_pmin_0.23_mask40_crop';
     % filename extension
-    ext = '.mat';
+    ext = '.tif';
 %%% Computing cluster (SCC)
 elseif isunix
     % Path to top-level directory
@@ -84,6 +81,16 @@ elseif isunix
 end
 
 %% Load segmentation volume and graph from Data
+vox_dim = [12, 12, 15];
+
+%%% Convert segment to graph
+fullpath = fullfile(dpath, subid, subdir);
+filename = strcat(fullpath, strcat(seg_name, ext));
+seg = TIFF2MAT(filename);
+graph = seg_to_graph(seg, vox_dim);
+
+%%% Load segmentation and graph
+%{
 % Define entire filepath 
 fullpath = fullfile(dpath, subid, subdir);
 filename = strcat(fullpath, strcat(fname, ext));
@@ -99,7 +106,7 @@ graph = Data.Data.Graph;
 seg = permute(seg, [3,2,1]);
 % Normalize segmentation
 seg = (seg-min(seg(:)))./(max(seg(:))-min(seg(:)));
-
+%}
 %% Generate seed points coordinates from intensity threshold
 % This section was commented out. It appears to find voxels within the
 % probability map that are above a threshold. The threshold is an array
