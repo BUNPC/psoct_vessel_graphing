@@ -103,10 +103,10 @@ g_mat = graph(s, t);
 
 % Plot g before removing loops
 figure;
-p = plot(g_mat, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
-xlabel('x'); ylabel('y'); zlabel('z')
-% title('Graph Before Removing Loops'); 
-view(3);
+% p = plot(g_mat, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
+% xlabel('x'); ylabel('y'); zlabel('z')
+% % title('Graph Before Removing Loops'); 
+% view(3);
 
 %%% Load segmentation and g
 %{
@@ -206,6 +206,9 @@ while sum(flag_seeds) < size(g.nodes,1)
     seed = round(g.nodes(idx(seed_idx),:));
 
     % Round the coordinates (this may be unecessary)
+    % TODO: there is a book keeping issue with the indices of the
+    % coordinates. Need to ensure that the coordinates are defined as
+    % [y,x,z] throughout the entire pipeline.
     cen_x = seed(1); cen_x = max(min(cen_x,size(seg,1)), 1);
     cen_y = seed(2); cen_y = max(min(cen_y,size(seg,2)), 1);
     cen_z = seed(3); cen_z = max(min(cen_z,size(seg,3)), 1);
@@ -215,8 +218,8 @@ while sum(flag_seeds) < size(g.nodes,1)
     
     % fit an initial ellipsoid to that node, remember the sign of the
     % primary direction
-    s = EllipseFit3DConstrained_jy(seg,cen_x,cen_y,cen_z,0);
-    a = [s.a1 s.a2 s.a3];    
+    s = EllipseFit3DConstrained_dab(seg,cen_x,cen_y,cen_z,2);
+    a = [s.a1 s.a2 s.a3];
     [~,axis_idx] = max(a);
     vec=primary_dir(s,axis_idx);
     
