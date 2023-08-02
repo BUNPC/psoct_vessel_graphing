@@ -104,7 +104,8 @@ g_mat = graph(s, t);
 % Plot g before removing loops
 figure;
 p = plot(g_mat, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
-title('Graph Before Removing Loops'); xlabel('x'); ylabel('y'); zlabel('z')
+xlabel('x'); ylabel('y'); zlabel('z')
+% title('Graph Before Removing Loops'); 
 view(3);
 
 %%% Load segmentation and g
