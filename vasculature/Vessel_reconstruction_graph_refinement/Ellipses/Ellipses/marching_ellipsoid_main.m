@@ -3,7 +3,7 @@
 This package was initially created by collaborators of David Boas. It has
 been modified over the years. This main script is still a work in progress.
 %}
-
+clear; clc; close all;
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
 
@@ -27,8 +27,11 @@ if ispc
     % Subject IDs
     subid = 'NC_6839';
     subdir = '\dist_corrected\volume\gsigma_7--9-11_gsize_29-37-45\';
-    % Filename to parse (this is test data)
+    % Graph filename
     fname = 'ref_4ds_norm_inv_segment_pmin_0.23_mask_40_graph_data';
+    graph_name = 'ref_4ds_norm_inv_segment_pmin_0.23_mask_40_graph_data';
+    % Volume filename
+    vol_name = 'ref_4ds_norm_inv_segment_pmin_0.23_mask_40';
     % filename extension
     ext = '.mat';
 %%% Computing cluster (SCC)
@@ -92,48 +95,62 @@ Data = load(filename, 'Data');
 seg = Data.Data.angio;
 graph = Data.Data.Graph;
 
+% Reorder the angio
+seg = permute(seg, [3,2,1]);
 % Normalize segmentation
 seg = (seg-min(seg(:)))./(max(seg(:))-min(seg(:)));
 
-%% generate coordinates of seed points based on intensity threshold
+%% Generate seed points coordinates from intensity threshold
+% This section was commented out. It appears to find voxels within the
+% probability map that are above a threshold. The threshold is an array
+% though, so the line "k = find(seg(:) > thresh)" crashed because there is
+% not enough memory. I believe this section was just for testing and not
+% implementation.
+
 %{
-% apply threshold for each xy slice
+% Initialize threshold array
 min_th=0.5;
 max_th=0.55;
 th_step=(max_th-min_th)/64;
-thresh=min_th:th_step:max_th;
-idx1=[];
-idx2=[];
-idx3=[];
-V_bi=zeros(size(V));
-for z=1:size(V,3)
-    rl_depth=mod(z-1,65)+1;
-    tmp=squeeze(V(:,:,z));
-    tmp2=zeros(size(tmp));
-    tmp=(tmp-min(tmp(:)))./(max(tmp(:))-min(tmp(:)));
+thresh = min_th : th_step : max_th;
+idx1=[]; idx2=[]; idx3=[];
+
+% Find voxels greater than threshold
+V_bi = zeros(size(seg));
+for z=1:size(seg,3)
+    rl_depth = mod(z-1,65)+1;
+    tmp = squeeze(seg(:,:,z));
+    tmp2 = zeros(size(tmp));
+    tmp = (tmp-min(tmp(:)))./(max(tmp(:))-min(tmp(:)));
     if(z==1)
-        k=find(tmp(:)>0.3);
+        k = find(tmp(:)>0.3);
     else
-        k=find(tmp(:)>thresh(rl_depth));
+        k = find(tmp(:)>thresh(rl_depth));
     end
     tmp2(k)=1;
     % m(z)=length(k);
-    [tidx1,tidx2]=ind2sub(size(tmp),k);
-    V_bi(:,:,z)=tmp2;
-    idx1=[idx1; tidx1];
-    idx2=[idx2; tidx2];
-    idx3=[idx3; ones(length(tidx1),1).*z];
+    [tidx1, tidx2] = ind2sub(size(tmp),k);
+    V_bi(:,:,z) = tmp2;
+    idx1 = [idx1; tidx1];
+    idx2 = [idx2; tidx2];
+    idx3 = [idx3; ones(length(tidx1),1).*z];
 end
-MAT2TIFF(V_bi,'th_bi.tif');
-k=find(V(:)>thresh);
-[idx1,idx2,idx3]=ind2sub(size(V),k);
-Graph.nodes=[idx1,idx2,idx3];
+
+% Output the seed points
+% MAT2TIFF(V_bi,'th_bi.tif');
+k = find(seg(:) > thresh);
+[idx1,idx2,idx3] = ind2sub(size(seg),k);
+graph.nodes = [idx1,idx2,idx3];
 %}
 %% perform marching ellipsoid to generate a new graph
-flag_seeds=zeros(1,size(Graph.nodes,1));
-Graph_new.nodes=[];
-Graph_new.edges=[];
-cutoff_dist=15; % cut off distance for neighboring node detection
+flag_seeds = zeros(1, size(graph.nodes,1));
+graph2.nodes = [];
+graph2.edges = [];
+% cut off distance for neighboring node detection (voxels)
+cutoff_dist = 15;
+% Track number of segments that have been examined
+i = 0;
+ori = [];
 
 % for visualization purpose
 % h=figure;
@@ -145,34 +162,40 @@ cutoff_dist=15; % cut off distance for neighboring node detection
 % axis tight manual % this ensures that getframe() returns a consistent size
 % filename = 'marchinging3.gif';
 
-i=0;    % number of segments
-ori=[];
+%%% Iterate over each node in the graph
+while sum(flag_seeds) < size(graph.nodes,1)
+    %%% pick a random node as seed point
+    % Iterate number of segments tested
+    i = i+1;
+    % number of marching ellipsoids
+    j = 0;
+    % Find indices where flag_seeds equals zero
+    [idx,~] = find(flag_seeds(:)==0);
+    % Choose random integer within [1, length(idx)]
+    seed_idx = randi(length(idx),1);
+    % Set seed flag equal to 1 for these random integer indices
+    flag_seeds(idx(seed_idx)) = 1;
+    
+    % seed = node coordinates of the seed_idx
+    seed = round(graph.nodes(idx(seed_idx),:));
 
-while sum(flag_seeds)<size(Graph.nodes,1)
+    % Round the coordinates (this may be unecessary)
+    cen_x = seed(1); cen_x = max(min(cen_x,size(seg,1)), 1);
+    cen_y = seed(2); cen_y = max(min(cen_y,size(seg,2)), 1);
+    cen_z = seed(3); cen_z = max(min(cen_z,size(seg,3)), 1);
     
-    % pick a random node as seed point
-    i=i+1;  % keep tracking of number of segments
-    j=0;    % number of marching ellipsoids
-    [idx,~]=find(flag_seeds(:)==0);
-    seed_idx=randi(length(idx),1);
-    % set seed flag to be 1
-    flag_seeds(idx(seed_idx))=1;
-    seed=round(Graph.nodes(idx(seed_idx),:));
-    cen_x=seed(1);cen_x=min(cen_x,size(V,1));cen_x=max(cen_x,1);
-    cen_y=seed(2);cen_y=min(cen_y,size(V,2));cen_y=max(cen_y,1);
-    cen_z=seed(3);cen_z=min(cen_z,size(V,3));cen_z=max(cen_z,1);
-    
-    marching_step=8;    % marching step size, need to be tuned in the future
+    % marching step size, need to be tuned in the future
+    marching_step = 8;
     
     % fit an initial ellipsoid to that node, remember the sign of the
     % primary direction
-    s = EllipseFit3DConstrained_jy(V,cen_x,cen_y,cen_z,0);
-    a=[s.a1 s.a2 s.a3];    
-    [~,axis_idx]=max(a);
+    s = EllipseFit3DConstrained_jy(seg,cen_x,cen_y,cen_z,0);
+    a = [s.a1 s.a2 s.a3];    
+    [~,axis_idx] = max(a);
     vec=primary_dir(s,axis_idx);
     
 %     % show the data & save to gif
-%     ShowLocalDataWithSE(V,s);
+%     ShowLocalDataWithSE(seg,s);
 %     title(['Segment No.: ',num2str(i), ' Marching point No.: ',num2str(j)]);
 %     frame = getframe(h); 
 %     im = frame2im(frame); 
@@ -194,35 +217,35 @@ while sum(flag_seeds)<size(Graph.nodes,1)
     
     % record all seed nodes index
     if j==0
-        ori=[ori size(Graph_new.nodes,1)+1];
+        ori = [ori, size(graph2.nodes,1)+1];
     end
     
     disp('Start searching positive direction');
     
     % determine if it is an ellipsoid or not
     % if spheres are detected terminate the marching process
-    while max(a)/min(a)>=1.2 && boundary==0 && V(cen_x,cen_y,cen_z)>0.01
+    while max(a)/min(a)>=1.2 && boundary==0 && seg(cen_x,cen_y,cen_z)>0.01
         j=j+1;
         % determine the maximum axis, travel along that axis
         [~,axis_idx]=max(a);
         vec_pre=vec;
         % first add the centroid into nodes list of new graph
-        Graph_new.nodes=[Graph_new.nodes; round(s.mu)'];
-        nodes = unique(Graph_new.nodes,'rows','stable');
+        graph2.nodes=[graph2.nodes; round(s.mu)'];
+        nodes = unique(graph2.nodes,'rows','stable');
         % if reached local minimal (repeating fitting on the same
         % conetroid), increase step size
-        if(size(nodes,1)~=size(Graph_new.nodes,1))
+        if(size(nodes,1)~=size(graph2.nodes,1))
             boundary=1;
-            Graph_new.nodes=nodes;
+            graph2.nodes=nodes;
         else
-            if size(Graph_new.nodes,1)>1 && j>1
-                Graph_new.edges=[Graph_new.edges;[size(Graph_new.nodes,1)-1 size(Graph_new.nodes,1)]];
+            if size(graph2.nodes,1)>1 && j>1
+                graph2.edges=[graph2.edges;[size(graph2.nodes,1)-1 size(graph2.nodes,1)]];
             end
         end
         
         
         % if the controid reaches boundary, break the loop
-        if cen_x>size(V,1)-2 || cen_x<3 || cen_y>size(V,2)-2 || cen_y<3 || cen_z>size(V,3)-2 || cen_z<3
+        if cen_x>size(seg,1)-2 || cen_x<3 || cen_y>size(seg,2)-2 || cen_y<3 || cen_z>size(seg,3)-2 || cen_z<3
             boundary=1;
         end
         
@@ -240,9 +263,9 @@ while sum(flag_seeds)<size(Graph.nodes,1)
         % flag all the nodes within this ellipsoid
         % find all adjacent nodes from vesselness filter graph
         for num=1:length(idx)
-            dist=sqrt(sum(Graph.nodes(idx(num),:) - [cen_x cen_y cen_z]).^2);
+            dist=sqrt(sum(graph.nodes(idx(num),:) - [cen_x cen_y cen_z]).^2);
             if dist < cutoff_dist
-                node=Graph.nodes(idx(num),:);
+                node=graph.nodes(idx(num),:);
                 [Xvec,Yvec,Zvec]=dir_vec(s);
                 if abs((node- [cen_x cen_y cen_z])*Yvec)<a(2) && abs((node- [cen_x cen_y cen_z])*Xvec)<a(1) && abs((node- [cen_x cen_y cen_z])*Zvec)<a(3)
                     % looks at scalar vector products to decide if point is inside cylinder...
@@ -255,13 +278,13 @@ while sum(flag_seeds)<size(Graph.nodes,1)
         
         % move to next centroid along this direction
         cen_new=round(s.mu+marching_step.*vec);
-        cen_x=cen_new(1);cen_x=min(cen_x,size(V,1));cen_x=max(cen_x,1);
-        cen_y=cen_new(2);cen_y=min(cen_y,size(V,2));cen_y=max(cen_y,1);
-        cen_z=cen_new(3);cen_z=min(cen_z,size(V,3));cen_z=max(cen_z,1);
+        cen_x=cen_new(1);cen_x=min(cen_x,size(seg,1));cen_x=max(cen_x,1);
+        cen_y=cen_new(2);cen_y=min(cen_y,size(seg,2));cen_y=max(cen_y,1);
+        cen_z=cen_new(3);cen_z=min(cen_z,size(seg,3));cen_z=max(cen_z,1);
         
         % update ellipsoid
-        s = EllipseFit3DConstrained_jy(V,cen_x,cen_y,cen_z,0);
-%         ShowLocalDataWithSE(V,s);
+        s = EllipseFit3DConstrained_jy(seg,cen_x,cen_y,cen_z,0);
+%         ShowLocalDataWithSE(seg,s);
 %         title(['Segment No.: ',num2str(i), ' Marching point No.: ',num2str(j)]);
 %         frame = getframe(h); 
 %         im = frame2im(frame); 
@@ -276,44 +299,44 @@ while sum(flag_seeds)<size(Graph.nodes,1)
     vec=-ini_vec;
     marching_step=8;
     cen_new=round(ini_cen+marching_step.*vec);
-    cen_x=cen_new(1);cen_x=min(cen_x,size(V,1));cen_x=max(cen_x,1);
-    cen_y=cen_new(2);cen_y=min(cen_y,size(V,2));cen_y=max(cen_y,1);
-    cen_z=cen_new(3);cen_z=min(cen_z,size(V,3));cen_z=max(cen_z,1);
+    cen_x=cen_new(1);cen_x=min(cen_x,size(seg,1));cen_x=max(cen_x,1);
+    cen_y=cen_new(2);cen_y=min(cen_y,size(seg,2));cen_y=max(cen_y,1);
+    cen_z=cen_new(3);cen_z=min(cen_z,size(seg,3));cen_z=max(cen_z,1);
     disp('Start searching negative direction');
     
-    s = EllipseFit3DConstrained_jy(V,cen_x,cen_y,cen_z,0);
+    s = EllipseFit3DConstrained_jy(seg,cen_x,cen_y,cen_z,0);
     a=[s.a1 s.a2 s.a3];
     neg=1;
     
-    while max(a)/min(a)>=1.2 && boundary==0 && V(cen_x,cen_y,cen_z)>0.01
+    while max(a)/min(a)>=1.2 && boundary==0 && seg(cen_x,cen_y,cen_z)>0.01
         j=j+1;
         % determine the maximum axis, travel along that axis
         [~,axis_idx]=max(a);
         vec_pre=vec;
         % first add the centroid into nodes list of new graph       
-        Graph_new.nodes=[Graph_new.nodes; round(s.mu)'];
-        nodes = unique(Graph_new.nodes,'rows','stable');
+        graph2.nodes=[graph2.nodes; round(s.mu)'];
+        nodes = unique(graph2.nodes,'rows','stable');
         % if reached local minimal (repeating fitting on the same
         % conetroid), increase step size
-        if(size(nodes,1)~=size(Graph_new.nodes,1))
+        if(size(nodes,1)~=size(graph2.nodes,1))
             boundary=1;
-            Graph_new.nodes=nodes;
+            graph2.nodes=nodes;
         else
             if(neg==1)
                 if j>1
-                    Graph_new.edges=[Graph_new.edges;[ori(i) size(Graph_new.nodes,1)]];
+                    graph2.edges=[graph2.edges;[ori(i) size(graph2.nodes,1)]];
                 end
                 neg=0;
             else
                 if j>1
-                    Graph_new.edges=[Graph_new.edges;[size(Graph_new.nodes,1)-1 size(Graph_new.nodes,1)]];
+                    graph2.edges=[graph2.edges;[size(graph2.nodes,1)-1 size(graph2.nodes,1)]];
                 end
             end
         end
         
         
         % if the controid reaches boundary, break the loop
-        if cen_x>size(V,1)-2 || cen_x<3 || cen_y>size(V,2)-2 || cen_y<3 || cen_z>size(V,3)-2 || cen_z<3
+        if cen_x>size(seg,1)-2 || cen_x<3 || cen_y>size(seg,2)-2 || cen_y<3 || cen_z>size(seg,3)-2 || cen_z<3
             boundary=1;
         end
         
@@ -330,9 +353,9 @@ while sum(flag_seeds)<size(Graph.nodes,1)
         
         % flag all the nodes within this ellipsoid
         for num=1:length(idx)
-            dist=sqrt(sum(Graph.nodes(idx(num),:) - [cen_x cen_y cen_z]).^2);
+            dist=sqrt(sum(graph.nodes(idx(num),:) - [cen_x cen_y cen_z]).^2);
             if dist < cutoff_dist
-                node=Graph.nodes(idx(num),:);
+                node=graph.nodes(idx(num),:);
                 [Xvec,Yvec,Zvec]=dir_vec(s);
                 if abs((node- [cen_x cen_y cen_z])*Yvec)<a(2) && abs((node- [cen_x cen_y cen_z])*Xvec)<a(1) && abs((node- [cen_x cen_y cen_z])*Zvec)<a(3)
                     % looks at scalar vector products to decide if point is inside cylinder...
@@ -345,13 +368,13 @@ while sum(flag_seeds)<size(Graph.nodes,1)
         
         % move to next centroid along this direction
         cen_new=round(s.mu+marching_step.*vec);
-        cen_x=cen_new(1);cen_x=min(cen_x,size(V,1));cen_x=max(cen_x,1);
-        cen_y=cen_new(2);cen_y=min(cen_y,size(V,2));cen_y=max(cen_y,1);
-        cen_z=cen_new(3);cen_z=min(cen_z,size(V,3));cen_z=max(cen_z,1);
+        cen_x=cen_new(1);cen_x=min(cen_x,size(seg,1));cen_x=max(cen_x,1);
+        cen_y=cen_new(2);cen_y=min(cen_y,size(seg,2));cen_y=max(cen_y,1);
+        cen_z=cen_new(3);cen_z=min(cen_z,size(seg,3));cen_z=max(cen_z,1);
         
         % update ellipsoid
-        s = EllipseFit3DConstrained_jy(V,cen_x,cen_y,cen_z,0);
-%         ShowLocalDataWithSE(V,s);
+        s = EllipseFit3DConstrained_jy(seg,cen_x,cen_y,cen_z,0);
+%         ShowLocalDataWithSE(seg,s);
 %         title(['Segment No.: ',num2str(i), ' Marching point No.: ',num2str(j)]);
 %         frame = getframe(h); 
 %         im = frame2im(frame); 
@@ -363,19 +386,19 @@ while sum(flag_seeds)<size(Graph.nodes,1)
     disp(['Finish searching segment No.' num2str(i)]);
 end
 
-Graph=[];
-Graph.nodes=Graph_new.nodes;
-Graph.edges=Graph_new.edges;
+graph = [];
+graph.nodes = graph2.nodes;
+graph.edges = graph2.edges;
 
 %% remove unconnected components in the graph
 sameEdgeIdx = [];
-for u = 1:size(Graph.edges,1)
-    if Graph.edges(u,1) == Graph.edges(u,2)
+for u = 1:size(graph.edges,1)
+    if graph.edges(u,1) == graph.edges(u,2)
         sameEdgeIdx = [sameEdgeIdx; u];
     end
 end
-Graph.edges(sameEdgeIdx,:) = [];
+graph.edges(sameEdgeIdx,:) = [];
 
 %% save the final graph
-save('Graph_ellipsoid.mat','Graph');
+save('Graph_ellipsoid.mat','graph');
 

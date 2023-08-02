@@ -3,13 +3,10 @@
 This is an outline from Sava.
 %}
 
-load matlab;
-
 %% 
 s = EllipseFit3DConstrained_dab( V,72,77,40,1);
 
 %% 
-
 ShowLocalDataWithSE(V,s,'foo');
 
 %% 
@@ -64,12 +61,9 @@ else
 end;
 
 
-You will need the last part of it - after calculation of 's'. Please
-let me know how it is going... One thing that is wrong here is that
-ellipse seems to be generated without respect to physical dymensions
-of voxels. I didn't try to correct this, so numbers are all in pixels.
-Lets first see how it works like this, and then we can see if we need
-to improve it further...
-
-Best regards
-Sava
+% You will need the last part of it - after calculation of 's'. Please
+% let me know how it is going... One thing that is wrong here is that
+% ellipse seems to be generated without respect to physical dymensions
+% of voxels. I didn't try to correct this, so numbers are all in pixels.
+% Lets first see how it works like this, and then we can see if we need
+% to improve it further...
