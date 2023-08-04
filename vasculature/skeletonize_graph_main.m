@@ -33,12 +33,9 @@ dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\An
 % Subject IDs
 subid = 'NC_6839';
 subdir = '\dist_corrected\volume\';
-% Filename to parse (this is test data)
-fname = 'ref_4ds_norm_inv_cropped';
-% filename extension
-ext = '.tif';
-% sigma for Gaussian smoothing
-gsigma = [7, 9, 11];
+% Filenames to parse (test data)
+vol_name = 'ref_4ds_norm_inv_cropped.tif';
+angio_name = 'ref_4ds_norm_inv_cropped_angio.mat';
 % Voxel dimensions (verify this with Dylan or another RA at Martinos)
 vox_dim = [12, 12, 15];
 % Volume of a single voxel (microns cubed)
@@ -49,41 +46,62 @@ vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 % CHANGE THIS: This is the filepath to the original PSOCT volume with the
 % background (non-tissue voxels) removed (set to white).
 fullpath = fullfile(dpath, subid, subdir);
-filename = strcat(fullpath, strcat(fname, ext));
+vol_fname = strcat(fullpath, vol_name);
+angio_fname = strcat(fullpath, angio_name);
 
-% Convert .tif to .MAT
-tissue = TIFF2MAT(filename);
-
+%%% Import volume
+% Import tissue and convert .tif to .MAT
+tissue = TIFF2MAT(vol_fname);
 % Invert so that non-tissue voxels are zeros
 tissue_inv = imcomplement(tissue);
-
 % Calculate total number of non-zero voxels in tissue sample
 tissue_logical = logical(tissue_inv);
 voxels = sum(tissue_logical(:));
-
 % Convert voxels to metric volume (cubic microns)
 vol = voxels .* vox_vol;
 
-%% Load segmentation volume and convert to MAT
-% We usually use .TIF for the segmentation volume. I am unsure if you use a
-% different file format though. If so, you may need to use a different
-% function to load the segmentation volume. This section uses "TIFF2MAT" to
-% load a TIF file into a Matlab matrix
+%%% Import angio (segmentation)
+angio = load(angio_fname);
+angio = angio.angio;
+volshow(angio);
+%% Smooth + Process segmentation prior to skeletonizing
+%%% Processing Parameters
+% Gaussian filter sigma
+gsigma = [1,2];
+% Minimum number of connected voxels
+N = 50;
 
-% Define entire filepath 
-fullpath = fullfile(dpath, subid, subdir);
-filename = strcat(fullpath, strcat(fname, ext));
-% CHECK THIS: Convert .tif to .MAT
-segment = TIFF2MAT(filename);
+%%% Gaussian filter
+angio_gaussian = imgaussfilt(angio, gsigma, 'FilterDomain', 'spatial');
+volshow(angio_gaussian);
+
+%%% remove connected objects w/ fewer than N voxels
+% Find connected components
+CC = bwconncomp(angio_gaussian);
+% Find number of voxels for each object
+nvox = cellfun(@numel,CC.PixelIdxList);
+% Find objects with fewer than N voxels
+[~,idx] = find(nvox < N);
+% Remove these objects
+for ii=1:length(idx)
+    angio_gaussian(CC.PixelIdxList{idx(ii)}) = 0;
+end
+% Show object after smoothing and removing
+volshow(angio_gaussian)
+
+%% Find region properties
+stats = regionprops3(angio_gaussian);
+
+
+%% Skeletonize
+angio_skel = bwskel(logical(angio_gaussian), "MinBranchLength",10);
+volshow(angio_skel)
 
 %% Skeletonize and convert to Graph
 % This section calls the function at the bottom of the script. This
 % function then calls another function "seg_to_graph" which actually
 % performs the skeletonization and converts the skeleton to the three
-% dimensional graph (nodes + edges). I wrote an example below, where the
-% output "segment_graph_data" will be a data structure containing the graph
-% data.
-
+% dimensional graph (nodes + edges).
 segment_graph_data = seg_graph_init(segment, vox_dim, fullpath, filename);
 
 %% Calculate the vessel metrics from the graph data
@@ -104,19 +122,19 @@ nodepos = graph.segInfo.segPos;
 %%% Calculate total length (microns) from graph
 len = graph.segInfo.segLen_um;
 len_tot = sum(len(:));
-met(ii).total_length = len_tot;
+met.total_length = len_tot;
 
 %%% Calculate mean length (microns)
 len_avg = mean(len);
-met(ii).avg_length = len_avg;
+met.avg_length = len_avg;
 
 %%% Calculate length density
 len_density = len_tot ./ vol;
-met(ii).length_density = len_density;
+met.length_density = len_density;
 
 %%% Total number of vessels
 nves = length(len);
-met(ii).total_vessels = nves;
+met.total_vessels = nves;
 
 %%% tortuosity arc-chord ratio (curve length / euclidean)
 % Initalize matrix for storing tortuosity
@@ -133,7 +151,7 @@ for j=1:nves
     tort(j) = len(j) ./ euc;
 end
 % Add to metrics structures
-met(ii).tortuosity = mean(tort);   
+met.tortuosity = mean(tort);   
 
 % Save the output
 save(ad_cte_fout, 'met', '-v7.3');
