@@ -40,11 +40,11 @@ if ispc
     subid = 'NC_6839';
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
-    fname = 'ref_4ds_norm_inv_cropped';
+    fname = 'ref_4ds_norm_inv_crop2';
     % filename extension
     ext = '.tif';
     % sigma for Gaussian smoothing
-    gsigma = [7, 9, 11];
+    gsigma = [1, 3, 5];
 
 %%% Computing cluster (SCC)
 elseif isunix

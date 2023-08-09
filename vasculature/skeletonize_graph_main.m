@@ -5,6 +5,15 @@ This script performs the following:
 - Calculate volume of masked PSOCT volume
 - skeletonize/graph the segmentation
 - calculate vascular metrics from graph
+
+TODO:
+- crop the tissue volume and rerun segmentation
+- find optimal sigma for gaussian3d smoothing. This is currently bluring
+together branches, which is unacceptable.
+- attempt edge-preserving filtering (eg bilateral filtering)
+https://www.mathworks.com/help/images/linear-filtering.html
+- IDEA: 
+    - edge preserve filter on each slice
 %}
 clear; clc; close all;
 
@@ -32,21 +41,18 @@ addpath(genpath(topdir));
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
 % Subject IDs
 subid = 'NC_6839';
-subdir = '\dist_corrected\volume\';
+subdir = '\dist_corrected\volume\gsigma_1-3-5_gsize_5-13-21\';
 % Filenames to parse (test data)
-vol_name = 'ref_4ds_norm_inv_cropped.tif';
-angio_name = 'ref_4ds_norm_inv_cropped_angio.mat';
+vol_name = 'ref_4ds_norm_inv_crop2.tif';
+angio_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40.mat';
 % Voxel dimensions (verify this with Dylan or another RA at Martinos)
 vox_dim = [12, 12, 15];
 % Volume of a single voxel (microns cubed)
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
 %% Load the masked PSOCT volume
-
-% CHANGE THIS: This is the filepath to the original PSOCT volume with the
-% background (non-tissue voxels) removed (set to white).
 fullpath = fullfile(dpath, subid, subdir);
-vol_fname = strcat(fullpath, vol_name);
+vol_fname = fullfile(dpath, subid, '\dist_corrected\volume\', vol_name);
 angio_fname = strcat(fullpath, angio_name);
 
 %%% Import volume
@@ -62,12 +68,13 @@ vol = voxels .* vox_vol;
 
 %%% Import angio (segmentation)
 angio = load(angio_fname);
-angio = angio.angio;
+angio = angio.I_seg_masked;
 volshow(angio);
+
 %% Smooth + Process segmentation prior to skeletonizing
 %%% Processing Parameters
 % Gaussian filter sigma
-gsigma = [1,2];
+gsigma = 0.7;
 % Minimum number of connected voxels
 N = 50;
 
@@ -87,10 +94,14 @@ for ii=1:length(idx)
     angio_gaussian(CC.PixelIdxList{idx(ii)}) = 0;
 end
 % Show object after smoothing and removing
-volshow(angio_gaussian)
+volshow(logical(angio_gaussian))
+
+%%% Remove components that approximate spheres
+
 
 %% Find region properties
-stats = regionprops3(angio_gaussian);
+% CC = bwconncomp(angio_gaussian);
+% stats = regionprops3(angio_gaussian,'PrincipalAxisLength');
 
 
 %% Skeletonize -- find branch points, end points, connected components
@@ -139,7 +150,6 @@ for ii = 1:cc_skel.NumObjects
     % Convert only voxels in connected component to 1
     idx = cc_skel.PixelIdxList{ii};
     vol_cc(idx) = 1;
-    volshow(vol_cc)
     
     %%% Determine if segment has end points
     seg_ep = bwmorph3(vol_cc, "endpoints");
@@ -158,6 +168,8 @@ for ii = 1:cc_skel.NumObjects
     end
     
 end
+
+volshow(angio_skel)
 
 %% Skeletonize and convert to Graph
 % This section calls the function at the bottom of the script. This
