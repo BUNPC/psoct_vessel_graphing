@@ -49,11 +49,15 @@ angio_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40.mat';
 vox_dim = [12, 12, 15];
 % Volume of a single voxel (microns cubed)
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
+% Output filepath + filenames
+fout = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\NC_6839\dist_corrected\volume\gsigma_1-3-5_gsize_5-13-21\';
+angio_pre_fname = 'angio_pre.tif';
+angio_post_fname = 'angio_post.tif';
 
 %% Load the masked PSOCT volume
-fullpath = fullfile(dpath, subid, subdir);
+volpath = fullfile(dpath, subid, subdir);
 vol_fname = fullfile(dpath, subid, '\dist_corrected\volume\', vol_name);
-angio_fname = strcat(fullpath, angio_name);
+angio_fname = strcat(volpath, angio_name);
 
 %%% Import volume
 % Import tissue and convert .tif to .MAT
@@ -95,9 +99,10 @@ for ii=1:length(idx)
 end
 % Show object after smoothing and removing
 volshow(logical(angio_gaussian))
+segmat2tif(uint8(angio_gaussian), fullfile(fout, 'angio_post.tif'))
 
-%%% Remove components that approximate spheres
-
+%% Remove components that approximate spheres
+% Use region properties to find objects with similar primary/secondary axes
 
 %% Find region properties
 % CC = bwconncomp(angio_gaussian);
@@ -113,26 +118,28 @@ volshow(logical(angio_gaussian))
 %   - determine if new structure is connected
 
 % Skeletonized unfiltered angio
-angio_unfil_skel = bwskel(logical(angio), "MinBranchLength",10);
-volshow(angio_unfil_skel);
+angio_skel_pre = bwskel(logical(angio), "MinBranchLength",10);
+volshow(angio_skel_pre);
+segmat2tif(uint8(angio_skel_pre), fullfile(fout, 'angio_pre_skel.tif'))
 
 % Convert 3D vol to skeleton
-angio_skel = bwskel(logical(angio_gaussian), "MinBranchLength",10);
-volshow(angio_skel)
+angio_skel_post = bwskel(logical(angio_gaussian), "MinBranchLength",10);
+volshow(angio_skel_post);
+segmat2tif(uint16(angio_skel_post), fullfile(fout, 'angio_post_skel.tif'))
 
 %%% find branch points, end points, connected components
-cc_skel = bwconncomp(angio_skel);
+cc_skel = bwconncomp(angio_skel_post);
 % retrieve length of each component
 comlen = cc_skel.PixelIdxList;
 
 % find branch points
-skel_bp = bwmorph3(angio_skel, "branchpoints");
+skel_bp = bwmorph3(angio_skel_post, "branchpoints");
 
 % find end points
-skel_ep = bwmorph3(angio_skel, "endpoints");
+skel_ep = bwmorph3(angio_skel_post, "endpoints");
 
 % find connected components
-label = bwlabeln(angio_skel);
+label = bwlabeln(angio_skel_post);
 %}
 
 %% Find/remove loops from skeleton
@@ -161,7 +168,7 @@ for ii = 1:cc_skel.NumObjects
         % volshow(angio_skel)
         
         % Set components equal to zero 
-        angio_skel(idx) = 0;
+        angio_skel_post(idx) = 0;
         
         % show volume after removing
         % volshow(angio_skel)  
@@ -169,7 +176,7 @@ for ii = 1:cc_skel.NumObjects
     
 end
 
-volshow(angio_skel)
+volshow(angio_skel_post)
 
 %% Skeletonize and convert to Graph
 % This section calls the function at the bottom of the script. This
