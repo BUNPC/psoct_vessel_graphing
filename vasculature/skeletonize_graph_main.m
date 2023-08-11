@@ -110,7 +110,7 @@ segmat2tif(uint8(angio_gaussian), fullfile(fout, 'angio_post.tif'))
 
 
 %% Skeletonize -- find branch points, end points, connected components
-% TODO: find length of each segment.
+% TODO: find length of each segment within each component
 % - subtract branch points from volume
 % - perform bwconncomp
 % - iterate through list of branch points (from same CC)
@@ -140,8 +140,16 @@ skel_ep = bwmorph3(angio_skel_post, "endpoints");
 
 % find connected components
 label = bwlabeln(angio_skel_post);
-%}
 
+
+%% Visualize loops for debugging
+%{
+volshow(angio_skel_post(200:300,50:125,1:25));
+volshow(angio_gaussian(200:300,50:125,1:25));
+
+volshow(angio_skel_pre(70:130,1:100,1:25));
+volshow(angio(70:130,1:100,1:25));
+%}
 %% Find/remove loops from skeleton
 % - iterate through list of connected components
 %   - create volume for each separate connected component
