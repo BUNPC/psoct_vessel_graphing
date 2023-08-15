@@ -66,6 +66,8 @@ u = unique(cyclical);
 H = rmnode(g, u);
 % Remove corresponding entries in x,y,z coordinates
 nodes(u,:) = [];
+% Remove respective edges
+
 
 %%% Plot updated graph
 figure;
