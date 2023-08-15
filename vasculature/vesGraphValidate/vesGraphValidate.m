@@ -2880,51 +2880,11 @@ waitbar(1);
 close(h);
 draw(hObject, eventdata, handles);
 
-
-
-% 
-% % --- Executes on button press in pushbuttonGraphClear.
-% function pushbuttonGraphClear_Callback(hObject, eventdata, handles)
-% global Data
-% 
-% ch = questdlg('Do you want to clear the graph?','Yes','No');
-% if strcmpi(ch,'No')
-%     return;
-% end
-% 
-% if exist('Data')
-%     if isfield(Data,'Graph')
-%         Data = rmfield(Data,'Graph');
-%     end
-% end
-% 
-% set(handles.checkboxDisplayGraph,'value',0);
-% set(handles.checkboxDisplayGraph,'enable','off');
-% 
-% 
-% draw(hObject, eventdata, handles)
-
-% --- Executes on button press in pushbutton_moveNodestoCenter.
-function pushbutton_moveNodestoCenter_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton_moveNodestoCenter (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-global Data
-
-nodesNew = moveNodestoCenter( Data.Graph.nodes, Data.Graph.edges, permute(Data.segangio,[2 3 1]), 0.5 ); % permute to x,y,z
-
-Data.Graph.nodes = nodesNew;
-
-draw(hObject, eventdata, handles)
-
-
-
 % --- Executes on button press in pushbutton_centerNodes.
 function pushbutton_centerNodes_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton_centerNodes (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
 global Data
 if get(handles.checkbox_prcoessVisible,'Value') == 1
     [Sz,Sx,Sy] = size(Data.angio);
@@ -2940,16 +2900,13 @@ if get(handles.checkbox_prcoessVisible,'Value') == 1
     Ystartframe = min(max(Ystartframe,1),Sy);
     YMIP = str2double(get(handles.edit_YwidthZoom,'String'));
     Yendframe = min(max(Ystartframe+YMIP-1,1),Sy);
-    
-   idx = find(Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe ...
+   
+    % Find indices
+    idx = find(Data.Graph.nodes(:,3)>= Zstartframe & Data.Graph.nodes(:,3) <= Zendframe ...
         & Data.Graph.nodes(:,1)>= Data.ZoomXrange(1) & Data.Graph.nodes(:,1) <= Data.ZoomXrange(2) ...
-        & Data.Graph.nodes(:,2)>= Data.ZoomYrange(1) & Data.Graph.nodes(:,2) <= Data.ZoomYrange(2));
-% idx = 1:size(Data.Graph.nodes,1);
-%     
-%     nodes = Data.Graph.nodes(idx,:);
-    
-    nodesNew = centerNodes_transversePlane( Data.Graph.nodes, Data.Graph.edges, Data.angio, Data.Graph.verifiedNodes, idx ); % permute to x,y,z
-    
+        & Data.Graph.nodes(:,2)>= Data.ZoomYrange(1) & Data.Graph.nodes(:,2) <= Data.ZoomYrange(2));    
+   % Assign new nodes
+   nodesNew = centerNodes_transversePlane( Data.Graph.nodes, Data.Graph.edges, Data.angio, Data.Graph.verifiedNodes, idx ); % permute to x,y,z
 else
     nodesNew = centerNodes_transversePlane( Data.Graph.nodes, Data.Graph.edges, Data.angio,Data.Graph.verifiedNodes ); % permute to x,y,z
 end

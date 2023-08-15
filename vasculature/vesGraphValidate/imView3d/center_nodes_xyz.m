@@ -1,50 +1,74 @@
-% To Do
-% Image thresh from GUI
-% use imfill to mask out unconnected vessels
-%   but what if node not connected to any vessels
-% option to pass nB
+function [im] = center_nodes_xyz(im, centerStep1vox, visualize_flag, im_thresh, nLst)
+%% center_nodes_XYZ move nodes towards center line of segment
+%{
 
-function imView3d_CenterNodesXYZ(centerStep1vox, flagVisualize, IThresh, nLst)
-global im
+INPUTS:
+    im (struct): Matlab structure containing
+                    angio (matrix): volumetric segmentation
+                    nodes: [y,x,z] coordinates of nodes
+                    edges: start/end indices of segments
+    centerStep1vox ():
+    visualize_flag (bool): whether or not to display updated data
+    im_thresh ():
+    nLst ():
+
+OUTPUTS:
+    im (struct): updated with new nodes
+
+To Do (past comments from David):
+- use imfill to mask out unconnected vessels
+    - but what if node not connected to any vessels
+- option to pass nB
+%}
 
 
-if ~exist('nLst')
+%% Initialize nLst, angio, nNodes, nodes, nB, [ny,nx,nz]
+
+% Initialize nLst if it does not exist
+if ~exist('nLst', 'var')
     nLst = [];
 end
 if isempty(nLst)
-    nLst = 1:size(im.nodePos,1);
+    nLst = 1:size(im.nodes,1);
 end
 
-I = im.I;
+% Initialize segmentation variable
+angio = im.angio;
 
-nNodes = size(im.nodePos,1);
-[ny,nx,nz] = size(I);
-nodePos = im.nodePos;
+% Initialize nodes
+nNodes = size(im.nodes,1);
+[ny,nx,nz] = size(angio);
+nodes = im.nodes;
 
+% Initialize number of branches (nB)
+nB = zeros(nNodes,1);
+for ii=1:nNodes
+    nB(ii) = length(find(im.edges(:,1)==ii | im.edges(:,2)==ii));
+end
 
-if ~flagVisualize
+%% Begin centering
+
+if ~visualize_flag
     hwait = waitbar(0,'Centering XYZ...');
 end
 
-nB = zeros(nNodes,1);
-for ii=1:nNodes
-    nB(ii) = length(find(im.nodeEdges(:,1)==ii | im.nodeEdges(:,2)==ii));
-end
-
 for jNode=1:length(nLst) %1:nNodes
-    iNode = nLst(jNode);
-
-    if ~flagVisualize
+    % Waitbar
+    if ~visualize_flag
         waitbar(jNode/length(nLst),hwait);
     end
-
+    
+    % 
+    iNode = nLst(jNode);
+    
+    % If the segment contains b/w zero or one bifurcations
     if nB(iNode)<=2
-        [lstE,lstC] = find(im.nodeEdges==iNode);
+        [lstE,lstC] = find(im.edges==iNode);
 
-        pos1 = im.nodePos(iNode,:);
-        pos2 = im.nodePos(im.nodeEdges(lstE(1),mod(lstC(1),2)+1),:);
+        pos1 = im.nodes(iNode,:);
+        pos2 = im.nodes(im.edges(lstE(1),mod(lstC(1),2)+1),:);
         if length(lstE)==2
-            pos0 = im.nodePos(im.nodeEdges(lstE(2),mod(lstC(2),2)+1),:);
+            pos0 = im.nodes(im.edges(lstE(2),mod(lstC(2),2)+1),:);
         else
             pos0 = [];
         end
@@ -81,21 +105,21 @@ for jNode=1:length(nLst) %1:nNodes
                     iix = max(min(round(pos1(1)+dpos(1)),nx),1);
                     iiy = max(min(round(pos1(2)+dpos(2)),ny),1);
                     iiz = max(min(round(pos1(3)+dpos(3)),nz),1);
-                    Isub(iy,ix) = I( iiy, iix, iiz );
+                    Isub(iy,ix) = angio( iiy, iix, iiz );
                 end
             end
 
-            Isub = Isub .* (Isub >= IThresh); % I could add a continuity condition here
+            Isub = Isub .* (Isub >= im_thresh); % angio could add a continuity condition here
             % using imfill
             IsubSum = max(sum(Isub(:)),1)+eps;
             [xx,yy] = meshgrid(xLst,yLst);
             posM(1) = sum(xx(:).*Isub(:))/IsubSum;
             posM(2) = sum(yy(:).*Isub(:))/IsubSum;
 
-            if flagVisualize
+            if visualize_flag
                 figure(1)
                 subplot(2,1,1)
-                imagesc(I(:,:,round(pos1(3))))
+                imagesc(angio(:,:,round(pos1(3))))
                 xlim([-20 20]+pos1(1));
                 ylim([-20 20]+pos1(2));
                 subplot(2,1,2)
@@ -115,12 +139,14 @@ for jNode=1:length(nLst) %1:nNodes
             iix = max(min(pos1(1)+dpos(1),nx),1);
             iiy = max(min(pos1(2)+dpos(2),ny),1);
             iiz = max(min(pos1(3)+dpos(3),nz),1);
-            nodePos(iNode,:) = [iix iiy iiz];
+            nodes(iNode,:) = [iix iiy iiz];
             %        pause(0.1)
         end % r>0
     end  % end if nB(iNode)<=2
 end % end loop on iNode
 
-im.nodePos = nodePos;
+im.nodes = nodes;
 
-close(hwait)
+if ~visualize_flag
+    close(hwait)
+end

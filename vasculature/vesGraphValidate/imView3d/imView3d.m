@@ -4440,7 +4440,7 @@ end
 
 thresh = ceil(str2num(get(handles.editImageThresh,'string'))*32);
 
-imView3d_CenterNodesXYZ( centerStep1vox, flagVisualize, thresh );
+imView3d_CenterNodesXYZ(centerStep1vox, flagVisualize, thresh );
 
 set(handles.pushbuttonRegraphNodes,'enable','on')
 set(handles.pushbuttonImageGraph,'enable','on')

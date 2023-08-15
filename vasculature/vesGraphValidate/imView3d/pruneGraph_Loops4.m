@@ -1,4 +1,4 @@
-function [nodePos,nodeDiam,nodeEdges] = pruneGraph_Loops4( im );
+function [nodePos,nodeDiam,nodeEdges] = pruneGraph_Loops4( im )
 
 nNodes = size(im.nodePos,1);
 
