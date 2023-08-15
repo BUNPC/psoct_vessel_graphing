@@ -164,6 +164,7 @@ volshow(angio_skel_post);
 % function then calls another function "seg_to_graph" which performs the
 % skeletonization and converts the skeleton to the 3D graph (nodes + edges)
 segment_graph_data = seg_graph_init(angio_gaussian, vox_dim, 10, volpath, angio_name(1:end-4));
+
 %% Calculate the vessel metrics from the graph data
 % Metrics: length of each vessel, length density of volume , tortuosity
 % NOTE: This section may require modification, depending on how you save
