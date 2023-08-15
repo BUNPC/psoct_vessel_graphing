@@ -35,8 +35,10 @@ vol = TIFF2MAT(fullfile(dpath, subid, subdir, vdata));
 im.angio = vol;
 
 %% Test move to mean
-% TODO: for-loop for multiple
-im_mv = mv_to_mean(im, im_thresh);
+im_mv = im;
+for i=1:10
+    im_mv = mv_to_mean(im_mv, im_thresh);
+end
 
 %%% Compare results
 % Visualize uncentered graph
