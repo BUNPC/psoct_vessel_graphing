@@ -7,7 +7,6 @@ This script performs the following:
 - calculate vascular metrics from graph
 
 TODO:
-- crop the tissue volume and rerun segmentation
 - find optimal sigma for gaussian3d smoothing. This is currently bluring
 together branches, which is unacceptable.
 - attempt edge-preserving filtering (eg bilateral filtering)
@@ -29,7 +28,7 @@ elseif isunix
     idcs = strfind(mydir,'/');
 end
 % Truncate path to reach top-level directory (psoct_vessel_graphing)
-topdir = mydir(1:idcs(end));
+topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
 %% Initialize data path for linux or personal machine (debugging)
@@ -98,7 +97,7 @@ for ii=1:length(idx)
     angio_gaussian(CC.PixelIdxList{idx(ii)}) = 0;
 end
 % Show object after smoothing and removing
-volshow(logical(angio_gaussian))
+volshow(logical(angio_gaussian));
 segmat2tif(uint8(angio_gaussian), fullfile(fout, 'angio_post.tif'))
 
 %% Remove components that approximate spheres
@@ -124,33 +123,18 @@ segmat2tif(uint8(angio_skel_pre), fullfile(fout, 'angio_pre_skel.tif'))
 
 % Convert 3D vol to skeleton
 angio_skel_post = bwskel(logical(angio_gaussian), "MinBranchLength",10);
-volshow(angio_skel_post);
-segmat2tif(uint16(angio_skel_post), fullfile(fout, 'angio_post_skel.tif'))
+% Remove island voxels
+angio_skel_post = bwmorph3(angio_skel_post, "clean");
 
-%%% find branch points, end points, connected components
+% Save output
+segmat2tif(uint8(angio_skel_post), fullfile(fout, 'angio_post_skel.tif'))
+
+% find branch points, end points, connected components
 cc_skel = bwconncomp(angio_skel_post);
 % retrieve length of each component
 comlen = cc_skel.PixelIdxList;
 
-% find branch points
-skel_bp = bwmorph3(angio_skel_post, "branchpoints");
-
-% find end points
-skel_ep = bwmorph3(angio_skel_post, "endpoints");
-
-% find connected components
-label = bwlabeln(angio_skel_post);
-
-
-%% Visualize loops for debugging
-%{
-volshow(angio_skel_post(200:300,50:125,1:25));
-volshow(angio_gaussian(200:300,50:125,1:25));
-
-volshow(angio_skel_pre(70:130,1:100,1:25));
-volshow(angio(70:130,1:100,1:25));
-%}
-%% Find/remove loops from skeleton
+%% Find/remove loops pixels from skeleton
 % - iterate through list of connected components
 %   - create volume for each separate connected component
 %       - determine if contains end points
@@ -166,25 +150,20 @@ for ii = 1:cc_skel.NumObjects
     idx = cc_skel.PixelIdxList{ii};
     vol_cc(idx) = 1;
     
-    %%% Determine if segment has end points
-    seg_ep = bwmorph3(vol_cc, "endpoints");
+    %%% Check for isolated loops
     % If no endpoints, set component equal to zero because it's a loop
+    seg_ep = bwmorph3(vol_cc, "endpoints");
     if max(seg_ep(:))==0
-        sprintf('Loop in connected component %i', ii)
-        volshow(vol_cc)
-        % show volume before removing
-        % volshow(angio_skel)
-        
+        sprintf('Loop in connected component %i', ii)      
         % Set components equal to zero 
-        angio_skel_post(idx) = 0;
-        
-        % show volume after removing
-        % volshow(angio_skel)  
+        angio_skel_post(idx) = 0;    
     end
-    
 end
+% Show skeleton after removing loops
+volshow(angio_skel_post);
 
-volshow(angio_skel_post)
+%% Find / remove loops at end of segment
+% If the 
 
 %% Skeletonize and convert to Graph
 % This section calls the function at the bottom of the script. This
