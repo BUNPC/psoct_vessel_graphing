@@ -3,9 +3,18 @@
 % The original function was integrated into a GUI, but there is no
 % documentation for the GUI. Therefore, this script will test a standalone
 % version of the function.
+%
+% This script is currently removing loops via the following steps:
+% Regraph (delta = 2)
+% Move to mean (normalized voxel intensity threshold = 0.5)
+% Regraph (delta = 2)
+% 
+% The main issue with this script is that the downsampling (regraph) is
+% combining disparate segments. This requires updating the regraph to only
+% downsample nodes along the same edge.
 
-% TODO: 
-%   - iterate threshold
+% TODO:
+% - modify regraph to only downsample nodes in same segment
 
 clear; clc; close all;
 
@@ -61,27 +70,58 @@ elseif strcmp(class(vol),'uint8')
     im_thresh = im_thresh .* r;
 end
 
+%% Visualize graph prior to processing
+graph_vis(im.nodes, im.edges, 'Graph Before Processing')
+
+%% Downsample (regraph)
+% Initialized validated nodes vector so that regraph code runs
+validated_nodes = zeros(size(im.nodes,1),1);
+% Search radius (units = voxels)
+delta = 2;
+
+% Call regraph (downsample)
+[im_ds.nodes, im_ds.edges, ~, ~] =...
+    regraphNodes_new(im.nodes, im.edges, validated_nodes, delta);
+
+% Add angio to new struct
+im_ds.angio = im.angio;
+
+% Visualize downsampled
+gt1 = {'Regraphed', strcat("Delta = ", num2str(delta))};
+graph_vis(im_ds.nodes, im_ds.edges, gt1);
+
 %% Test move to mean and thresholding
-th_norm = [0, 0.25, 0.5, 0.75, 0.9, 0.95];
+th_norm = [0.25, 0.5, 0.75, 0.9, 0.95];
 tarray = th_norm .* r;
 
-% Visualize uncentered graph
-graph_vis(im.nodes, im.edges, 'Graph Before Moving to Mean')
-
-for ii = 1:length(tarray)
-    im_mv = im;
+for ii = 2:2
+    im_mv = im_ds;
     for j=1:5
         im_mv = mv_to_mean(im_mv, tarray(ii));
     end
     %%% Visualize centered graph
     % Title for graph
-    t_str = num2str(th_norm(ii));
-    t_str = strcat('Voxel Intensity Threshold = ', t_str);
-    g_title = {'Graph After Moving to Mean', t_str};
+    t_str = strcat("Delta = ", num2str(delta),...
+        '. Voxel Intensity Threshold = ',num2str(th_norm(ii)));
+    g_title = {'Regraphed & Moved to Mean', t_str};
     graph_vis(im_mv.nodes, im_mv.edges, g_title)
 end
 
-%% Centering
+%% Downsampling (regraph) to collapse loop
+validated_nodes = zeros(size(im.nodes,1),1);
+[im_re.nodes, im_re.edges, ~, ~] =...
+    regraphNodes_new(im_mv.nodes, im_mv.edges, validated_nodes, delta);
+
+t_str = strcat("Delta = ", num2str(delta),...
+    '. Voxel Intensity Threshold = ',num2str(th_norm(ii)),...
+    ". Delta = ", num2str(delta));
+
+graph_vis(im_re.nodes, im_re.edges, {'Regraphed, Moved to Mean, Regraphed', t_str})
+
+%% Centering (determine which centering function to use)
+% There are several different centering functions. David recommended trying
+% or reviewing each to determine which is most suitable.
+
 % Unsure what this variable does
 centerStep1vox = 0;
 % Visualization
@@ -108,6 +148,12 @@ g = graph(s, t);
 % Plot graph before removing loops
 figure;
 p = plot(g, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
+% Set nodes red
+p.NodeColor = 'red';
+% Set line width of edges
+p.LineWidth = 2;
+% Labels and title
 title(title_str); xlabel('x'); ylabel('y'); zlabel('z')
+% initialize camera view
 view(3);
 end
