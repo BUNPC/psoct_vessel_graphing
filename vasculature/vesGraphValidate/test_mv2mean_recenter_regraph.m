@@ -44,13 +44,14 @@ vdata = 'ref_4ds_norm_inv_crop2.tif';
 gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_graph_data.mat';
 
 %% Load PSOCT graph
-tmp = load(fullfile(dpath, subid, subdir, sigdir, gdata), 'Data');
-tmp = tmp.Data;
+Data = load(fullfile(dpath, subid, subdir, sigdir, gdata), 'Data');
+Data = Data.Data;
 
 % Create new variable to match format of function
 % im.angio = tmp.angio;
-im.nodes = tmp.Graph.nodes;
-im.edges = tmp.Graph.edges;
+im.nodes = Data.Graph.nodes;
+im.edges = Data.Graph.edges;
+im.segn = Data.Graph.segInfo.nodeSegN;
 
 %% Load volumetric information and set threshold
 
@@ -80,8 +81,8 @@ validated_nodes = zeros(size(im.nodes,1),1);
 delta = 2;
 
 % Call regraph (downsample)
-[im_ds.nodes, im_ds.edges, ~, ~] =...
-    regraphNodes_new(im.nodes, im.edges, validated_nodes, delta);
+[im_ds.segn, im_ds.nodes, im_ds.edges, ~, ~] =...
+    regraphNodes_new(im.segn, im.nodes, im.edges, validated_nodes, delta);
 
 % Add angio to new struct
 im_ds.angio = im.angio;
@@ -109,8 +110,8 @@ end
 
 %% Downsampling (regraph) to collapse loop
 validated_nodes = zeros(size(im.nodes,1),1);
-[im_re.nodes, im_re.edges, ~, ~] =...
-    regraphNodes_new(im_mv.nodes, im_mv.edges, validated_nodes, delta);
+[im_re.segn, im_re.nodes, im_re.edges, ~, ~] =...
+    regraphNodes_new(im_mv.segn, im_mv.nodes, im_mv.edges, validated_nodes, delta);
 
 t_str = strcat("Delta = ", num2str(delta),...
     '. Voxel Intensity Threshold = ',num2str(th_norm(ii)),...
@@ -157,3 +158,5 @@ title(title_str); xlabel('x'); ylabel('y'); zlabel('z')
 % initialize camera view
 view(3);
 end
+
+%% Separate 
