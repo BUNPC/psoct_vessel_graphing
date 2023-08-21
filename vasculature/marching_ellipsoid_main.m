@@ -36,10 +36,10 @@ if ispc
     % Graph filename
     graph_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_graph.mat';
 elseif isunix
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/NC_6839';
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     % Subject IDs
-    subid = 'NC_6839';
-    subdir = 'dist_corrected/volume';
+    subid = '/NC_6839/';
+    subdir = '/dist_corrected/volume/';
     sigdir = '/gsigma_1-3-5_gsize_5-13-21/';
     % Segmentation filename
     vol_name = 'ref_4ds_norm_inv_crop2.tif';
