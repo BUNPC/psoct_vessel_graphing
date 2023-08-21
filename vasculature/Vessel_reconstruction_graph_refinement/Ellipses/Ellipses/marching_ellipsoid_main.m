@@ -29,71 +29,40 @@ if ispc
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
     subid = 'NC_6839';
-    subdir = '\dist_corrected\volume\gsigma_1-3-5_gsize_5-13-21\';
+    subdir = '\dist_corrected\volume\';
+    sigdir = '\gsigma_1-3-5_gsize_5-13-21\';
     % Segmentation filename
-    seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40';
-    % filename extension
-    ext = '.tif';
-%%% Computing cluster (SCC)
+    vol_name = 'ref_4ds_norm_inv_crop2.tif';
+    % Graph filename
+    graph_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_graph.mat';
 elseif isunix
-    % Path to top-level directory
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
-    % Subfolder containing data
-    subdir = '/dist_corrected/volume/';
-    % Filename to parse (this will be the same for each subject)
-    fname = 'ref_4ds_norm_inv';
-    % filename extension
-    ext = '.tif';
-    % Complete subject ID list for Ann_Mckee_samples_10T
-    subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
-             'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_8572', 'CTE_7126',...
-             'NC_21499', 'NC_6047', 'NC_6839', 'NC_6974', 'NC_7597',...
-             'NC_8095', 'NC_8653'};
-        
-    %%% Create cell array of subject ID and sigma for job array on the SCC 
-    nrow = length(subid)*size(sigmas,2);
-    nsigma = size(sigmas,2);
-    sub_sigma = cell(length(subid).*size(sigmas,2), 2);
-    idx = 1;
-    % Fill sub_sigma cell array with each sigma array for each subject
-    for i = 1:3:nrow
-        sub_sigma{i,1} = subid{idx};
-        sub_sigma{(i+1),1} = subid{idx};
-        sub_sigma{(i+2),1} = subid{idx};
-        idx = idx + 1;
-        for j = 1:nsigma
-            sub_sigma{(i+j-1),2} = sigmas(j,:);
-        end
-    end
-    
-    %%% Reassign subid and sigma based on job array counter
-    % Retrieve SGE_TASK_ID from system (job array index)
-    batch_idx = getenv('SGE_TASK_ID');
-    
-    % If this is a job array, then batch_idx will not be empty.
-    if ~isempty(batch_idx)
-        % Convert from ASCII to double
-        batch_idx = str2double(batch_idx);
-        % Retrieve corresponding row from sub_sigma
-        [subid, gsigma] = sub_sigma{batch_idx, :};
-    % Otherwise, set the Gaussian sigma manually
-    else
-        subid = 'NC_6839';
-        gsigma = [7, 9, 11];
-    end
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/NC_6839';
+    % Subject IDs
+    subid = 'NC_6839';
+    subdir = 'dist_corrected/volume';
+    sigdir = '/gsigma_1-3-5_gsize_5-13-21/';
+    % Segmentation filename
+    vol_name = 'ref_4ds_norm_inv_crop2.tif';
+    % Graph filename
+    graph_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_graph.mat';
 end
 
-%% Load segmentation volume and g from Data
+%% Load volume and g from Data
 vox_dim = [12, 12, 15];
 
-%%% Convert segment to g
+%%% Load volume
 fullpath = fullfile(dpath, subid, subdir);
-filename = strcat(fullpath, strcat(seg_name, ext));
-seg = TIFF2MAT(filename);
-g = seg_to_graph(seg, vox_dim);
+filename = strcat(fullpath, vol_name);
+vol = mat2gray(TIFF2MAT(filename));
+volshow(vol);
+
+%%% Load graph
+fullpath = fullfile(dpath, subid, subdir, sigdir);
+filename = strcat(fullpath, graph_name);
+g = load(filename);
+g = g.im_re;
 nodes = g.nodes;
 edges = g.edges;
-
 % Copy edges into standard format
 s = edges(:,1); % source node
 t = edges(:,2); % target node
@@ -101,31 +70,16 @@ t = edges(:,2); % target node
 % Create standard Matlab g
 g_mat = graph(s, t);
 
-% Plot g before removing loops
+% Plot g before running marching ellipsoid
 figure;
 p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
 xlabel('x'); ylabel('y'); zlabel('z')
 % title('Graph Before Removing Loops'); 
 view(3);
 
-%%% Load segmentation and g
-%{
-% Define entire filepath 
-fullpath = fullfile(dpath, subid, subdir);
-filename = strcat(fullpath, strcat(fname, ext));
+% View flag for marching ellipsoid (1 = view).
+viewflag = 1;
 
-% Load Data
-Data = load(filename, 'Data');
-
-% Extract angio (segmentation (uint8)) from Data
-seg = Data.Data.angio;
-g = Data.Data.Graph;
-
-% Reorder the angio
-seg = permute(seg, [3,2,1]);
-% Normalize segmentation
-seg = (seg-min(seg(:)))./(max(seg(:))-min(seg(:)));
-%}
 %% Generate seed points coordinates from intensity threshold
 % This section was commented out. It appears to find voxels within the
 % probability map that are above a threshold. The threshold is an array
@@ -168,25 +122,15 @@ k = find(seg(:) > thresh);
 [idx1,idx2,idx3] = ind2sub(size(seg),k);
 g.nodes = [idx1,idx2,idx3];
 %}
-%% perform marching ellipsoid to generate a new g
+%% Perform marching ellipsoid to connect disparate segments
 flag_seeds = zeros(1, size(g.nodes,1));
 graph2.nodes = [];
 graph2.edges = [];
 % cut off distance for neighboring node detection (voxels)
-cutoff_dist = 15;
+cutoff_dist = 2;
 % Track number of segments that have been examined
 i = 0;
 ori = [];
-
-% for visualization purpose
-% h=figure;
-% x0=100;
-% y0=100;
-% width=1000;
-% height=800;
-% set(gcf,'position',[x0,y0,width,height]);
-% axis tight manual % this ensures that getframe() returns a consistent size
-% filename = 'marchinging3.gif';
 
 %%% Iterate over each node in the g
 while sum(flag_seeds) < size(g.nodes,1)
@@ -209,16 +153,16 @@ while sum(flag_seeds) < size(g.nodes,1)
     % TODO: there is a book keeping issue with the indices of the
     % coordinates. Need to ensure that the coordinates are defined as
     % [y,x,z] throughout the entire pipeline.
-    cen_x = seed(1); cen_x = max(min(cen_x,size(seg,1)), 1);
-    cen_y = seed(2); cen_y = max(min(cen_y,size(seg,2)), 1);
-    cen_z = seed(3); cen_z = max(min(cen_z,size(seg,3)), 1);
+    cen_x = seed(1); cen_x = max(min(cen_x,size(vol,1)), 1);
+    cen_y = seed(2); cen_y = max(min(cen_y,size(vol,2)), 1);
+    cen_z = seed(3); cen_z = max(min(cen_z,size(vol,3)), 1);
     
     % marching step size, need to be tuned in the future
     marching_step = 8;
     
     % fit an initial ellipsoid to that node, remember the sign of the
     % primary direction
-    s = EllipseFit3DConstrained_dab(seg,cen_x,cen_y,cen_z,2);
+    s = EllipseFit3DConstrained_jy(vol, cen_x, cen_y, cen_z, viewflag);
     a = [s.a1 s.a2 s.a3];
     [~,axis_idx] = max(a);
     vec=primary_dir(s,axis_idx);
@@ -253,7 +197,7 @@ while sum(flag_seeds) < size(g.nodes,1)
     
     % determine if it is an ellipsoid or not
     % if spheres are detected terminate the marching process
-    while max(a)/min(a)>=1.2 && boundary==0 && seg(cen_x,cen_y,cen_z)>0.01
+    while max(a)/min(a)>=1.2 && boundary==0 && vol(cen_x,cen_y,cen_z)>0.01
         j=j+1;
         % determine the maximum axis, travel along that axis
         [~,axis_idx]=max(a);
@@ -274,7 +218,7 @@ while sum(flag_seeds) < size(g.nodes,1)
         
         
         % if the controid reaches boundary, break the loop
-        if cen_x>size(seg,1)-2 || cen_x<3 || cen_y>size(seg,2)-2 || cen_y<3 || cen_z>size(seg,3)-2 || cen_z<3
+        if cen_x>size(vol,1)-2 || cen_x<3 || cen_y>size(vol,2)-2 || cen_y<3 || cen_z>size(vol,3)-2 || cen_z<3
             boundary=1;
         end
         
@@ -307,12 +251,12 @@ while sum(flag_seeds) < size(g.nodes,1)
         
         % move to next centroid along this direction
         cen_new=round(s.mu+marching_step.*vec);
-        cen_x=cen_new(1);cen_x=min(cen_x,size(seg,1));cen_x=max(cen_x,1);
-        cen_y=cen_new(2);cen_y=min(cen_y,size(seg,2));cen_y=max(cen_y,1);
-        cen_z=cen_new(3);cen_z=min(cen_z,size(seg,3));cen_z=max(cen_z,1);
+        cen_x=cen_new(1);cen_x=min(cen_x,size(vol,1));cen_x=max(cen_x,1);
+        cen_y=cen_new(2);cen_y=min(cen_y,size(vol,2));cen_y=max(cen_y,1);
+        cen_z=cen_new(3);cen_z=min(cen_z,size(vol,3));cen_z=max(cen_z,1);
         
         % update ellipsoid
-        s = EllipseFit3DConstrained_jy(seg,cen_x,cen_y,cen_z,0);
+        s = EllipseFit3DConstrained_jy(vol,cen_x,cen_y,cen_z, viewflag);
 %         ShowLocalDataWithSE(seg,s);
 %         title(['Segment No.: ',num2str(i), ' Marching point No.: ',num2str(j)]);
 %         frame = getframe(h); 
@@ -328,16 +272,16 @@ while sum(flag_seeds) < size(g.nodes,1)
     vec=-ini_vec;
     marching_step=8;
     cen_new=round(ini_cen+marching_step.*vec);
-    cen_x=cen_new(1);cen_x=min(cen_x,size(seg,1));cen_x=max(cen_x,1);
-    cen_y=cen_new(2);cen_y=min(cen_y,size(seg,2));cen_y=max(cen_y,1);
-    cen_z=cen_new(3);cen_z=min(cen_z,size(seg,3));cen_z=max(cen_z,1);
+    cen_x=cen_new(1);cen_x=min(cen_x,size(vol,1));cen_x=max(cen_x,1);
+    cen_y=cen_new(2);cen_y=min(cen_y,size(vol,2));cen_y=max(cen_y,1);
+    cen_z=cen_new(3);cen_z=min(cen_z,size(vol,3));cen_z=max(cen_z,1);
     disp('Start searching negative direction');
     
-    s = EllipseFit3DConstrained_jy(seg,cen_x,cen_y,cen_z,0);
+    s = EllipseFit3DConstrained_jy(vol,cen_x,cen_y,cen_z,viewflag);
     a=[s.a1 s.a2 s.a3];
     neg=1;
     
-    while max(a)/min(a)>=1.2 && boundary==0 && seg(cen_x,cen_y,cen_z)>0.01
+    while max(a)/min(a)>=1.2 && boundary==0 && vol(cen_x,cen_y,cen_z)>0.01
         j=j+1;
         % determine the maximum axis, travel along that axis
         [~,axis_idx]=max(a);
@@ -365,7 +309,7 @@ while sum(flag_seeds) < size(g.nodes,1)
         
         
         % if the controid reaches boundary, break the loop
-        if cen_x>size(seg,1)-2 || cen_x<3 || cen_y>size(seg,2)-2 || cen_y<3 || cen_z>size(seg,3)-2 || cen_z<3
+        if cen_x>size(vol,1)-2 || cen_x<3 || cen_y>size(vol,2)-2 || cen_y<3 || cen_z>size(vol,3)-2 || cen_z<3
             boundary=1;
         end
         
@@ -397,12 +341,12 @@ while sum(flag_seeds) < size(g.nodes,1)
         
         % move to next centroid along this direction
         cen_new=round(s.mu+marching_step.*vec);
-        cen_x=cen_new(1);cen_x=min(cen_x,size(seg,1));cen_x=max(cen_x,1);
-        cen_y=cen_new(2);cen_y=min(cen_y,size(seg,2));cen_y=max(cen_y,1);
-        cen_z=cen_new(3);cen_z=min(cen_z,size(seg,3));cen_z=max(cen_z,1);
+        cen_x=cen_new(1);cen_x=min(cen_x,size(vol,1));cen_x=max(cen_x,1);
+        cen_y=cen_new(2);cen_y=min(cen_y,size(vol,2));cen_y=max(cen_y,1);
+        cen_z=cen_new(3);cen_z=min(cen_z,size(vol,3));cen_z=max(cen_z,1);
         
         % update ellipsoid
-        s = EllipseFit3DConstrained_jy(seg,cen_x,cen_y,cen_z,0);
+        s = EllipseFit3DConstrained_jy(vol,cen_x,cen_y,cen_z,viewflag);
 %         ShowLocalDataWithSE(seg,s);
 %         title(['Segment No.: ',num2str(i), ' Marching point No.: ',num2str(j)]);
 %         frame = getframe(h); 
@@ -415,7 +359,7 @@ while sum(flag_seeds) < size(g.nodes,1)
     disp(['Finish searching segment No.' num2str(i)]);
 end
 
-g = [];
+g = struct;
 g.nodes = graph2.nodes;
 g.edges = graph2.edges;
 
@@ -428,6 +372,15 @@ for u = 1:size(g.edges,1)
 end
 g.edges(sameEdgeIdx,:) = [];
 
-%% save the final g
-save('Graph_ellipsoid.mat','g');
+%% Save final graph
+% Output directory
+graph_output = strcat(graph_name(1:end-9), 'marching_ellipse.mat');
+fullpath = fullfile(dpath, subid, subdir, sigdir);
+output_file = strcat(fullpath, graph_output);
+
+% Save graph
+save(output_file,'g');
+
+
+
 
