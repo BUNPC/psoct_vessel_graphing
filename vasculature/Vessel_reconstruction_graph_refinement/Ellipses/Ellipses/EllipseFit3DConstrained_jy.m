@@ -7,7 +7,9 @@ function s = EllipseFit3DConstrained_jy(Vol, x, y, z, viewflag)
 % are 3 position , 3 orientation and 2 scales. The major axis (along the
 % vessel is given by AS_RATIO*max( minor axes). 
 % Author: Amit Mukherjee
-
+    
+    % Close open figure from last iteration
+    close all;
     global PARAM;
     [dim.y, dim.x, dim.z] = size(Vol);
 
@@ -31,7 +33,7 @@ function s = EllipseFit3DConstrained_jy(Vol, x, y, z, viewflag)
     flag = 0;
     i =0;
     j=0;
-    
+
     if(viewflag==1)
         h=figure;
         x0=100;

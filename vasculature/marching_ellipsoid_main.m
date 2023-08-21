@@ -35,6 +35,8 @@ if ispc
     vol_name = 'ref_4ds_norm_inv_crop2.tif';
     % Graph filename
     graph_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_graph.mat';
+    % View flag for marching ellipsoid (1 = view).
+    viewflag = 1;
 elseif isunix
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     % Subject IDs
@@ -45,6 +47,8 @@ elseif isunix
     vol_name = 'ref_4ds_norm_inv_crop2.tif';
     % Graph filename
     graph_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_graph.mat';
+    % View flag for marching ellipsoid (1 = view).
+    viewflag = 0;
 end
 
 %% Load volume and g from Data
@@ -77,8 +81,7 @@ xlabel('x'); ylabel('y'); zlabel('z')
 % title('Graph Before Removing Loops'); 
 view(3);
 
-% View flag for marching ellipsoid (1 = view).
-viewflag = 1;
+
 
 %% Generate seed points coordinates from intensity threshold
 % This section was commented out. It appears to find voxels within the
