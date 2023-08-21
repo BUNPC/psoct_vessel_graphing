@@ -29,9 +29,9 @@ if ispc
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
     subid = 'NC_6839';
-    subdir = '\dist_corrected\volume\gsigma_1-2-3-4-5_gsize_5--9-13-17-21\';
+    subdir = '\dist_corrected\volume\gsigma_1-3-5_gsize_5-13-21\';
     % Segmentation filename
-    seg_name = 'ref_4ds_norm_inv_segment_pmin_0.23_mask40_crop3';
+    seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40';
     % filename extension
     ext = '.tif';
 %%% Computing cluster (SCC)
@@ -103,10 +103,10 @@ g_mat = graph(s, t);
 
 % Plot g before removing loops
 figure;
-% p = plot(g_mat, 'XData', nodes(:,2), 'YData', nodes(:,1), 'ZData', nodes(:,3));
-% xlabel('x'); ylabel('y'); zlabel('z')
-% % title('Graph Before Removing Loops'); 
-% view(3);
+p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
+xlabel('x'); ylabel('y'); zlabel('z')
+% title('Graph Before Removing Loops'); 
+view(3);
 
 %%% Load segmentation and g
 %{
