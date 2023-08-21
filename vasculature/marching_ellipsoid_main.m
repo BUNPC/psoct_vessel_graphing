@@ -35,6 +35,7 @@ if ispc
     vol_name = 'ref_4ds_norm_inv_crop2.tif';
     % Graph filename
     graph_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_graph.mat';
+    graph_me_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_marching_ellipse.mat';
     % View flag for marching ellipsoid (1 = view).
     viewflag = 1;
 elseif isunix
@@ -51,6 +52,31 @@ elseif isunix
     viewflag = 0;
 end
 
+%% Initialize marching ellipsoid parameters
+marching_step = 8;
+
+%% Review results of marching ellipsoid fitting.
+% Load the graph after marching ellipsoid
+fullpath = fullfile(dpath, subid, subdir, sigdir);
+filename = strcat(fullpath, graph_me_name);
+g = load(filename);
+g = g.g;
+nodes = g.nodes;
+edges = g.edges;
+% Copy edges into standard format
+s = edges(:,1); % source node
+t = edges(:,2); % target node
+
+% Create standard Matlab g
+g_mat = graph(s, t);
+
+% Plot g before running marching ellipsoid
+figure;
+p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
+xlabel('x'); ylabel('y'); zlabel('z'); title('After Marching Ellipsoid');
+% title('Graph Before Removing Loops'); 
+view(3);
+
 %% Load volume and g from Data
 vox_dim = [12, 12, 15];
 
@@ -58,7 +84,6 @@ vox_dim = [12, 12, 15];
 fullpath = fullfile(dpath, subid, subdir);
 filename = strcat(fullpath, vol_name);
 vol = mat2gray(TIFF2MAT(filename));
-volshow(vol);
 
 %%% Load graph
 fullpath = fullfile(dpath, subid, subdir, sigdir);
@@ -77,11 +102,9 @@ g_mat = graph(s, t);
 % Plot g before running marching ellipsoid
 figure;
 p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
-xlabel('x'); ylabel('y'); zlabel('z')
+xlabel('x'); ylabel('y'); zlabel('z'); title('Before Marching Ellipsoid');
 % title('Graph Before Removing Loops'); 
 view(3);
-
-
 
 %% Generate seed points coordinates from intensity threshold
 % This section was commented out. It appears to find voxels within the
@@ -130,12 +153,12 @@ flag_seeds = zeros(1, size(g.nodes,1));
 graph2.nodes = [];
 graph2.edges = [];
 % cut off distance for neighboring node detection (voxels)
-cutoff_dist = 2;
+cutoff_dist = 20;
 % Track number of segments that have been examined
 i = 0;
 ori = [];
 
-%%% Iterate over each node in the g
+%%% Iterate over each node in the graph
 while sum(flag_seeds) < size(g.nodes,1)
     %%% pick a random node as seed point
     % Iterate number of segments tested
@@ -153,72 +176,54 @@ while sum(flag_seeds) < size(g.nodes,1)
     seed = round(g.nodes(idx(seed_idx),:));
 
     % Round the coordinates (this may be unecessary)
-    % TODO: there is a book keeping issue with the indices of the
-    % coordinates. Need to ensure that the coordinates are defined as
-    % [y,x,z] throughout the entire pipeline.
     cen_x = seed(1); cen_x = max(min(cen_x,size(vol,1)), 1);
     cen_y = seed(2); cen_y = max(min(cen_y,size(vol,2)), 1);
     cen_z = seed(3); cen_z = max(min(cen_z,size(vol,3)), 1);
-    
-    % marching step size, need to be tuned in the future
-    marching_step = 8;
     
     % fit an initial ellipsoid to that node, remember the sign of the
     % primary direction
     s = EllipseFit3DConstrained_jy(vol, cen_x, cen_y, cen_z, viewflag);
     a = [s.a1 s.a2 s.a3];
     [~,axis_idx] = max(a);
-    vec=primary_dir(s,axis_idx);
-    
-%     % show the data & save to gif
-%     ShowLocalDataWithSE(seg,s);
-%     title(['Segment No.: ',num2str(i), ' Marching point No.: ',num2str(j)]);
-%     frame = getframe(h); 
-%     im = frame2im(frame); 
-%     [imind,cm] = rgb2ind(im,256); 
-%     % Write to the GIF File 
-%     if i==1
-%         imwrite(imind,cm,filename,'gif', 'Loopcount',Inf,'DelayTime',1/2); 
-%     else
-%         imwrite(imind,cm,filename,'gif','WriteMode','append','DelayTime',1/2);
-%     end
+    vec = primary_dir(s,axis_idx);
         
     % remember the initial centroid
-    ini_cen=s.mu;
-    ini_vec=vec;
-    ini_s=s;
+    ini_cen = s.mu;
+    ini_vec = vec;
+    ini_s = s;
     
     % flag for boundary detection
     boundary = 0;
     
     % record all seed nodes index
-    if j==0
+    if j == 0
         ori = [ori, size(graph2.nodes,1)+1];
     end
-    
+
+    %% Search positive direction
     disp('Start searching positive direction');
-    
     % determine if it is an ellipsoid or not
     % if spheres are detected terminate the marching process
     while max(a)/min(a)>=1.2 && boundary==0 && vol(cen_x,cen_y,cen_z)>0.01
-        j=j+1;
+        j = j+1;
         % determine the maximum axis, travel along that axis
-        [~,axis_idx]=max(a);
-        vec_pre=vec;
+        [~,axis_idx] = max(a);
+        vec_pre = vec;
         % first add the centroid into nodes list of new g
-        graph2.nodes=[graph2.nodes; round(s.mu)'];
+        graph2.nodes = [graph2.nodes; round(s.mu)'];
         nodes = unique(graph2.nodes,'rows','stable');
-        % if reached local minimal (repeating fitting on the same
-        % conetroid), increase step size
-        if(size(nodes,1)~=size(graph2.nodes,1))
-            boundary=1;
-            graph2.nodes=nodes;
+        
+        % if reached local minimal
+        if(size(nodes,1) ~= size(graph2.nodes,1))
+            % repeat fitting on the same centroid & increase step size
+            boundary = 1;
+            graph2.nodes = nodes;
         else
             if size(graph2.nodes,1)>1 && j>1
-                graph2.edges=[graph2.edges;[size(graph2.nodes,1)-1 size(graph2.nodes,1)]];
+                graph2.edges = [graph2.edges;...
+                    [size(graph2.nodes,1)-1 size(graph2.nodes,1)] ];
             end
         end
-        
         
         % if the controid reaches boundary, break the loop
         if cen_x>size(vol,1)-2 || cen_x<3 || cen_y>size(vol,2)-2 || cen_y<3 || cen_z>size(vol,3)-2 || cen_z<3
@@ -227,13 +232,13 @@ while sum(flag_seeds) < size(g.nodes,1)
         
         % determine the primary direction of fitted ellipsoid and move to
         % positive direction
-        vec=primary_dir(s,axis_idx);
+        vec = primary_dir(s,axis_idx);
         angle = atan2(norm(cross(vec_pre,vec)), dot(vec_pre,vec));
         if(angle>pi/2)
-            vec=-vec;
+            vec = -vec;
         end
         if abs(angle)>pi/6
-            boundary=1;
+            boundary = 1;
         end
         
         % flag all the nodes within this ellipsoid
@@ -257,33 +262,28 @@ while sum(flag_seeds) < size(g.nodes,1)
         cen_x=cen_new(1);cen_x=min(cen_x,size(vol,1));cen_x=max(cen_x,1);
         cen_y=cen_new(2);cen_y=min(cen_y,size(vol,2));cen_y=max(cen_y,1);
         cen_z=cen_new(3);cen_z=min(cen_z,size(vol,3));cen_z=max(cen_z,1);
-        
         % update ellipsoid
         s = EllipseFit3DConstrained_jy(vol,cen_x,cen_y,cen_z, viewflag);
-%         ShowLocalDataWithSE(seg,s);
-%         title(['Segment No.: ',num2str(i), ' Marching point No.: ',num2str(j)]);
-%         frame = getframe(h); 
-%         im = frame2im(frame); 
-%         [imind,cm] = rgb2ind(im,256); 
-%         imwrite(imind,cm,filename,'gif','WriteMode','append','DelayTime',1/2);
         % update the parameters
-        a=[s.a1 s.a2 s.a3];     
+        a = [s.a1 s.a2 s.a3];
     end
     
-    % go back to the starting point and march to negative direction
-    boundary=0;
-    vec=-ini_vec;
-    marching_step=8;
+    %% Search negative direction
+    % Re-initialize boundary, vector
+    boundary = 0;
+    vec = -ini_vec;
     cen_new=round(ini_cen+marching_step.*vec);
     cen_x=cen_new(1);cen_x=min(cen_x,size(vol,1));cen_x=max(cen_x,1);
     cen_y=cen_new(2);cen_y=min(cen_y,size(vol,2));cen_y=max(cen_y,1);
     cen_z=cen_new(3);cen_z=min(cen_z,size(vol,3));cen_z=max(cen_z,1);
-    disp('Start searching negative direction');
     
+    % Run ellipsoid fitting
     s = EllipseFit3DConstrained_jy(vol,cen_x,cen_y,cen_z,viewflag);
-    a=[s.a1 s.a2 s.a3];
+    % Update local parameters
+    a = [s.a1 s.a2 s.a3];
     neg=1;
-    
+
+    disp('Start searching negative direction');
     while max(a)/min(a)>=1.2 && boundary==0 && vol(cen_x,cen_y,cen_z)>0.01
         j=j+1;
         % determine the maximum axis, travel along that axis
@@ -350,12 +350,6 @@ while sum(flag_seeds) < size(g.nodes,1)
         
         % update ellipsoid
         s = EllipseFit3DConstrained_jy(vol,cen_x,cen_y,cen_z,viewflag);
-%         ShowLocalDataWithSE(seg,s);
-%         title(['Segment No.: ',num2str(i), ' Marching point No.: ',num2str(j)]);
-%         frame = getframe(h); 
-%         im = frame2im(frame); 
-%         [imind,cm] = rgb2ind(im,256); 
-%         imwrite(imind,cm,filename,'gif','WriteMode','append','DelayTime',1/2);
         % update the parameters
         a=[s.a1 s.a2 s.a3];     
     end
