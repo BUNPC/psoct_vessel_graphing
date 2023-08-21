@@ -72,7 +72,7 @@ elseif strcmp(class(vol),'uint8')
 end
 
 %% Visualize graph prior to processing
-graph_vis(im.nodes, im.edges, 'Graph Before Processing')
+% graph_vis(im.nodes, im.edges, 'Graph Before Processing')
 
 %% Downsample (regraph)
 % Initialized validated nodes vector so that regraph code runs
@@ -110,13 +110,17 @@ end
 
 %% Downsampling (regraph) to collapse loop
 validated_nodes = zeros(size(im.nodes,1),1);
+% Regraph
 [im_re.segn, im_re.nodes, im_re.edges, ~, ~] =...
     regraphNodes_new(im_mv.segn, im_mv.nodes, im_mv.edges, validated_nodes, delta);
+% Assign angio
+im_re.angio = vol;
 
+% Graph title
 t_str = strcat("Delta = ", num2str(delta),...
     '. Voxel Intensity Threshold = ',num2str(th_norm(ii)),...
     ". Delta = ", num2str(delta));
-
+% Visualize title
 graph_vis(im_re.nodes, im_re.edges, {'Regraphed, Moved to Mean, Regraphed', t_str})
 
 %% Centering (determine which centering function to use)
@@ -128,11 +132,9 @@ centerStep1vox = 0;
 % Visualization
 visualize_flag = 0;
 % Run centering function
-im_centered = center_nodes_xyz(im, centerStep1vox, visualize_flag, im_thresh);
+im_centered = center_nodes_xyz(im_re, centerStep1vox, visualize_flag, im_thresh);
 
 %%% Compare results
-% Visualize uncentered graph
-graph_vis(im.nodes, im.edges, 'Graph Before Centering')
 % Visualize centered graph
 graph_vis(im_centered.nodes, im_centered.edges, 'Graph After Centering')
 

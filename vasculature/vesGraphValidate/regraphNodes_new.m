@@ -15,6 +15,7 @@ regraphNodes_new(segn, nodes, edges,validatedNodes, delta)
 %
 % TODO:
 % - iterate over edges and only downsample nodes within edge
+%       - may need to reindex nodeEdges
 % - recalculate diameter (this script does not update diameters)
 %{
 
