@@ -67,15 +67,51 @@ edges = g.edges;
 s = edges(:,1); % source node
 t = edges(:,2); % target node
 
-% Create standard Matlab g
+%%% Create + Plot graph structure
 g_mat = graph(s, t);
-
-% Plot g before running marching ellipsoid
 figure;
 p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
+p.EdgeColor = 'red'; p.LineWidth = 1.5;
 xlabel('x'); ylabel('y'); zlabel('z'); title('After Marching Ellipsoid');
-% title('Graph Before Removing Loops'); 
 view(3);
+set(gca, 'FontSize', 20);
+grid on;
+
+%%% Find segments with <= 3 edges and track node indices
+% Connectivity analysis: find which segment each node belongs to. This will
+% output an array of indices [1 : n_segments].
+bins = conncomp(g_mat);
+% Array to track nodes for deletion
+del_nodes = [];
+% Track node index
+j = 1;
+for ii = 1:length(bins)
+    % Find number of nodes in segment (n)
+    n = length(bins(bins==ii));
+    % Convert number of ndoes to node indices
+    idx = j : (j + n - 1);
+    % Iterate counter
+    j = max(idx);
+    % If <= 3 nodes, store n and node indices
+    if n <= 3
+        del_nodes = [del_nodes, idx];
+    end
+end
+% Delete nodes from graph struct
+g_mat_rm = rmnode(g_mat, del_nodes);
+
+%%% Delete nodes/edges belonging to segments with <= 3 nodes
+% Delete from the variables "nodes" and "edges"
+% Working on way to do this...
+
+%%% Create + Plot graph structure
+figure;
+p = plot(g_mat_rm);
+p.EdgeColor = 'red'; p.LineWidth = 1.5;
+xlabel('x'); ylabel('y'); zlabel('z'); title('After Marching Ellipsoid + Rm Short Segments');
+view(3);
+set(gca, 'FontSize', 20);
+grid on;
 
 %% Load volume and g from Data
 vox_dim = [12, 12, 15];
@@ -98,12 +134,9 @@ t = edges(:,2); % target node
 
 % Create standard Matlab g
 g_mat = graph(s, t);
-
-% Plot g before running marching ellipsoid
 figure;
 p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
 xlabel('x'); ylabel('y'); zlabel('z'); title('Before Marching Ellipsoid');
-% title('Graph Before Removing Loops'); 
 view(3);
 
 %% Generate seed points coordinates from intensity threshold
