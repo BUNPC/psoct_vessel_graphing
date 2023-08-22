@@ -102,7 +102,15 @@ g_mat_rm = rmnode(g_mat, del_nodes);
 
 %%% Delete nodes/edges belonging to segments with <= 3 nodes
 % Delete from the variables "nodes" and "edges"
-% Working on way to do this...
+[nodes_rm, edges_rm] = remove_reindex_nodes(del_nodes, nodes, edges);
+g_mat_rm = graph(edges_rm(:,1), edges_rm(:,2));
+figure;
+p = plot(g_mat_rm, 'XData', nodes_rm(:,1), 'YData', nodes_rm(:,2), 'ZData', nodes_rm(:,3));
+p.EdgeColor = 'red'; p.LineWidth = 1.5;
+xlabel('x'); ylabel('y'); zlabel('z'); title('M.E., rm 3 node segs');
+view(3);
+set(gca, 'FontSize', 20);
+grid on;
 
 %%% Create + Plot graph structure
 figure;
