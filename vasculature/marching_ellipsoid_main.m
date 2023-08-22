@@ -53,7 +53,10 @@ elseif isunix
 end
 
 %% Initialize marching ellipsoid parameters
+% Search step size? (find purpose of this parameter)
 marching_step = 8;
+% Minimum number of nodes per edge to keep
+nmin = 2;
 
 %% Review results of marching ellipsoid fitting.
 % Load the graph after marching ellipsoid
@@ -77,7 +80,7 @@ view(3);
 set(gca, 'FontSize', 20);
 grid on;
 
-%%% Find segments with <= 3 edges and track node indices
+%%% Find segments with < nmin nodes and find node indices
 % Connectivity analysis: find which segment each node belongs to. This will
 % output an array of indices [1 : n_segments].
 bins = conncomp(g_mat);
@@ -91,32 +94,25 @@ for ii = 1:length(bins)
     % Convert number of ndoes to node indices
     idx = j : (j + n - 1);
     % Iterate counter
-    j = max(idx);
+    j = max(idx) + 1;
     % If <= 3 nodes, store n and node indices
-    if n <= 3
+    if n <= (nmin - 1)
         del_nodes = [del_nodes, idx];
     end
 end
-% Delete nodes from graph struct
-g_mat_rm = rmnode(g_mat, del_nodes);
 
 %%% Delete nodes/edges belonging to segments with <= 3 nodes
+% Delete nodes from graph struct
+g_mat_rm = rmnode(g_mat, del_nodes);
 % Delete from the variables "nodes" and "edges"
-[nodes_rm, edges_rm] = remove_reindex_nodes(del_nodes, nodes, edges);
-g_mat_rm = graph(edges_rm(:,1), edges_rm(:,2));
+nodes_rm = nodes;
+nodes_rm(del_nodes,:) = [];
+% Plot graph (minus segments w/ <= 3 nodes)
 figure;
 p = plot(g_mat_rm, 'XData', nodes_rm(:,1), 'YData', nodes_rm(:,2), 'ZData', nodes_rm(:,3));
 p.EdgeColor = 'red'; p.LineWidth = 1.5;
-xlabel('x'); ylabel('y'); zlabel('z'); title('M.E., rm 3 node segs');
-view(3);
-set(gca, 'FontSize', 20);
-grid on;
-
-%%% Create + Plot graph structure
-figure;
-p = plot(g_mat_rm);
-p.EdgeColor = 'red'; p.LineWidth = 1.5;
-xlabel('x'); ylabel('y'); zlabel('z'); title('After Marching Ellipsoid + Rm Short Segments');
+tstr = strcat('Minimum nodes/edge = ', num2str(nmin));
+xlabel('x'); ylabel('y'); zlabel('z'); title({'Marching Ellipsoid', tstr});
 view(3);
 set(gca, 'FontSize', 20);
 grid on;
@@ -128,6 +124,7 @@ vox_dim = [12, 12, 15];
 fullpath = fullfile(dpath, subid, subdir);
 filename = strcat(fullpath, vol_name);
 vol = mat2gray(TIFF2MAT(filename));
+% volumeViewer(vol);
 
 %%% Load graph
 fullpath = fullfile(dpath, subid, subdir, sigdir);
@@ -144,6 +141,7 @@ t = edges(:,2); % target node
 g_mat = graph(s, t);
 figure;
 p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
+p.EdgeColor = 'red'; p.LineWidth = 1.5;
 xlabel('x'); ylabel('y'); zlabel('z'); title('Before Marching Ellipsoid');
 view(3);
 
