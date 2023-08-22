@@ -36,26 +36,6 @@ for ii=2:nNodes
             pos(2)>=(nodePosNew(:,2)-hxy) & pos(2)<=(nodePosNew(:,2)+hxy) & ...
             pos(3)>=(nodePosNew(:,3)-hz) & pos(3)<=(nodePosNew(:,3)+hz) );
         
-        % in the lst remove unconnected nodes to current processing node. This will
-        % avoid unwanted connections and loops
-%         temp_lst = lst;
-%         new_lst = [];
-%         curr_node = ii;
-%         for u = 1:length(lst)
-%            node_edges = find(edges(:,1) == curr_node | edges(:,2) == curr_node);
-%            conn_nodes = edges(node_edges,:);
-%            conn_nodes = conn_nodes(:);
-%            common_node = intersect(temp_lst,conn_nodes);
-%            if isempty(common_node)
-%                break;
-%            else
-%               new_lst = [new_lst; common_node];
-%               curr_node = common_node(1);
-%               temp_lst = setdiff(temp_lst,curr_node);
-%            end
-%         end
-%         lst = new_lst;
-        
         if isempty(lst)
             nNodesUnique = nNodesUnique+1;
 

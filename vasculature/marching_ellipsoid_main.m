@@ -35,8 +35,8 @@ if ispc
     vol_name = 'ref_4ds_norm_inv_crop2.tif';
     % Graph filename
     graph_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_graph.mat';
-%     graph_me_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_marching_ellipse.mat';
-    graph_me_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_mstep4_cutoff4';
+    graph_me_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_marching_ellipse.mat';
+%     graph_me_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_mstep4_cutoff4';
     % View flag for marching ellipsoid (1 = view).
     viewflag = 1;
 elseif isunix
@@ -53,19 +53,21 @@ elseif isunix
     viewflag = 0;
 end
 
-%% Review results of marching ellipsoid fitting.
-% Load the graph after marching ellipsoid
+%% Load the graph after marching ellipsoid
 fullpath = fullfile(dpath, subid, subdir, sigdir);
 filename = strcat(fullpath, graph_me_name);
 g = load(filename);
 g = g.g;
 nodes = g.nodes;
+% Debugging line
 edges = g.edges;
 % Copy edges into standard format
 s = edges(:,1); % source node
 t = edges(:,2); % target node
 
-%%% Create + Plot graph structure
+%% Review results of marching ellipsoid fitting.
+
+%%% Plot graph with lines
 g_mat = graph(s, t);
 figure;
 % Scatter plot of nodes
@@ -78,16 +80,18 @@ for ii=1:length(edges)
     y = [nodes(n1,2), nodes(n2,2)];
     z = [nodes(n1,3), nodes(n2,3)];
     line(x, y, z, 'Color', 'red');
-    
 end
 
+%%% Plot graph with builtin function
+figure;
 p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
 p.EdgeColor = 'red'; p.LineWidth = 1.5;
-xlabel('x'); ylabel('y'); zlabel('z'); title('After Marching Ellipsoid');
+xlabel('x'); ylabel('y'); zlabel('z'); title({'Marching Ellipsoid'});
 view(3);
 set(gca, 'FontSize', 20);
 grid on;
 
+%}
 %% Find segments with fewer than nmin nodes and find node indices
 % Connectivity analysis: find which segment each node belongs to. This will
 % output an array of indices [1 : n_segments].
@@ -134,7 +138,7 @@ end
 x = vertcat(nstruct.middle);
 z = squareform(pdist(x));
 % Find index of node w/ euclidean distance below threshold
-dmin = 10.0;
+dmin = 4;
 didx = find( (z ~= 0) & (z < dmin));
 
 %%% Identify segments w/ norm(vectors) < threshold
@@ -151,18 +155,22 @@ merge_idx = unique(intersect(didx, vidx));
 % Convert indices to matrix subscripts to find similar segments
 [row, col] = ind2sub(size(z), merge_idx);
 
-%%% Take average coordinates of segments meeting conditions
+%%% Remove one of the redundant segments meeting conditions
 % Create new node + edge list
 node_merge = nodes;
 edge_merge = edges;
-for ii = 1:length(merge_idx)
-    % Take center point of first segment
-    
-    % Remove other segment
-    
-    
-
+% Initialize array for storing indices to delete
+ndel = [];
+for ii = 1:length(col)
+    % Remove one of the duplicate segments (either row or column index)
+    idx = col(ii);
+    % Add indices to delete
+    ndel = [ndel, nstruct(idx).node_idcs];
 end
+% Remove redundant nodes
+nodes(ndel,:) = [];
+% Remove edges containing node indices in ndel
+
 
 %%% Delete nodes/edges belonging to segments with <= 3 nodes
 %{
@@ -218,48 +226,6 @@ p.EdgeColor = 'red'; p.LineWidth = 1.5;
 xlabel('x'); ylabel('y'); zlabel('z'); title('Before Marching Ellipsoid');
 view(3);
 
-%% Generate seed points coordinates from intensity threshold
-% This section was commented out. It appears to find voxels within the
-% probability map that are above a threshold. The threshold is an array
-% though, so the line "k = find(seg(:) > thresh)" crashed because there is
-% not enough memory. I believe this section was just for testing and not
-% implementation.
-
-%{
-% Initialize threshold array
-min_th=0.5;
-max_th=0.55;
-th_step=(max_th-min_th)/64;
-thresh = min_th : th_step : max_th;
-idx1=[]; idx2=[]; idx3=[];
-
-% Find voxels greater than threshold
-V_bi = zeros(size(seg));
-for z=1:size(seg,3)
-    rl_depth = mod(z-1,65)+1;
-    tmp = squeeze(seg(:,:,z));
-    tmp2 = zeros(size(tmp));
-    tmp = (tmp-min(tmp(:)))./(max(tmp(:))-min(tmp(:)));
-    if(z==1)
-        k = find(tmp(:)>0.3);
-    else
-        k = find(tmp(:)>thresh(rl_depth));
-    end
-    tmp2(k)=1;
-    % m(z)=length(k);
-    [tidx1, tidx2] = ind2sub(size(tmp),k);
-    V_bi(:,:,z) = tmp2;
-    idx1 = [idx1; tidx1];
-    idx2 = [idx2; tidx2];
-    idx3 = [idx3; ones(length(tidx1),1).*z];
-end
-
-% Output the seed points
-% MAT2TIFF(V_bi,'th_bi.tif');
-k = find(seg(:) > thresh);
-[idx1,idx2,idx3] = ind2sub(size(seg),k);
-g.nodes = [idx1,idx2,idx3];
-%}
 %% Perform marching ellipsoid to connect disparate segments
 flag_seeds = zeros(1, size(g.nodes,1));
 graph2.nodes = [];
@@ -469,19 +435,38 @@ while sum(flag_seeds) < size(g.nodes,1)
     end
     disp(['Finish searching segment No.' num2str(i)]);
 end
-
+%%% Add results to struct
 g = struct;
 g.nodes = graph2.nodes;
 g.edges = graph2.edges;
 
-%% remove unconnected components in the g
-sameEdgeIdx = [];
+%% Remove single-point edges (self loops) from the graph
+% Array for tracking single point edges
+self_loop_idx = [];
 for u = 1:size(g.edges,1)
     if g.edges(u,1) == g.edges(u,2)
-        sameEdgeIdx = [sameEdgeIdx; u];
+        self_loop_idx = [self_loop_idx; u];
     end
 end
-g.edges(sameEdgeIdx,:) = [];
+% Remove self-loops from graph
+g.edges(self_loop_idx,:) = [];
+
+%% Remove floating nodes (without edges) from the graph
+% Sometimes the graph from the output of the marching ellipsoid includes
+% nodes that are not connected to any edges. In this case, it results in an
+% error when converting it into a Matlab graph. The Matlab graph will
+% expect fewer nodes than are provided. One solution is to determine if the
+% last node in the list of nodes is a member of the edges array. If not,
+% then remove this node.
+
+%{
+% Array of indices of all nodes
+nidcs = 1:length(g.nodes);
+% Find indices that are not in the edges array
+ndel = find(~ismember(nidcs, g.edges) == 1);
+% Remove nodes
+g.nodes(ndel,:) = [];
+%}
 
 %% Save final graph
 % Output directory
