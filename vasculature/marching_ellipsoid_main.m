@@ -51,13 +51,7 @@ elseif isunix
     % View flag for marching ellipsoid (1 = view).
     viewflag = 0;
 end
-
-%% Initialize marching ellipsoid parameters
-% Search step size? (find purpose of this parameter)
-marching_step = 8;
-% Minimum number of nodes per edge to keep
-nmin = 2;
-
+%{
 %% Review results of marching ellipsoid fitting.
 % Load the graph after marching ellipsoid
 fullpath = fullfile(dpath, subid, subdir, sigdir);
@@ -86,6 +80,8 @@ grid on;
 bins = conncomp(g_mat);
 % Array to track nodes for deletion
 del_nodes = [];
+% Minimum number of nodes per edge to keep
+nmin = 2;
 % Track node index
 j = 1;
 for ii = 1:length(bins)
@@ -116,6 +112,9 @@ xlabel('x'); ylabel('y'); zlabel('z'); title({'Marching Ellipsoid', tstr});
 view(3);
 set(gca, 'FontSize', 20);
 grid on;
+%}
+%% Smooth results after marching ellipsoid
+
 
 %% Load volume and g from Data
 vox_dim = [12, 12, 15];
@@ -192,10 +191,12 @@ flag_seeds = zeros(1, size(g.nodes,1));
 graph2.nodes = [];
 graph2.edges = [];
 % cut off distance for neighboring node detection (voxels)
-cutoff_dist = 20;
+cutoff_dist = 4;
 % Track number of segments that have been examined
 i = 0;
 ori = [];
+% Increment (voxels) for each marching step
+marching_step = 4;
 
 %%% Iterate over each node in the graph
 while sum(flag_seeds) < size(g.nodes,1)
@@ -410,7 +411,8 @@ g.edges(sameEdgeIdx,:) = [];
 
 %% Save final graph
 % Output directory
-graph_output = strcat(graph_name(1:end-9), 'marching_ellipse.mat');
+t = strcat('mstep',num2str(marching_step),'_cutoff',num2str(cutoff_dist));
+graph_output = strcat(graph_name(1:end-9),t,'.mat');
 fullpath = fullfile(dpath, subid, subdir, sigdir);
 output_file = strcat(fullpath, graph_output);
 
