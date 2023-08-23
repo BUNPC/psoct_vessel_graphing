@@ -53,151 +53,6 @@ elseif isunix
     viewflag = 0;
 end
 
-%% Load the graph after marching ellipsoid
-fullpath = fullfile(dpath, subid, subdir, sigdir);
-filename = strcat(fullpath, graph_me_name);
-g = load(filename);
-g = g.g;
-nodes = g.nodes;
-% Debugging line
-edges = g.edges;
-% Copy edges into standard format
-s = edges(:,1); % source node
-t = edges(:,2); % target node
-
-%% Review results of marching ellipsoid fitting.
-
-%%% Plot graph with lines
-g_mat = graph(s, t);
-figure;
-% Scatter plot of nodes
-scatter3(nodes(:,1), nodes(:,2), nodes(:,3), '.','b');
-% Plot edges
-for ii=1:length(edges)
-    n1 = edges(ii,1);
-    n2 = edges(ii,2);
-    x = [nodes(n1,1), nodes(n2,1)];
-    y = [nodes(n1,2), nodes(n2,2)];
-    z = [nodes(n1,3), nodes(n2,3)];
-    line(x, y, z, 'Color', 'red');
-end
-
-%%% Plot graph with builtin function
-figure;
-p = plot(g_mat, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
-p.EdgeColor = 'red'; p.LineWidth = 1.5;
-xlabel('x'); ylabel('y'); zlabel('z'); title({'Marching Ellipsoid'});
-view(3);
-set(gca, 'FontSize', 20);
-grid on;
-
-%}
-%% Find segments with fewer than nmin nodes and find node indices
-% Connectivity analysis: find which segment each node belongs to. This will
-% output an array of indices [1 : n_segments].
-bins = conncomp(g_mat);
-% Array to track nodes for deletion
-del_nodes = [];
-% Minimum number of nodes per edge to keep
-nmin = 5;
-% Track node index
-j = 1;
-% Struct to store node indices belonging to edges w/ fewer than nmin nodes
-nstruct = struct();
-% Index for storing data in nstruct
-seg_idx = 1;
-% Iterate over segment info
-for ii = 1:length(bins)
-    % Find number of nodes in segment (n)
-    n = length(bins(bins==ii));
-    % Convert number of ndoes to node indices
-    idcs = j : (j + n - 1);
-    % Iterate counter
-    j = max(idcs) + 1;
-    % If <= 3 nodes, store n and node indices
-    if (2 < n) && (n < nmin)
-        % Store indices of nodes
-        nstruct(seg_idx).node_idcs = idcs;
-        % Find the index in the middle of the segment
-        nmid = round(median(idcs));
-        % Store the coordinates of the middle index. Later compare this to
-        % the middle index of adjacent segments to determine if they are
-        % within a distance threshold for combining.
-        nstruct(seg_idx).middle = nodes(nmid,:);
-        % Find the normalized vector of the segment
-        v = nodes(idcs(end),:) - nodes(idcs(1),:);
-        nstruct(seg_idx).v = v ./ norm(v);
-        % Iterate the index for the struct
-        seg_idx = seg_idx + 1;
-    end
-end
-
-%% Merge segments w/ centers within dmin & norm(vectors) < threshold
-%%% Identify nodes within dmin distance
-% Create distance matrix
-x = vertcat(nstruct.middle);
-z = squareform(pdist(x));
-% Find index of node w/ euclidean distance below threshold
-dmin = 4;
-didx = find( (z ~= 0) & (z < dmin));
-
-%%% Identify segments w/ norm(vectors) < threshold
-% Create distance matrix
-x = vertcat(nstruct.v);
-z = squareform(pdist(x));
-% Find index of node w/ euclidean distance of vectors below threshold
-vmin = 0.10;
-vidx = unique(find( (z ~= 0) & (z < vmin)));
-
-%%% Find indices of nodes that satisfy both conditions
-% Unique indices
-merge_idx = unique(intersect(didx, vidx));
-% Convert indices to matrix subscripts to find similar segments
-[row, col] = ind2sub(size(z), merge_idx);
-
-%%% Remove one of the redundant segments meeting conditions
-% Create new node + edge list
-node_merge = nodes;
-edge_merge = edges;
-% Initialize array for storing indices to delete
-ndel = [];
-for ii = 1:length(col)
-    % Remove one of the duplicate segments (either row or column index)
-    idx = col(ii);
-    % Add indices to delete
-    ndel = [ndel, nstruct(idx).node_idcs];
-end
-% Remove redundant nodes
-nodes(ndel,:) = [];
-% Remove edges containing node indices in ndel
-
-
-%%% Delete nodes/edges belonging to segments with <= 3 nodes
-%{
-% Delete nodes from graph struct
-g_mat_rm = rmnode(g_mat, del_nodes);
-% Delete from the variables "nodes" and "edges"
-nodes_rm = nodes;
-nodes_rm(del_nodes,:) = [];
-% Plot graph (minus segments w/ <= 3 nodes)
-figure;
-p = plot(g_mat_rm, 'XData', nodes_rm(:,1), 'YData', nodes_rm(:,2), 'ZData', nodes_rm(:,3));
-p.EdgeColor = 'red'; p.LineWidth = 1.5;
-tstr = strcat('Minimum nodes/edge = ', num2str(nmin));
-xlabel('x'); ylabel('y'); zlabel('z'); title({'Marching Ellipsoid', tstr});
-view(3);
-set(gca, 'FontSize', 20);
-grid on;
-%}
-
-%% Smooth results after marching ellipsoid
-% Iterate over segments with fewer than nmin nodes
-
-% Find the vector and center node
-
-% Find vector for each 
-
-
 %% Load volume and g from Data
 vox_dim = [12, 12, 15];
 
@@ -478,6 +333,11 @@ output_file = strcat(fullpath, graph_output);
 % Save graph
 save(output_file,'g');
 
-
-
-
+function plot_graph(g, nodes, title_str)
+figure;
+p = plot(g, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
+p.EdgeColor = 'red'; p.LineWidth = 1.5;
+xlabel('x'); ylabel('y'); zlabel('z'); title(title_str);
+set(gca, 'FontSize', 20); grid on;
+view(3);
+end
