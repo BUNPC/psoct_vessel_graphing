@@ -1,5 +1,13 @@
 function [graph] = seg_to_graph(angio, vox_dim)
 %seg_to_graph Convert the vessel segments to a graph (nodes + vertices)
+% This function performs the following:
+%   1) Create binary vessel mask (logical)
+%   2) skeletonize the vessel mask (bwskel)
+%   3) Convert the skeleton to a graph (fun_skeleton_to_graph)
+%       - this is a function taken from Xiang Ji at UCSD.
+%       - must cite his paper: https://github.com/xiangjiph/VCRA
+%   4) Convert the graph struct from the format from Xiang Ji into the
+%          format that our lab uses.
 %%% INPUTS:
 %       angio (matrix): segmented volume
 %       vox_dim (array): voxel dimensions (x, y, z) (micron)
@@ -16,12 +24,7 @@ vessel_skl = bwskel(vessel_mask,'MinBranchLength',1);
 % Compute graph from skeleton
 vessel_graph = fun_skeleton_to_graph(vessel_skl);
 
-%%% This function output is unused. It is leftover from original code.
-% Compute Euclidean distance transform of inverse of binary vessel mask
-% vessel_mask_dt = bwdist(~vessel_mask);
-
 %% Count the number of edges
-
 % Size of the angiogram. It will help to convert indeces to subscripts
 angio_size = size(vessel_mask);
 
@@ -41,9 +44,7 @@ for  u = 1:length(vessel_graph.link.cc_ind)
 end
 % Preallocate matrix for storing edge indice
 edges_ind = zeros(edges_ind_count,2);
-%% Assign nodes and edges. 
-% TODO: preallocate variable "tttt"
-
+%% Reassign nodes and edges. 
 node_idx = 1;
 edge_idx = 1;
 tttt = [];
@@ -79,7 +80,7 @@ for u = 1:length(vessel_graph.node.cc_ind)
     node_idx = node_idx+1;
 end
 
-%% TODO: determine purpose of this section
+%% Reassign link length, edge indices, node indices
 idx = find(link_cc_ind == 0);
 for u = 1:length(idx)
     link_length = length(vessel_graph.link.cc_ind{idx(u)});
@@ -92,12 +93,12 @@ for u = 1:length(idx)
     node_idx = node_idx+link_length;
 end
 
-%% TODO: determine purpose of this section
+%% Convert node indices to matrix subscripts
 [n1, n2, n3] = ind2sub(angio_size,nodes_ind);
 nodes = [n1', n2', n3'];
 edges = zeros(size(edges_ind));
 
-%% TODO: find faster search method
+% Find nodes corresponding to edges
 for u = 1:size(edges_ind,1)
     edges(u,1) = find(nodes_ind == edges_ind(u,1));
     edges(u,2) = find(nodes_ind == edges_ind(u,2));
