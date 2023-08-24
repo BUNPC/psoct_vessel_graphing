@@ -80,19 +80,6 @@ tstr = 'After Marching Ellipsoid';
 plot_graph(g_mat, nodes, tstr);
 % xlim([60, 140]); ylim([110, 180]); zlim([0,90]);
 
-%% Smooth results after marching ellipsoid
-% Variables for downsampling
-validatedNodes = zeros(size(nodes,1), 1);
-delta = 4;
-% Downsample
-[~, nodes_ds, edges_ds,~,~] = ...
-    regraphNodes_new([],nodes,edges,validatedNodes,delta);
-%%% Plot downsampled graph
-s = edges_ds(:,1); % source node
-t = edges_ds(:,2); % target node
-g_me_ds = graph(s, t);
-plot_graph(g_me_ds, nodes_ds, 'Marching Ellipsoid - Regraphed')
-
 %% Find segments with fewer than nmin nodes and find node indices
 % Connectivity analysis: find which segment each node belongs to. This will
 % output an array of indices (bins). Each entry in bins corresponds to the
@@ -107,10 +94,6 @@ nmin = 4;
 j = 1;
 % Struct to store node indices belonging to edges w/ fewer than nmin nodes
 nstruct = struct();
-% Index for storing data in nstruct
-seg_idx = 1;
-% variable to track number of nodes/segment
-nmax = 1;
 % Iterate over total number of segments
 for ii = 1:max(bins)
     % Find number of nodes in segment (n)
@@ -119,63 +102,28 @@ for ii = 1:max(bins)
     idcs = j : (j + n - 1);
     % Iterate counter
     j = max(idcs) + 1;
-    % If <= 3 nodes, store n and node indices
+    % If <= 3 nodes, store n and node indices (this may not be used).
     if (1 <= n) && (n < nmin)
         del_nodes = [del_nodes, idcs];
-    else
-        % Store indices of nodes
-        nstruct(seg_idx).node_idcs = idcs;
-        
-        % Find the index in the middle of the segment
-        nmid = round(median(idcs));
-        
-        % Store the coordinates of the middle index. Later compare this to
-        % the middle index of adjacent segments to determine if they are
-        % within a distance threshold for combining.
-        nstruct(seg_idx).middle = nodes(nmid,:);
-        
-        % Find the normalized vector of the segment
-        v = nodes(idcs(end),:) - nodes(idcs(1),:);
-        nstruct(seg_idx).v = v ./ norm(v);
-        
-        % TODO: Create a cylinder of radius r for the segment
-        
-        % Iterate the index for the struct
-        seg_idx = seg_idx + 1;
     end
+
+    % Store indices of nodes for segment
+    nstruct(ii).node_idcs = idcs;
+    
+    % Find the index in the middle of the segment
+    nmid = round(median(idcs));
+    
+    % Store the coordinates of the middle index. Later compare this to
+    % the middle index of adjacent segments to determine if they are
+    % within a distance threshold for combining.
+    nstruct(ii).middle = nodes(nmid,:);
+    
+    % Find the normalized vector of the segment
+    v = nodes(idcs(end),:) - nodes(idcs(1),:);
+    nstruct(ii).v = v ./ norm(v);
+    
+    % TODO: Create a cylinder of radius r for the segment
 end
-
-%% Delete nodes/edges belonging to segments with < nmin nodes
-%{
-% Delete nodes from graph struct
-g_mat_rm = rmnode(g_mat, del_nodes);
-% Delete from the variables "nodes" and "edges"
-nodes_rm = nodes;
-nodes_rm(del_nodes,:) = [];
-% Update edges
-edges_rm = g_mat_rm.Edges;
-edges_rm = edges_rm{:,:};
-% Plot graph (minus segments w/ <= 3 nodes)
-tstr = strcat('Minimum nodes/edge = ', num2str(nmin));
-plot_graph(g_mat_rm, nodes_rm, {'Marching Ellipsoid', tstr})
-
-%%% Downsample after removing segments
-% Variables for downsampling
-validatedNodes = zeros(size(nodes,1), 1);
-delta = 8;
-% Downsample
-[~, nodes_ds, edges_ds,~,~] = ...
-    regraphNodes_new([],nodes_rm,edges_rm,validatedNodes,delta);
-
-%%% Create graph
-s = edges_ds(:,1); % source node
-t = edges_ds(:,2); % target node
-g_me_ds = graph(s, t);
-
-%%% Plot downsampled graph
-plot_graph(g_me_ds, nodes_ds, {'After Marching Ellipsoid','Removing small segments & Regraphed'})
-% xlim([60, 140]); ylim([110, 180]); zlim([0,90]);
-%}
 
 %% Find segments w/ centers within dmin & norm(vectors) < threshold
 
@@ -185,7 +133,7 @@ x = vertcat(nstruct.middle);
 % Create distance matrix (distance between each node)
 d = squareform(pdist(x));
 % Find index of node w/ euclidean distance below threshold
-dmin = 100.0;
+dmin = 50.0;
 dmat = (d <= dmin);
 
 %%% Identify segments w/ norm(vectors) < threshold
@@ -233,27 +181,57 @@ for ii = 1 : length(seg_merge_idx_struct)
     % Extract nodes from all segments
     node_merge_idx(ii).node_idcs = horzcat(nstruct(seg_merge_idcs).node_idcs);
 end
+
 % Save graph output
 fout = '__adjacent_node_merge_list.mat';
 fout = strcat(graph_name(1:end-4), fout);
 node_merge_output = strcat(fullpath, fout);
 save(node_merge_output, 'node_merge_idx');
 
-%% Remove one of the redundant segments meeting conditions
-% Create new node + edge list
-node_merge = nodes;
-edge_merge = edges;
-% Initialize array for storing indices to delete
-ndel = [];
-for ii = 1:length(col)
-    % Remove one of the duplicate segments (either row or column index)
-    idx = col(ii);
-    % Add indices to delete
-    ndel = [ndel, nstruct(idx).node_idcs];
-end
-% Remove redundant nodes
-nodes(ndel,:) = [];
-% Remove edges containing node indices in ndel
+%% Regraph the nodes within each segment
+% Variables for downsampling
+validatedNodes = zeros(size(nodes,1), 1);
+delta = 2;
+% Downsample
+[~, nodes_ds, edges_ds,~,~] = ...
+    regraphNodes_new(node_merge_idx(ii).node_idcs,nodes,edges,validatedNodes,delta);
+%%% Plot downsampled graph
+s = edges_ds(:,1); % source node
+t = edges_ds(:,2); % target node
+g_me_ds = graph(s, t);
+plot_graph(g_me_ds, nodes_ds, 'Marching Ellipsoid - Regraphed')
+
+%% Delete nodes/edges belonging to segments with < nmin nodes
+%{
+% Delete nodes from graph struct
+g_mat_rm = rmnode(g_mat, del_nodes);
+% Delete from the variables "nodes" and "edges"
+nodes_rm = nodes;
+nodes_rm(del_nodes,:) = [];
+% Update edges
+edges_rm = g_mat_rm.Edges;
+edges_rm = edges_rm{:,:};
+% Plot graph (minus segments w/ <= 3 nodes)
+tstr = strcat('Minimum nodes/edge = ', num2str(nmin));
+plot_graph(g_mat_rm, nodes_rm, {'Marching Ellipsoid', tstr})
+
+%%% Downsample after removing segments
+% Variables for downsampling
+validatedNodes = zeros(size(nodes,1), 1);
+delta = 8;
+% Downsample
+[~, nodes_ds, edges_ds,~,~] = ...
+    regraphNodes_new([],nodes_rm,edges_rm,validatedNodes,delta);
+
+%%% Create graph
+s = edges_ds(:,1); % source node
+t = edges_ds(:,2); % target node
+g_me_ds = graph(s, t);
+
+%%% Plot downsampled graph
+plot_graph(g_me_ds, nodes_ds, {'After Marching Ellipsoid','Removing small segments & Regraphed'})
+% xlim([60, 140]); ylim([110, 180]); zlim([0,90]);
+%}
 
 %% Function to plot graph from matlab graph
 function plot_graph(g, nodes, title_str)
