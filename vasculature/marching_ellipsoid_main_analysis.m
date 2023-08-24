@@ -1,10 +1,8 @@
-%% Main script for performing marching ellipsoid
+%% Main script for analyzing outpt of marching ellipsoid
 %{
-This package was initially created by collaborators of David Boas. It has
-been modified over the years. This main script is still a work in progress.
-
-This script was run with a subset of a larger g. The code did not
-compute the graph2.edges. Need to debug this.
+TODO:
+- Revise regraph to only work along select segments
+- Create a cylinder of radius r for the segment
 %}
 clear; clc; close all;
 %% Add top-level directory of code repository to path
@@ -82,22 +80,6 @@ tstr = 'After Marching Ellipsoid';
 plot_graph(g_mat, nodes, tstr);
 % xlim([60, 140]); ylim([110, 180]); zlim([0,90]);
 
-%%% Plot graph with lines
-%{
-figure;
-% Scatter plot of nodes
-scatter3(nodes(:,1), nodes(:,2), nodes(:,3), '.','b');
-% Plot edges
-for ii=1:length(edges)
-    n1 = edges(ii,1);
-    n2 = edges(ii,2);
-    x = [nodes(n1,1), nodes(n2,1)];
-    y = [nodes(n1,2), nodes(n2,2)];
-    z = [nodes(n1,3), nodes(n2,3)];
-    line(x, y, z, 'Color', 'red');
-end
-%}
-
 %% Smooth results after marching ellipsoid
 % Variables for downsampling
 validatedNodes = zeros(size(nodes,1), 1);
@@ -156,7 +138,7 @@ for ii = 1:max(bins)
         v = nodes(idcs(end),:) - nodes(idcs(1),:);
         nstruct(seg_idx).v = v ./ norm(v);
         
-        % Create a cylinder of radius r for the segment
+        % TODO: Create a cylinder of radius r for the segment
         
         % Iterate the index for the struct
         seg_idx = seg_idx + 1;
@@ -195,41 +177,59 @@ plot_graph(g_me_ds, nodes_ds, {'After Marching Ellipsoid','Removing small segmen
 % xlim([60, 140]); ylim([110, 180]); zlim([0,90]);
 %}
 
-%% Merge segments w/ centers within dmin & norm(vectors) < threshold
+%% Find segments w/ centers within dmin & norm(vectors) < threshold
 
 %%% Identify nodes within dmin distance
-% Create distance matrix
+% Convert struct to vertical array
 x = vertcat(nstruct.middle);
-z = squareform(pdist(x));
+% Create distance matrix (distance between each node)
+d = squareform(pdist(x));
 % Find index of node w/ euclidean distance below threshold
-dmin = 30.0;
-dmat = (z <= dmin);
+dmin = 100.0;
+dmat = (d <= dmin);
 % didx = find( (z ~= 0) & (z < dmin));
 
 %%% Identify segments w/ norm(vectors) < threshold
-% Create distance matrix
-x = vertcat(nstruct.v);
-z = squareform(pdist(x));
+% Convert struct to vertical array
+v = vertcat(nstruct.v);
+% Calculate difference in vector of each node
+vd = squareform(pdist(v));
 % Find index of node w/ euclidean distance of vectors below threshold
-vmin = 1.0;
-vmat = (z < vmin);
-vidx = unique(find( (z ~= 0) & (z < vmin)));
+vmin = 1.2;
+vmat = (vd < vmin);
+% vidx = unique(find( (z ~= 0) & (z < vmin)));
+
+%%% Plot distrubution of difference matrices
+figure; histogram(triu(d,1)); title('Coordinate Difference Matrix');
+figure; histogram(triu(vd,1)); title('Vector Difference Matrix');
 
 %%% Find nodes satisfying both conditions
-merge_mat = dmat .* vmat';
+merge_mat = logical(dmat .* vmat');
 merge_mat = triu(merge_mat, 1);
+% Find nonzero elements in matrix
+cc = bwconncomp(merge_mat,8);
+% Find connected components
+merge_idx_struct = struct();
+midx = 1;
+for ii = 1 : cc.NumObjects
+    % Convert from cell to array for ease of storage.
+    cc_tmp = cc.PixelIdxList{ii};
+    % If more than one pixel, then it's a group of connected pixels.
+    % These are nodes that meet both conditions (distance and vector).
+    % These will later be regraphed.
+    if length(cc_tmp) > 1
+        merge_idx_struct(midx).idcs = cc_tmp;
+        midx = midx + 1;
+    end
+end
 
-%%% TODO:
-% find groups of connected components
-% regraph edges within each group
+%% Regraph segments meeting conditions (<dmin & <vmin)
+% TODO: revise regraph to only work along segments
 
-%%% Find indices of nodes that satisfy both conditions
-% Unique indices
-merge_idx = unique(intersect(didx, vidx));
 % Convert indices to matrix subscripts to find similar segments
-[row, col] = ind2sub(size(z), merge_idx);
+% [row, col] = ind2sub(size(z), merge_idx);
 
-%%% Remove one of the redundant segments meeting conditions
+%% Remove one of the redundant segments meeting conditions
 % Create new node + edge list
 node_merge = nodes;
 edge_merge = edges;
@@ -245,8 +245,6 @@ end
 nodes(ndel,:) = [];
 % Remove edges containing node indices in ndel
 
-%}
-
 %% Function to plot graph from matlab graph
 function plot_graph(g, nodes, title_str)
 figure;
@@ -255,4 +253,21 @@ p.EdgeColor = 'red'; p.LineWidth = 1.5;
 xlabel('x'); ylabel('y'); zlabel('z'); title(title_str);
 set(gca, 'FontSize', 20); grid on;
 view(3);
+end
+
+%% Plot graph with lines
+function scatter_graph(edges, nodes)
+% Scatter plot from edges and nodes
+figure;
+% Scatter plot of nodes
+scatter3(nodes(:,1), nodes(:,2), nodes(:,3), '.','b');
+% Plot edges
+for ii=1:length(edges)
+    n1 = edges(ii,1);
+    n2 = edges(ii,2);
+    x = [nodes(n1,1), nodes(n2,1)];
+    y = [nodes(n1,2), nodes(n2,2)];
+    z = [nodes(n1,3), nodes(n2,3)];
+    line(x, y, z, 'Color', 'red');
+end
 end
