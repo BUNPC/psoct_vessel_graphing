@@ -1,5 +1,5 @@
 function [nodes, edges, validatedNodes,validatedEdges] =...
-    downsample_nodes(nodes, edges, validatedNodes, vox_xy, vox_z)
+    regraphNodes_new(nodes, edges, validatedNodes, vox_xy, vox_z)
 %%% Down sample 
 % INPUTS:
 %       nodes (matrix) - Nodes prior to downsample
@@ -13,7 +13,6 @@ function [nodes, edges, validatedNodes,validatedEdges] =...
 %% Initialization
 % Set node position and edges
 nodePos = nodes;
-nodeEdges = edges;
 nNodes = size(nodePos,1);
 nodeDiam = zeros(nNodes,1);
 
@@ -70,13 +69,12 @@ for ii=2:nNodes
     end    
 end
 % Remap edges and nodes
-nodeEdgesNew = nodeMap(nodeEdges);
-nodeEdges = nodeEdgesNew;
+nodeEdges = nodeMap(edges);
 
 %% What does this section do???
 % prune edges - still need to handle small loops
 % point edges
-nodeEdges = nodeEdges(find(nodeEdges(:,1)~=nodeEdges(:,2)),:);
+nodeEdges = nodeEdges(nodeEdges(:,1)~=nodeEdges(:,2),:);
 
 % redundant edges
 sE = cell(size(nodeEdges,1),1);

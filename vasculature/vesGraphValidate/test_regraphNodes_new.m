@@ -61,16 +61,29 @@ regraph_idcs = g.node_merge_idx;
 % Convert struct to cell
 regraph_idcs = struct2cell(regraph_idcs);
 
-%% Regraph nodes from group of segments
-% Validated nodes
-varray = zeros(length(nodes),1);
+%% Down sample nodes from group of segments
 % Search distance (voxels)
 delta = 4;
 % Downsample
-[segn, nodes, edges, validatedNodes,validatedEdges] =...
-    regraphNodes_new(regraph_idcs, nodes, edges, varray, delta);
+[nodes_ds, edges_ds] =...
+    downsample_segment_group(regraph_idcs, nodes, edges, delta);
+% Plot result
+% Copy edges into standard format
+s = edges_ds(:,1); % source node
+t = edges_ds(:,2); % target node
+% Create standard Matlab g
+g = graph(s, t);
+graph_title_str = 'Down Sample Marching Ellipsoid Segment Groups';
+% Plot matlab graph
+plot_graph(g, nodes_ds, graph_title_str);
+% Plot with scatterplot and lines
+scatter_graph(edges_ds, nodes_ds, graph_title_str);
 
-%% Call regraph for nodes from single segment
+%% Call regraph for nodes from entire graph
+% Validated nodes
+varray = zeros(length(nodes),1);
+[nodes, edges, validatedNodes,validatedEdges] =...
+    regraphNodes_new(nodes, edges, varray, delta, delta);
 
 %% Create list of nodes for each segment
 
