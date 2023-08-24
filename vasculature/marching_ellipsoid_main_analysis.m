@@ -187,7 +187,6 @@ d = squareform(pdist(x));
 % Find index of node w/ euclidean distance below threshold
 dmin = 100.0;
 dmat = (d <= dmin);
-% didx = find( (z ~= 0) & (z < dmin));
 
 %%% Identify segments w/ norm(vectors) < threshold
 % Convert struct to vertical array
@@ -197,19 +196,18 @@ vd = squareform(pdist(v));
 % Find index of node w/ euclidean distance of vectors below threshold
 vmin = 1.2;
 vmat = (vd < vmin);
-% vidx = unique(find( (z ~= 0) & (z < vmin)));
 
 %%% Plot distrubution of difference matrices
 figure; histogram(triu(d,1)); title('Coordinate Difference Matrix');
 figure; histogram(triu(vd,1)); title('Vector Difference Matrix');
 
-%%% Find nodes satisfying both conditions
+%%% Find segments satisfying both conditions
 merge_mat = logical(dmat .* vmat');
 merge_mat = triu(merge_mat, 1);
 % Find nonzero elements in matrix
 cc = bwconncomp(merge_mat,8);
 % Find connected components
-merge_idx_struct = struct();
+seg_merge_idx_struct = struct();
 midx = 1;
 for ii = 1 : cc.NumObjects
     % Convert from cell to array for ease of storage.
@@ -218,16 +216,28 @@ for ii = 1 : cc.NumObjects
     % These are nodes that meet both conditions (distance and vector).
     % These will later be regraphed.
     if length(cc_tmp) > 1
-        merge_idx_struct(midx).idcs = cc_tmp;
+        seg_merge_idx_struct(midx).idcs = cc_tmp;
         midx = midx + 1;
     end
 end
 
-%% Regraph segments meeting conditions (<dmin & <vmin)
-% TODO: revise regraph to only work along segments
-
-% Convert indices to matrix subscripts to find similar segments
-% [row, col] = ind2sub(size(z), merge_idx);
+%%% Find node indices for groups of segments meeting both conditions
+node_merge_idx = struct();
+% Convert segment indices to subscript
+for ii = 1 : length(seg_merge_idx_struct)
+    merge_idx = seg_merge_idx_struct(ii).idcs;
+    % Convert indices of segment to matrix subscripts
+    [row, col] = ind2sub(size(vmat), merge_idx);
+    % List of unique segment subscripts
+    seg_merge_idcs = unique([row, col]);
+    % Extract nodes from all segments
+    node_merge_idx(ii).node_idcs = horzcat(nstruct(seg_merge_idcs).node_idcs);
+end
+% Save graph output
+fout = '__adjacent_node_merge_list.mat';
+fout = strcat(graph_name(1:end-4), fout);
+node_merge_output = strcat(fullpath, fout);
+save(node_merge_output, 'node_merge_idx');
 
 %% Remove one of the redundant segments meeting conditions
 % Create new node + edge list
