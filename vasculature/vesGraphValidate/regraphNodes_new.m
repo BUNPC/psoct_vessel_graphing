@@ -14,11 +14,14 @@ regraphNodes_new(segn, nodes, edges,validatedNodes, delta)
 %   validatedEdges (array):
 %
 % TODO:
-% - iterate over edges and only downsample nodes within edge
-%       - may need to reindex nodeEdges
-% - recalculate diameter (this script does not update diameters)
+%   1) Iterate over list of nodes. This will be used to regraph:
+%           - individual segments. Useful for smoothing single segment.
+%           - list of segments. This is useful for regraphing a
+%               group of short segments, which are outputted from the
+%               marching ellpisoid code.
+%   3) Recalculate diameter for each segment (may move to different
+%       function).
 %{
-
 Inside (for ii=2:nNodes), this function performs the following
     For the current node in the for loop, find the redundant nodes within a
     search radius (+/- [delta, delta, delta]).
