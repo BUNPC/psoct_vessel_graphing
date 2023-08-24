@@ -133,7 +133,7 @@ x = vertcat(nstruct.middle);
 % Create distance matrix (distance between each node)
 d = squareform(pdist(x));
 % Find index of node w/ euclidean distance below threshold
-dmin = 50.0;
+dmin = 30.0;
 dmat = (d <= dmin);
 
 %%% Identify segments w/ norm(vectors) < threshold
@@ -169,16 +169,25 @@ for ii = 1 : cc.NumObjects
     end
 end
 
-%%% Find node indices for groups of segments meeting both conditions
+%%% Convert node indices -> subscripts for groups meeting both conditions
+% TODO: the indices within "seg_merge_idx_struct.idcs" reference the
+% distance matrix. The row/column of the distance matrix are the node
+% indices for nodes in segments meeting both conditions. Need to:
+%   - Convert the index to subscript (row, column)
+%   - create an array of both the row and column subscripts
+%   - add this to a struct
+
 node_merge_idx = struct();
 % Convert segment indices to subscript
 for ii = 1 : length(seg_merge_idx_struct)
+    % Distance matrix indices of group of nodes meeting conditions
     merge_idx = seg_merge_idx_struct(ii).idcs;
     % Convert indices of segment to matrix subscripts
     [row, col] = ind2sub(size(vmat), merge_idx);
-    % List of unique segment subscripts
-    seg_merge_idcs = unique([row, col]);
-    % Extract nodes from all segments
+    % Create array with both row and column subscripts.
+    % Only take the unique elements. 
+    seg_merge_idcs = unique(vertcat(row, col));
+    % Extract nodes indices from all segments
     node_merge_idx(ii).node_idcs = horzcat(nstruct(seg_merge_idcs).node_idcs);
 end
 
