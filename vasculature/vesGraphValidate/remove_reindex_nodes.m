@@ -1,6 +1,8 @@
 function [pos_reindex, edge_reindex] =...
     remove_reindex_nodes(rm_list, nodePos, nodeEdges)
 % Remove nodes from nodePos and nodeEdges. Reindex nodeEdges accordingly.
+% This function is used within the GUI.
+%
 % INPUTS:
 %   rm_list (array): list of indices to remove
 %   nodePos (matrix): [x,3] matrix of the (x,y,z) coordinates for
