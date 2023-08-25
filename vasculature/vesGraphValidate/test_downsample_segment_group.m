@@ -67,7 +67,11 @@ delta = 4;
 % Downsample
 [nodes_ds, edges_ds] =...
     downsample_segment_group(regraph_idcs, nodes, edges, delta);
-% Plot result
+
+%%% Plot with scatterplot and lines
+scatter_graph(edges_ds, nodes_ds, graph_title_str);
+
+%%% Plot result
 % Copy edges into standard format
 s = edges_ds(:,1); % source node
 t = edges_ds(:,2); % target node
@@ -76,8 +80,6 @@ g = graph(s, t);
 graph_title_str = 'Down Sample Marching Ellipsoid Segment Groups';
 % Plot matlab graph
 plot_graph(g, nodes_ds, graph_title_str);
-% Plot with scatterplot and lines
-scatter_graph(edges_ds, nodes_ds, graph_title_str);
 
 %% Call regraph for nodes from entire graph
 % Validated nodes
