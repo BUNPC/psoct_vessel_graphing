@@ -170,14 +170,14 @@ for ii = 1 : cc.NumObjects
 end
 
 %%% Convert node indices -> subscripts for groups meeting both conditions
-% TODO: the indices within "seg_merge_idx_struct.idcs" reference the
+% The indices within "seg_merge_idx_struct.idcs" reference the
 % distance matrix. The row/column of the distance matrix are the node
-% indices for nodes in segments meeting both conditions. Need to:
+% indices of nodes meeting both conditions. This section will:
 %   - Convert the index to subscript (row, column)
 %   - create an array of both the row and column subscripts
-%   - add this to a struct
+%   - Find the unique elements
 
-node_merge_idx = struct();
+group_node_idcs = struct();
 % Convert segment indices to subscript
 for ii = 1 : length(seg_merge_idx_struct)
     % Distance matrix indices of group of nodes meeting conditions
@@ -186,16 +186,16 @@ for ii = 1 : length(seg_merge_idx_struct)
     [row, col] = ind2sub(size(vmat), merge_idx);
     % Create array with both row and column subscripts.
     % Only take the unique elements. 
-    seg_merge_idcs = unique(vertcat(row, col));
-    % Extract nodes indices from all segments
-    node_merge_idx(ii).node_idcs = horzcat(nstruct(seg_merge_idcs).node_idcs);
+    node_merge_idcs = unique(vertcat(row, col));
+    % Extract nodes indices from all segments in group
+    group_node_idcs(ii).node_idcs = horzcat(nstruct(node_merge_idcs).node_idcs);
 end
 
-% Save graph output
+%%% Save graph output
 fout = '__adjacent_node_merge_list.mat';
 fout = strcat(graph_name(1:end-4), fout);
 node_merge_output = strcat(fullpath, fout);
-save(node_merge_output, 'node_merge_idx');
+save(node_merge_output, 'group_node_idcs');
 
 %% Regraph the nodes within each segment
 % Variables for downsampling
@@ -203,7 +203,7 @@ validatedNodes = zeros(size(nodes,1), 1);
 delta = 2;
 % Downsample
 [~, nodes_ds, edges_ds,~,~] = ...
-    regraphNodes_new(node_merge_idx(ii).node_idcs,nodes,edges,validatedNodes,delta);
+    regraphNodes_new(group_node_idcs(ii).node_idcs,nodes,edges,validatedNodes,delta);
 %%% Plot downsampled graph
 s = edges_ds(:,1); % source node
 t = edges_ds(:,2); % target node
