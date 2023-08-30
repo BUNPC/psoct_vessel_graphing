@@ -37,6 +37,10 @@ graph_me_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_marc
 % View flag for marching ellipsoid (1 = view).
 viewflag = 1;
 
+%%% Visualization of graph
+xlims = [0, 100]; ylims = [150, 300]; zlims = [50, 100];
+xlims2 = [35,70]; ylims2 = [200, 260]; zlims2 = [70, 90];
+
 %% Load volume and g from Data
 vox_dim = [12, 12, 15];
 
@@ -59,7 +63,8 @@ t = edges(:,2); % target node
 
 % Create standard Matlab g
 g_mat = graph(s, t);
-plot_graph(g_mat, nodes, 'Before Marching Ellipsoid')
+plot_graph(g_mat, nodes, 'Before Marching Ellipsoid');
+xlim(xlims2); ylim(ylims2); zlim(zlims2);
 
 %% Load the graph after marching ellipsoid
 fullpath = fullfile(dpath, subid, subdir, sigdir);
@@ -78,7 +83,27 @@ g_mat = graph(s, t);
 %%% Plot graph with builtin function
 tstr = 'After Marching Ellipsoid';
 plot_graph(g_mat, nodes, tstr);
-% xlim([60, 140]); ylim([110, 180]); zlim([0,90]);
+xlim(xlims2); ylim(ylims2); zlim(zlims2);
+
+%% Regraph with old function (for comparison)
+%%% Regraph
+% Search delta
+delta = 2;
+% all nodes are unvalidated
+validated_nodes = zeros(size(nodes,1),1);
+% Regraph
+[nodes, edges, ~,~] =...
+    regraphNodes_new(nodes, edges,validated_nodes, delta);
+% Convert to matlab graph struct
+s = edges(:,1); % source node
+t = edges(:,2); % target node
+% Create graph
+g_regraphed = graph(s, t);
+
+%%% Plot graph with builtin function
+tstr = {'Regraph (old function)','After Marching Ellipsoid'};
+plot_graph(g_regraphed, nodes, tstr);
+xlim(xlims2); ylim(ylims2); zlim(zlims2);
 
 %% Find segments with fewer than nmin nodes and find node indices
 % Connectivity analysis: find which segment each node belongs to. This will
@@ -201,7 +226,7 @@ save(node_merge_output, 'group_node_idcs');
 % Variables for downsampling
 validatedNodes = zeros(size(nodes,1), 1);
 delta = 2;
-% Downsample
+% Downsample (use new down sample function instead here)
 [~, nodes_ds, edges_ds,~,~] = ...
     regraphNodes_new(group_node_idcs(ii).node_idcs,nodes,edges,validatedNodes,delta);
 %%% Plot downsampled graph
@@ -228,7 +253,7 @@ plot_graph(g_mat_rm, nodes_rm, {'Marching Ellipsoid', tstr})
 % Variables for downsampling
 validatedNodes = zeros(size(nodes,1), 1);
 delta = 8;
-% Downsample
+% Downsample (use new down sample function instead here)
 [~, nodes_ds, edges_ds,~,~] = ...
     regraphNodes_new([],nodes_rm,edges_rm,validatedNodes,delta);
 
@@ -246,9 +271,11 @@ plot_graph(g_me_ds, nodes_ds, {'After Marching Ellipsoid','Removing small segmen
 function plot_graph(g, nodes, title_str)
 figure;
 p = plot(g, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
-p.EdgeColor = 'red'; p.LineWidth = 1.5;
+p.NodeColor = 'red';
+p.EdgeColor = 'blue'; p.LineWidth = 2;
+
 xlabel('x'); ylabel('y'); zlabel('z'); title(title_str);
-set(gca, 'FontSize', 20); grid on;
+set(gca, 'FontSize', 25); grid on;
 view(3);
 end
 
