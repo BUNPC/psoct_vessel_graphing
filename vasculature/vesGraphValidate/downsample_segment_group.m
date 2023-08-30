@@ -123,6 +123,8 @@ end
 % This command will replace the value edso(k) with nre(k) in edges_ds
 edges_ds_re = changem(edges_ds, nre, edso);
 
+%%% Verify subgraph with figure
+scatter_graph(edges_ds_re, nodes_ds_re, 'Subset of graph');
 
 %% Regraph (downsample)
 % Set search delta for x,y,z
@@ -151,7 +153,7 @@ for n = 1:size(group_node_idcs,3)
 
     for ii=2:n_nodes
         % Position of node under comparison
-        pos_tmp = nodes(nodes_idcs(ii),:);
+        pos_tmp = nodes_ds_re(nodes_idcs(ii),:);
         % Find nodes within the search radius of pos_tmp
         redundant_nodes = find(...
             pos_tmp(1)>=(pos_new(:,1)-hxy) & pos_tmp(1)<=(pos_new(:,1)+hxy) & ...
