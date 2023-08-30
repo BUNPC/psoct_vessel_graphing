@@ -53,11 +53,16 @@ im.nodes = Data.Graph.nodes;
 im.edges = Data.Graph.edges;
 im.segn = Data.Graph.segInfo.nodeSegN;
 
+% Set x,y,z limits for graph
+xlims = [0, 30];
+ylims = [0, 250];
+zlims = [120, 140];
 %% Load volumetric information and set threshold
 
 % Import volume
 vol = TIFF2MAT(fullfile(dpath, subid, subdir, vdata));
 im.angio = vol;
+% volshow(vol);
 
 % Imaging voxel intensity threshold (normalized [0,1])
 im_thresh = 0.75;
@@ -72,8 +77,9 @@ elseif strcmp(class(vol),'uint8')
 end
 
 %% Visualize graph prior to processing
-% graph_vis(im.nodes, im.edges, 'Graph Before Processing')
-
+graph_vis(im.nodes, im.edges, 'Graph Before Processing');
+xlim(xlims); ylim(ylims); zlim(zlims);
+set(gca, 'FontSize', 25);
 %% Downsample (regraph)
 % Initialized validated nodes vector so that regraph code runs
 validated_nodes = zeros(size(im.nodes,1),1);
@@ -90,7 +96,7 @@ im_ds.angio = im.angio;
 % Visualize downsampled
 gt1 = {'Regraphed', strcat("Delta = ", num2str(delta))};
 graph_vis(im_ds.nodes, im_ds.edges, gt1);
-
+xlim(xlims); ylim(ylims); zlim(zlims);
 %% Test move to mean and thresholding
 th_norm = [0.25, 0.5, 0.75, 0.9, 0.95];
 tarray = th_norm .* r;
@@ -107,7 +113,7 @@ for ii = 2:2
     g_title = {'Regraphed & Moved to Mean', t_str};
     graph_vis(im_mv.nodes, im_mv.edges, g_title)
 end
-
+xlim(xlims); ylim(ylims); zlim(zlims);
 %% Downsampling (regraph) to collapse loop
 validated_nodes = zeros(size(im.nodes,1),1);
 % Regraph
@@ -117,12 +123,11 @@ validated_nodes = zeros(size(im.nodes,1),1);
 im_re.angio = vol;
 
 % Graph title
-t_str = strcat("Delta = ", num2str(delta),...
-    '. Voxel Intensity Threshold = ',num2str(th_norm(ii)),...
-    ". Delta = ", num2str(delta));
+t_str = strcat("Regraph Delta = ", num2str(delta),...
+    '. Voxel Intensity Threshold = ',num2str(th_norm(ii)));
 % Visualize title
 graph_vis(im_re.nodes, im_re.edges, {'Regraphed, Moved to Mean, Regraphed', t_str})
-
+xlim(xlims); ylim(ylims); zlim(zlims);
 %% Centering (determine which centering function to use)
 % There are several different centering functions. David recommended trying
 % or reviewing each to determine which is most suitable.
@@ -134,10 +139,11 @@ visualize_flag = 0;
 % Run centering function
 im_centered = center_nodes_xyz(im_re, centerStep1vox, visualize_flag, im_thresh);
 
-%%% Compare results
+%% Compare results
 % Visualize centered graph
 graph_vis(im_centered.nodes, im_centered.edges, 'Graph After Centering')
-
+xlim(xlims); ylim(ylims); zlim(zlims);
+% xlim([200, 300]); ylim([150,300]); zlim([50, 150]);
 %% Visualize graph
 function graph_vis(nodes, edges, title_str)
 % Copy edges into standard format
@@ -154,11 +160,15 @@ p = plot(g, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
 % Set nodes red
 p.NodeColor = 'red';
 % Set line width of edges
-p.LineWidth = 2;
-% Labels and title
-title(title_str); xlabel('x'); ylabel('y'); zlabel('z')
+p.LineWidth = 4;
+
 % initialize camera view
 view(3);
+
+% Labels, title, fontsize, grid
+title(title_str); xlabel('x'); ylabel('y'); zlabel('z')
+set(gca, 'FontSize', 25);
+grid on;
 end
 
 %% Separate 
