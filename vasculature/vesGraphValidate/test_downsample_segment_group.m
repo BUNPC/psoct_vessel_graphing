@@ -25,15 +25,15 @@ end
 topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
-%% Initialize data path for linux or personal machine (debugging)
+%% Initialize data paths
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
 % Subject IDs
 subid = 'NC_6839';
 subdir = '\dist_corrected\volume\';
 sigdir = '\gsigma_1-3-5_gsize_5-13-21\';
-% Segmentation filename
+% PS-OCT volume filename
 vol_name = 'ref_4ds_norm_inv_crop2.tif';
-% Graph nodes/edges after marching ellipsoid
+% Struct of nodes/edges after applying the marching ellipsoid
 graph_me_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_marching_ellipse.mat';
 % List of node indices within each list of segments to merge
 node_merge_struct = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_ds_mean_ds_graph__adjacent_node_merge_list';
@@ -51,24 +51,31 @@ s = edges(:,1); % source node
 t = edges(:,2); % target node
 % Create standard Matlab g
 g_mat = graph(s, t);
-plot_graph(g_mat, nodes, 'Before Marching Ellipsoid')
+plot_graph(g_mat, nodes, 'After Marching Ellipsoid (unfiltered)')
 
-%% Load list of nodes from multiple segments to regraph
+%% Load list of nodes to down sample
+% This struct contains a field (node_merge_idx). The rows in this field
+% correspond to groups of nodes meeting the downsampling criteria from the
+% marching ellipsoid output. These node indices will be downsampled.
+
+% Create filepath
 fullpath = fullfile(dpath, subid, subdir, sigdir);
 filename = strcat(fullpath, node_merge_struct);
-g = load(filename);
-regraph_idcs = g.node_merge_idx;
+% Load struct
+node_ds_idcs = load(filename);
+node_ds_idcs = node_ds_idcs.node_merge_idx;
 % Convert struct to cell
-regraph_idcs = struct2cell(regraph_idcs);
+node_ds_idcs = struct2cell(node_ds_idcs);
 
 %% Down sample nodes from group of segments
 % Search distance (voxels)
 delta = 4;
 % Downsample
 [nodes_ds, edges_ds] =...
-    downsample_segment_group(regraph_idcs, nodes, edges, delta);
+    downsample_segment_group(node_ds_idcs, nodes, edges, delta);
 
 %%% Plot with scatterplot and lines
+graph_title_str = 'Down Sampled Marching Ellipsoid Segment Groups';
 scatter_graph(edges_ds, nodes_ds, graph_title_str);
 
 %%% Plot result
@@ -77,7 +84,7 @@ s = edges_ds(:,1); % source node
 t = edges_ds(:,2); % target node
 % Create standard Matlab g
 g = graph(s, t);
-graph_title_str = 'Down Sample Marching Ellipsoid Segment Groups';
+graph_title_str = 'Down Sampled Marching Ellipsoid Segment Groups';
 % Plot matlab graph
 plot_graph(g, nodes_ds, graph_title_str);
 

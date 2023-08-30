@@ -1,9 +1,9 @@
-function [nodes, edges] =...
-downsample_segment_group(group_idcs, nodes, edges, delta)
+function [nodes_out, edges_out] =...
+downsample_segment_group(group_node_idcs, nodes, edges, delta)
 %%regraphNodes_new Downsample a graph
 % INPUTS
 %   group_idcs (cell array): [1,1,N] each entry contains an array of
-%                            indices that can be merged.
+%                            indices that can be down sampled.
 %   nodes (array): [X, 3] matrix of coordinates for nodes
 %   edges (array): [Y,2] matrix of edges connecting node indices
 %   delta (uint): step size for searching
@@ -11,13 +11,25 @@ downsample_segment_group(group_idcs, nodes, edges, delta)
 %   nodes (array): coordinates of nodes after down sampling
 %   edges (array): matrix of edges after down sampling
 %
-% TODO:
-%   1) Iterate over list of nodes. This will be used to regraph:
-%           - individual segments. Useful for smoothing single segment.
-%           - list of segments. This is useful for regraphing a
-%               group of short segments, which are outputted from the
-%               marching ellpisoid code.
 %{
+TODO:
+1) Add argument to downsample either:
+    - individual segments to smooth single segment
+    - list of segments. This is useful for regraphing a
+        group of short segments, which are outputted from the
+        marching ellpisoid code.
+2) Re-index the nodes/edges NOT in the group_node_idcs
+    - create separate arrays/matrices for storing these:
+    - nodepos_og, edges_og
+3) After downsampling, recombine the two groups of matrices (re-indexed &
+    original).
+    - 
+--------------------------------------------------------------------------
+CODE EXPLANATION:
+
+The loop "for n = 1:size(group_node_idcs,3)" iterates over the group of
+    node indices that meet the conditions for down sampling.
+
 Inside (for ii=2:n_nodes), this function performs the following
     For the current node in the for loop, find the redundant nodes within a
     search radius (+/- [delta, delta, delta]).
@@ -46,20 +58,85 @@ and edges:
     The following section removes these redundant edges.
 %}
 
-%% Initialization
+%% Re-index the edges containing the nodes to downsample
+%%% Create list of node indices (from all segment groups) to downsample.
+% This will be used to find all edges involved in downsampling, which will
+% be used to create a separate edge list.
+nodes_ds = horzcat(group_node_idcs{:});
+
+%%% Iterate over all nodes and find edges connected to each nodes
+% Variable for storing edge indices
+edges_ds = [];
+for n = 1:length(nodes_ds)
+    % Find all edges connected to nodes_ds(n)
+    idcs = find(edges(:,1)==nodes_ds(n) | edges(:,2)==nodes_ds(n));
+    % Add to array for storing edge indices (edge_ds)
+    edges_ds = [edges_ds; idcs];
+end
+% Find unique edge subscripts
+edges_ds = unique(edges_ds);
+
+%%% Create new matrix of edges (containing nodes to down sample)
+% The values in edges_ds are the indices of all edges that contain at least
+% one of the nodes in nodes_ds. The matrix "edges" contains all edges in
+% the entire graph. This line of code will use the edge indices in edges_ds
+% to create a new matrix of edges [node_start, node_end].
+edges_ds = edges(edges_ds,:);
+
+%% Re-index the nodes in group_idcs
+% The node indices in group_idcs are indexed based on the non-downsampled
+% graph. These indices must be reindexed to 1. Similarly, the 
+
+%%% Initialize variables for re-indexing
+% Create ordered list of edge indices
+edso = sort(edges_ds(:));
+% Track the new re-indexed node index
+ni = 1;
+% Array for storing reindexed node indices
+nre = zeros(length(edso),1);
+% Temporary variable for storing last element for comparison
+last = edso(1);
+% Matrix for storing node positions (after re-indexing)
+nodes_ds_re = zeros(length(unique(edso)),3);
+
+%%% Iterate over ordered list of node indices in edges_ds
+for e=1:length(edso)
+    % If the current element of the ordered indices equals the prior elem.
+    if edso(e) == last
+        % Set the reindexed node index equal to the last node index
+        nre(e) = ni;
+        % Update reindexed node position
+        nodes_ds_re(ni,:) = nodes(edso(e), :);
+    else
+        % Increment the new reindexed node index
+        ni = ni + 1;
+        % Update reindexed node index
+        nre(e) = ni;
+        % Update reindexed node position
+        nodes_ds_re(ni,:) = nodes(edso(e), :);
+    end
+    % Update the value of the last element for comparison
+    last = edso(e);
+end
+
+%%% Update the node indices in edges_ds with the re-indexed values
+% This command will replace the value edso(k) with nre(k) in edges_ds
+edges_ds_re = changem(edges_ds, nre, edso);
+
+
+%% Regraph (downsample)
 % Set search delta for x,y,z
 hxy = delta;
 hz = delta;
-
 % Struct for storing mapping
 map = struct;
 
-%% Regraph (downsample)
-
 % Iterate over segment ID number. Each node has a correpsonding segment ID
-for n = 1:size(group_idcs,3)
+for n = 1:size(group_node_idcs,3)
     % Group of nodes to downsample
-    nodes_idcs = cell2mat(group_idcs(:,:,n));
+    nodes_idcs = cell2mat(group_node_idcs(:,:,n));
+    % Remap nodes according to reindexing in last section
+    nodes_idcs = changem(nodes_idcs, nre, edso);
     % Number of nodes in group of segments
     n_nodes = length(nodes_idcs);
     
@@ -70,7 +147,7 @@ for n = 1:size(group_idcs,3)
     node_map(1) = 1;
        
     % Initial value of node position for comparision
-    pos_new = nodes(nodes_idcs(1),:);
+    pos_new = nodes_ds_re(nodes_idcs(1),:);
 
     for ii=2:n_nodes
         % Position of node under comparison
@@ -120,7 +197,7 @@ node_map_master = struct2cell(map);
 % Concatenate cell arrays into a double array
 node_map_master = cell2mat(node_map_master(1,:));
 % Find the new edges based upon node_map
-edges_mapped = node_map_master(edges);
+edges_mapped = node_map_master(edges_ds_re);
 
 %%% Create master list of new node positions
 % Convert from struct to cell array
@@ -154,8 +231,8 @@ edges_mapped = edges_mapped(sort(unique_edge_idx),:);
 % then delete all nodes and edges back to the bifurcation node
 
 %% Reassign output variables
-nodes = pos_new;
-edges = edges_mapped;
-fprintf('Regraph reduced %d nodes to %d\n',n_nodes,size(nodes,1))
+nodes_out = pos_new;
+edges_out = edges_mapped;
+fprintf('Regraph reduced %d nodes to %d\n',n_nodes,size(nodes_out,1))
 
 end
