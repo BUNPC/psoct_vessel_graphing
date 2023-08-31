@@ -62,6 +62,9 @@ and edges:
 %%% Create list of node indices (from all segment groups) to downsample.
 % This will be used to find all edges involved in downsampling, which will
 % be used to create a separate edge list.
+% These are the node indices from the graph containing all segments (even
+% those that will not be down sampled). Therefore, these indices have not
+% yet been re-indexed for this downsample function.
 nodes_ds = horzcat(group_node_idcs{:});
 
 %%% Iterate over all nodes and find edges connected to each nodes
@@ -83,9 +86,13 @@ edges_ds = unique(edges_ds);
 % to create a new matrix of edges [node_start, node_end].
 edges_ds = edges(edges_ds,:);
 
+%%% Verify that all nodes in edges_ds are contained in group_node_idcs
+node_diff = setdiff(unique(edges_ds(:)), unique(nodes_ds(:)));
+assert(isempty(node_diff), 'There are nodes contained in edges that are not in the list of nodes.')
 %% Re-index the nodes in group_idcs
 % The node indices in group_idcs are indexed based on the non-downsampled
-% graph. These indices must be reindexed to 1. Similarly, the 
+% graph. These indices must be reindexed to 1. Similarly, the node indices
+% must also be reindexed to 1.
 
 %%% Initialize variables for re-indexing
 % Create ordered list of edge indices
@@ -124,9 +131,18 @@ end
 edges_ds_re = changem(edges_ds, nre, edso);
 
 %%% Verify subgraph with figure
-scatter_graph(edges_ds_re, nodes_ds_re, 'Subset of graph');
+% scatter_graph(edges_ds_re, nodes_ds_re, 'Subset of graph');
 
 %% Regraph (downsample)
+%%% ISSUE: the outer loop iterates over the cell array "group_node_idcs",
+%%% where each array contains nodes indices. Some of these nodes are
+%%% contained within multiple groups. This code was developed for a list of
+%%% unique nodes. Therefore, when trying to reassign the edges, the array
+%%% "node_map_master" is too long because it contains these redundant
+%%% nodes.
+%%% SOLUTIONS:
+%%% - remove redundant nodes from group_node_idcs before entering for-loop
+
 % Set search delta for x,y,z
 hxy = delta;
 hz = delta;
@@ -143,7 +159,6 @@ for n = 1:size(group_node_idcs,3)
     n_nodes = length(nodes_idcs);
     
     % Initalize variables for group of segments
-    % TODO: determine how to re-reference node_map
     n_unique = 1;
     node_map = zeros(n_nodes,1);
     node_map(1) = 1;
@@ -168,6 +183,8 @@ for n = 1:size(group_node_idcs,3)
         else
             % If more than one node within radius
             if length(redundant_nodes)>1
+                % Delete local variable
+                clear d
                 % Initialize array to track distance between current
                 % node and the nodes within search radius.
                 d = zeros(length(redundant_nodes),1);
@@ -176,24 +193,36 @@ for n = 1:size(group_node_idcs,3)
                     d(r) = norm(pos_tmp-pos_new(redundant_nodes(r),:));
                 end
                 % Retrieve index of closest node in redundant_nodes
-                [~, closestNode] = min(d);
-                % Delete local variable
-                clear d
+                [~, closest_node] = min(d);
             % Otherwise the index of closest node is the first element
             else
-                closestNode = 1;
+                closest_node = 1;
             end
             % Replace current node with closest node
-            node_map(ii) = redundant_nodes(closestNode);
+            node_map(ii) = redundant_nodes(closest_node);
         end
     end
     %%% Add mapping to struct b/c it will be overwritten on next iteration
-    % Re-index node_map with the node indices
-    map(n).node_map = nodes_idcs(node_map);
+    % Reindex node map
+    nmap = nodes_idcs(node_map);
+    
+    %%% DEBUGGING: Create new edges based upon node_map
+    %{
+    % Map edges to new node positions in nmap
+    emap = nmap(edges_ds_re(1:10,:));
+    % Plot nmap and emap
+    scatter_graph(emap, pos_new, 'After Downsampling Graph');
+    %}
+    %%% Assign new indices of node_map and node positions to struct
+    map(n).node_map = nmap;
     map(n).pos_new = pos_new;
 end
 
 %%% Create master list of node_map for entire graph
+% BUG: node_map_master is too long. Then length of this should max the
+% maximum element of edges_ds_re. There is a book-keeping issue when
+% creating the arrays node_map and pos_new.
+
 % Convert from struct to cell array
 node_map_master = struct2cell(map);
 % Concatenate cell arrays into a double array
@@ -207,6 +236,8 @@ pos_new = struct2cell(map);
 pos_new = pos_new(2,:);
 % Concatenate cell arrays into a double array
 pos_new = vertcat(pos_new{:});
+%%% Verify subgraph with figure
+scatter_graph(edges_mapped, pos_new, 'After Downsampling Graph');
 
 %% Remove single-node edges and redundant edges
 % Remove single-node edges that are connecting the same node
@@ -235,6 +266,8 @@ edges_mapped = edges_mapped(sort(unique_edge_idx),:);
 %% Reassign output variables
 nodes_out = pos_new;
 edges_out = edges_mapped;
-fprintf('Regraph reduced %d nodes to %d\n',n_nodes,size(nodes_out,1))
+fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_out,1))
+%%% Verify subgraph with figure
+scatter_graph(edges_out, nodes_out, 'After Downsampling Graph');
 
 end

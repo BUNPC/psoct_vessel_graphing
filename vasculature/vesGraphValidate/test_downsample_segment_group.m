@@ -51,7 +51,7 @@ s = edges(:,1); % source node
 t = edges(:,2); % target node
 % Create standard Matlab g
 g_mat = graph(s, t);
-plot_graph(g_mat, nodes, 'After Marching Ellipsoid (unfiltered)')
+% plot_graph(g_mat, nodes, 'After Marching Ellipsoid (unfiltered)')
 
 %% Load list of nodes to down sample
 % This struct contains a field (node_merge_idx). The rows in this field
@@ -63,16 +63,24 @@ fullpath = fullfile(dpath, subid, subdir, sigdir);
 filename = strcat(fullpath, node_merge_struct);
 % Load struct
 node_ds_idcs = load(filename);
-node_ds_idcs = node_ds_idcs.node_merge_idx;
+node_ds_idcs = node_ds_idcs.group_node_idcs;
 % Convert struct to cell
 node_ds_idcs = struct2cell(node_ds_idcs);
 
 %% Down sample nodes from group of segments
 % Search distance (voxels)
 delta = 4;
-% Downsample
+
+% Downsample with old method for debugging
+validatedNodes = zeros(size(nodes,1),1);
+[nodes_old_method, edges_old_method, ~,~] = ...
+    regraphNodes_new(nodes, edges, validatedNodes, delta, delta);
+
+%% Downsample with new method
 [nodes_ds, edges_ds] =...
     downsample_segment_group(node_ds_idcs, nodes, edges, delta);
+
+
 
 %%% Plot with scatterplot and lines
 graph_title_str = 'Down Sampled Marching Ellipsoid Segment Groups';
