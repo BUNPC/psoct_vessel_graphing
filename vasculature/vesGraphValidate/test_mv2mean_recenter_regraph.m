@@ -40,6 +40,7 @@ subid = 'NC_6839';
 subdir = '\dist_corrected\volume\';
 sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
 vdata = 'ref_4ds_norm_inv_crop2.tif';
+seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23.tif';
 % Graphd data after Gaussian filtering segmentation
 gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_graph_data.mat';
 
@@ -58,7 +59,6 @@ xlims = [0, 30];
 ylims = [0, 250];
 zlims = [120, 140];
 %% Load volumetric information and set threshold
-
 % Import volume
 vol = TIFF2MAT(fullfile(dpath, subid, subdir, vdata));
 im.angio = vol;
@@ -75,6 +75,11 @@ elseif strcmp(class(vol),'uint8')
     r = 255;
     im_thresh = im_thresh .* r;
 end
+
+%% Load segmentation stack
+% Import volume
+seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
+volshow(seg);
 
 %% Visualize graph prior to processing
 graph_vis(im.nodes, im.edges, 'Graph Before Processing');
@@ -127,23 +132,56 @@ t_str = strcat("Regraph Delta = ", num2str(delta),...
     '. Voxel Intensity Threshold = ',num2str(th_norm(ii)));
 % Visualize title
 graph_vis(im_re.nodes, im_re.edges, {'Regraphed, Moved to Mean, Regraphed', t_str})
-xlim(xlims); ylim(ylims); zlim(zlims);
+% xlim(xlims); ylim(ylims); zlim(zlims);
 %% Centering (determine which centering function to use)
 % There are several different centering functions. David recommended trying
 % or reviewing each to determine which is most suitable.
 
-% Unsure what this variable does
+%%% Replace the angio (PS-OCT volume) with the segmentation
+% This is a debugging step. The PSOCT has poor contrast, so centering does
+% not work. David recommended centering with the segmentation.
+im_re.angio = seg;
+% im_re.angio = vol;
+
+% Normalize posM
 centerStep1vox = 0;
+
 % Visualization
 visualize_flag = 0;
+
 % Run centering function
 im_centered = center_nodes_xyz(im_re, centerStep1vox, visualize_flag, im_thresh);
 
-%% Compare results
+%% Graph after centering
 % Visualize centered graph
 graph_vis(im_centered.nodes, im_centered.edges, 'Graph After Centering')
 xlim(xlims); ylim(ylims); zlim(zlims);
 % xlim([200, 300]); ylim([150,300]); zlim([50, 150]);
+
+%% Overlay centering with segmentation
+% GOAL: ensure we can remove loops without modifying branch points
+% - Verify it does not grossly modify/eliminate branch points
+% - Determine if centering moves nodes towards center line.
+
+%%% Convert results from graph to skeleton (save nifti)
+% Output filename
+centered_fout = strcat(segname, 'centered');
+%  sz =  the size of output volume. The order is [ y x z ]
+
+%  Graph  =  Graph struct that has node coordinate vector and edge vector 
+
+%  res    =  resolution of the nifti image. 
+
+%            i.e. [0.01, 0.01, 0.01] 0.01cm (10um) isotropics
+
+%  downsampled_flag = 1=downsampled; 0=no-downsampled
+
+%  save_flag = to save the skeleton or not
+
+[~] = sk3D(sz,Graph,centered_output,res,downsampled_flag,save_flag);
+
+%% Overlay centering results with uncentered
+
 %% Visualize graph
 function graph_vis(nodes, edges, title_str)
 % Copy edges into standard format

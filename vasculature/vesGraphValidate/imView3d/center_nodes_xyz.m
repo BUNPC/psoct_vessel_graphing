@@ -40,7 +40,7 @@ nNodes = size(im.nodes,1);
 [ny,nx,nz] = size(angio);
 nodes = im.nodes;
 
-% Initialize number of branches (nB)
+% Initialize number of branches (nB)w
 nB = zeros(nNodes,1);
 for ii=1:nNodes
     nB(ii) = length(find(im.edges(:,1)==ii | im.edges(:,2)==ii));
