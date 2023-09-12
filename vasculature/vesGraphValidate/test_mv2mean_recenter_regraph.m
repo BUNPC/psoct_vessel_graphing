@@ -158,29 +158,44 @@ graph_vis(im_centered.nodes, im_centered.edges, 'Graph After Centering')
 xlim(xlims); ylim(ylims); zlim(zlims);
 % xlim([200, 300]); ylim([150,300]); zlim([50, 150]);
 
-%% Overlay centering with segmentation
+%% Overlay segmentation w/ skeleton (from centered graph)
 % GOAL: ensure we can remove loops without modifying branch points
 % - Verify it does not grossly modify/eliminate branch points
 % - Determine if centering moves nodes towards center line.
 
-%%% Convert results from graph to skeleton (save nifti)
+%%% Parameters to convert graph to 3D skeleton
 % Output filename
-centered_fout = strcat(segname, 'centered');
+centered_fout = strcat(seg_name, 'centered.nii');
 %  sz =  the size of output volume. The order is [ y x z ]
-
-%  Graph  =  Graph struct that has node coordinate vector and edge vector 
-
-%  res    =  resolution of the nifti image. 
-
-%            i.e. [0.01, 0.01, 0.01] 0.01cm (10um) isotropics
-
-%  downsampled_flag = 1=downsampled; 0=no-downsampled
-
+sz = size(seg);
+%  res = resolution of the nifti image [y,x,z] centimeters
+res = [0.0012, 0.0012, 0.0015];
+%  ds_flag = 1 or 0. (1=downsampled. 0=no-downsampled)
+ds_flag = 1;
 %  save_flag = to save the skeleton or not
+save_flag = 0;
 
-[~] = sk3D(sz,Graph,centered_output,res,downsampled_flag,save_flag);
+%%% Convert graph to 3D skeleton
+[centered_skel] = sk3D(sz, im_centered, centered_fout, res, ds_flag, save_flag);
 
-%% Overlay centering results with uncentered
+%%% Overlay in figure
+h = volshow(centered_skel);
+h.OverlayData = seg;
+h.OverlayAlphamap = 0.3;
+
+%%% Create a .gif of rotating the overlaid volumes
+%{
+gif_filename = 'regraph_mv2mean_regraph_center.gif';
+gif_fullfile = fullfile(dpath, subid, subdir, sigdir,...
+    'ref_4ds_norm_inv_crop2_segment_pmin_0.23_gifs', gif_filename);
+volgif(h, centered_skel, gif_fullfile);
+%}
+
+%% Overlay centered + uncentered
+
+
+%% Overlay segmentation w/ skeleton (from uncentered graph)
+
 
 %% Visualize graph
 function graph_vis(nodes, edges, title_str)
@@ -209,4 +224,49 @@ set(gca, 'FontSize', 25);
 grid on;
 end
 
-%% Separate 
+%% Create .gif of volume rotating
+function volgif(h, volume, filename)
+% INPUTS:
+%   h (handle): handle to the volshow output
+%   volume (matrix): matrix of the volume in volshow
+%   filename (string): full output file path + filename
+% OUTPUTS:
+%   the .gif is saved to the filename specified in "fname"
+
+viewer = h.Parent;
+hFig = viewer.Parent;
+drawnow
+
+% Aim camera at center of volume
+sz = size(volume);
+center = sz/2 + 0.5;
+viewer.CameraTarget = center;
+
+% Specify number of frames in animation
+nframes = 20;
+vec = linspace(0,2*pi,nframes)';
+dist = sqrt(sz(1)^2 + sz(2)^2 + sz(3)^2);
+myPosition = center + ([cos(vec) sin(vec) ones(size(vec))]*dist);
+
+% Rotate camera, update display, write to gif
+for idx = 1:length(vec)
+    % Update the current view
+    viewer.CameraPosition = myPosition(idx,:);
+    % Capture the image using the getframe function
+    I = getframe(hFig);
+    [indI,cm] = rgb2ind(I.cdata,256);
+    % Write the frame to the GIF file
+    if idx==1
+        % Do nothing. The first frame displays only the viewer, not the
+        % volume.
+    elseif idx == 2
+        imwrite(indI,cm,filename,"gif",Loopcount=inf,DelayTime=0)
+    else
+        imwrite(indI,cm,filename,"gif",WriteMode="append",DelayTime=0)
+    end
+end
+
+end
+
+
+
