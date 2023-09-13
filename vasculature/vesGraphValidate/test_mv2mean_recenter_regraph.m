@@ -152,10 +152,15 @@ visualize_flag = 0;
 % Run centering function
 im_centered = center_nodes_xyz(im_re, centerStep1vox, visualize_flag, im_thresh);
 
+%%% Programatically compared uncentered w/ centered
+nodes_cent = im_centered.nodes;
+nodes_uncent = im_re.nodes;
+cent_comp = nodes_cent == nodes_uncent;
+
 %% Graph after centering
 % Visualize centered graph
 graph_vis(im_centered.nodes, im_centered.edges, 'Graph After Centering')
-xlim(xlims); ylim(ylims); zlim(zlims);
+% xlim(xlims); ylim(ylims); zlim(zlims);
 % xlim([200, 300]); ylim([150,300]); zlim([50, 150]);
 
 %% Overlay segmentation w/ skeleton (from centered graph)
@@ -176,10 +181,17 @@ ds_flag = 1;
 save_flag = 0;
 
 %%% Convert graph to 3D skeleton
-[centered_skel] = sk3D(sz, im_centered, centered_fout, res, ds_flag, save_flag);
+[centered_skel] = sk3D(sz, im_centered, centered_fout,...
+                        res, ds_flag, save_flag);
 
 %%% Overlay in figure
-h = volshow(centered_skel);
+view_panel = uifigure(figure,'Name',"Centered");
+close
+v = viewer3d(view_panel);
+v.BackgroundColor = 'w';
+v.BackgroundGradient = 'off';
+h = volshow(centered_skel,'Parent',v);
+h.Parent.BackgroundColor = 'w';
 h.OverlayData = seg;
 h.OverlayAlphamap = 0.3;
 
@@ -191,11 +203,49 @@ gif_fullfile = fullfile(dpath, subid, subdir, sigdir,...
 volgif(h, centered_skel, gif_fullfile);
 %}
 
-%% Overlay centered + uncentered
+%% Overlay uncentered & centered
+%%% Convert graph to 3D skeleton
+% Output filename
+uncentered_fout = strcat(seg_name, 'uncentered.nii');
+% Convert
+[uncentered_skel] = sk3D(sz, im_centered, uncentered_fout,...
+                        res, ds_flag, save_flag);
 
+%%% Overlay in figure
+h = volshow(uncentered_skel);
+h.OverlayData = centered_skel;
+h.OverlayAlphamap = 0.3;
 
 %% Overlay segmentation w/ skeleton (from uncentered graph)
+h = volshow(uncentered_skel);
+h.OverlayData = seg;
+h.OverlayAlphamap = 0.3;
 
+%% Overlay segmentation + unprocessed graph
+%%% Convert graph to 3D skeleton
+% Output filename
+nonproc_fout = strcat(seg_name, 'raw_graph_skel.nii');
+% Convert
+[raw_skel] = sk3D(sz, im_centered, nonproc_fout,...
+                        res, ds_flag, save_flag);
+
+%%% Overlay segmentation + raw graph
+view_panel = uifigure(figure,'Name',"Unprocessed");
+close
+v = viewer3d(view_panel);
+v.BackgroundColor = 'w';
+v.BackgroundGradient = 'off';
+h = volshow(raw_skel,'Parent',v);
+h.Parent.BackgroundColor = 'w';
+h.OverlayData = seg;
+h.OverlayAlphamap = 0.3;
+
+%% Overlay cropped raw skeleton
+raw_skel_crop = raw_skel(100:300, 100:300,100:169);
+volshow(raw_skel_crop);
+
+proc_skel_crop = uncentered_skel(100:300, 100:300,100:169);
+volshow(proc_skel_crop);
 
 %% Visualize graph
 function graph_vis(nodes, edges, title_str)
