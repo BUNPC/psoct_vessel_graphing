@@ -40,9 +40,13 @@ subid = 'NC_6839';
 subdir = '\dist_corrected\volume\';
 sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
 vdata = 'ref_4ds_norm_inv_crop2.tif';
+%%% Data with fewer nested loops (probability threshold = 0.23)
 seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23.tif';
-% Graphd data after Gaussian filtering segmentation
+% Graphed data after Gaussian filtering segmentation
 gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_graph_data.mat';
+%%% Data with nested loops (probability threshold = 0.21)
+% seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
+% gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
 
 %% Load PSOCT graph
 Data = load(fullfile(dpath, subid, subdir, sigdir, gdata), 'Data');
@@ -54,10 +58,8 @@ im.nodes = Data.Graph.nodes;
 im.edges = Data.Graph.edges;
 im.segn = Data.Graph.segInfo.nodeSegN;
 
-% Set x,y,z limits for graph
-xlims = [0, 30];
-ylims = [0, 250];
-zlims = [120, 140];
+%%% x,y,z limits for examining loop removal in graph
+xlims = [0, 30]; ylims = [0, 250]; zlims = [120, 140];
 %% Load volumetric information and set threshold
 % Import volume
 vol = TIFF2MAT(fullfile(dpath, subid, subdir, vdata));
@@ -134,6 +136,7 @@ t_str = strcat("Regraph Delta = ", num2str(delta),...
 graph_vis(im_re.nodes, im_re.edges, {'Regraphed, Moved to Mean, Regraphed', t_str})
 % xlim(xlims); ylim(ylims); zlim(zlims);
 %% Centering (determine which centering function to use)
+%{
 % There are several different centering functions. David recommended trying
 % or reviewing each to determine which is most suitable.
 
@@ -157,20 +160,14 @@ nodes_cent = im_centered.nodes;
 nodes_uncent = im_re.nodes;
 cent_comp = nodes_cent == nodes_uncent;
 
-%% Graph after centering
+%%% Graph after centering
 % Visualize centered graph
 graph_vis(im_centered.nodes, im_centered.edges, 'Graph After Centering')
-% xlim(xlims); ylim(ylims); zlim(zlims);
+xlim(xlims); ylim(ylims); zlim(zlims);
 % xlim([200, 300]); ylim([150,300]); zlim([50, 150]);
+%}
 
-%% Overlay segmentation w/ skeleton (from centered graph)
-% GOAL: ensure we can remove loops without modifying branch points
-% - Verify it does not grossly modify/eliminate branch points
-% - Determine if centering moves nodes towards center line.
-
-%%% Parameters to convert graph to 3D skeleton
-% Output filename
-centered_fout = strcat(seg_name, 'centered.nii');
+%% Parameters to convert graph to 3D skeleton
 %  sz =  the size of output volume. The order is [ y x z ]
 sz = size(seg);
 %  res = resolution of the nifti image [y,x,z] centimeters
@@ -180,7 +177,10 @@ ds_flag = 1;
 %  save_flag = to save the skeleton or not
 save_flag = 0;
 
+%% Overlay segmentation w/ skeleton (from centered graph)
+%{
 %%% Convert graph to 3D skeleton
+centered_fout = strcat(seg_name, 'centered.nii');
 [centered_skel] = sk3D(sz, im_centered, centered_fout,...
                         res, ds_flag, save_flag);
 
@@ -202,50 +202,97 @@ gif_fullfile = fullfile(dpath, subid, subdir, sigdir,...
     'ref_4ds_norm_inv_crop2_segment_pmin_0.23_gifs', gif_filename);
 volgif(h, centered_skel, gif_fullfile);
 %}
+%}
 
-%% Overlay uncentered & centered
-%%% Convert graph to 3D skeleton
+%% Convert uncentered graph to 3D skeleton
 % Output filename
 uncentered_fout = strcat(seg_name, 'uncentered.nii');
 % Convert
-[uncentered_skel] = sk3D(sz, im_centered, uncentered_fout,...
+[uncentered_skel] = sk3D(sz, im_re, uncentered_fout,...
                         res, ds_flag, save_flag);
 
-%%% Overlay in figure
-h = volshow(uncentered_skel);
-h.OverlayData = centered_skel;
-h.OverlayAlphamap = 0.3;
-
-%% Overlay segmentation w/ skeleton (from uncentered graph)
-h = volshow(uncentered_skel);
-h.OverlayData = seg;
-h.OverlayAlphamap = 0.3;
-
-%% Overlay segmentation + unprocessed graph
-%%% Convert graph to 3D skeleton
-% Output filename
-nonproc_fout = strcat(seg_name, 'raw_graph_skel.nii');
-% Convert
-[raw_skel] = sk3D(sz, im_centered, nonproc_fout,...
-                        res, ds_flag, save_flag);
-
-%%% Overlay segmentation + raw graph
-view_panel = uifigure(figure,'Name',"Unprocessed");
-close
+%% Overlay uncentered & centered
+%{
+view_panel = uifigure(figure,'Name',"Uncentered"); close;
 v = viewer3d(view_panel);
 v.BackgroundColor = 'w';
 v.BackgroundGradient = 'off';
-h = volshow(raw_skel,'Parent',v);
+h = volshow(uncentered_skel,'Parent',v);
 h.Parent.BackgroundColor = 'w';
-h.OverlayData = seg;
+h.OverlayData = centered_skel;
 h.OverlayAlphamap = 0.3;
+%}
 
-%% Overlay cropped raw skeleton
-raw_skel_crop = raw_skel(100:300, 100:300,100:169);
-volshow(raw_skel_crop);
+%% Overlay segmentation w/ processed (but uncentered) skeleton
+% GOAL: ensure we can remove loops without modifying branch points
+% - todo: find branch point
+% - Verify it does not grossly modify/eliminate branch points
 
-proc_skel_crop = uncentered_skel(100:300, 100:300,100:169);
+% Cropped limits of branch point
+% xlims = 100:180; ylims = 130:220; zlims = 60:80;
+% Cropped limits of graph with loops
+xlims = 1:250; ylims = 1:30; zlims = 120:140;
+% Crop the segmentation into a subvolume 
+seg_crop = seg(xlims, ylims, zlims);
+proc_skel_crop = uncentered_skel(xlims, ylims, zlims);
+
+view_panel = uifigure(figure,'Name',"Segmentation + Uncentered"); close;
+v = viewer3d(view_panel);
+v.BackgroundColor = 'w';
+v.BackgroundGradient = 'off';
+h = volshow(proc_skel_crop,'Parent',v);
+h.Parent.BackgroundColor = 'w';
+h.OverlayData = seg_crop;
+h.OverlayAlphamap = 0.1;
+
+%% Overlay segmentation + raw graph
+%%% Convert graph to 3D skeleton
+% Output filename
+nonproc_fout = strcat(seg_name, 'raw_graph_skel.nii');
+% Convert unprocessed skeleton
+[raw_skel] = sk3D(sz, im, nonproc_fout,...
+                        res, ds_flag, save_flag);
+% Crop the raw skeleton
+raw_skel_crop = raw_skel(xlims, ylims, zlims);
+
+%%% Overlay segmentation + raw graph
+view_panel = uifigure(figure,'Name',"Unprocessed"); close;
+v = viewer3d(view_panel);
+v.BackgroundColor = 'w';
+v.BackgroundGradient = 'off';
+h = volshow(raw_skel_crop,'Parent',v);
+h.Parent.BackgroundColor = 'w';
+h.OverlayData = seg_crop;
+h.OverlayAlphamap = 0.1;
+
+%% Overlay cropped skeletons
+% Cropped limits of tiered loops
+xlims = 150:300; ylims = 120:300; zlims = 10:50;
+% Crop the segmentation into a subvolume 
+seg_crop = seg(xlims, ylims, zlims);
+
+%%% Crop unprocessed
+raw_skel_crop = raw_skel(xlims, ylims, zlims);
+view_panel = uifigure(figure,'Name',"Unprocessed + Segmentation"); close;
+v = viewer3d(view_panel);
+v.BackgroundColor = 'w';
+v.BackgroundGradient = 'off';
+h = volshow(raw_skel_crop,'Parent',v);
+h.Parent.BackgroundColor = 'w';
+h.OverlayData = seg_crop;
+h.OverlayAlphamap = 0.1;
+
+%%% Crop processed (without centering)
+proc_skel_crop = uncentered_skel(xlims, ylims, zlims);
 volshow(proc_skel_crop);
+view_panel = uifigure(figure,'Name',"Processed + Segmentation"); close;
+v = viewer3d(view_panel);
+v.BackgroundColor = 'w';
+v.BackgroundGradient = 'off';
+h = volshow(proc_skel_crop,'Parent',v);
+h.Parent.BackgroundColor = 'w';
+h.OverlayData = seg_crop;
+h.OverlayAlphamap = 0.1;
 
 %% Visualize graph
 function graph_vis(nodes, edges, title_str)
