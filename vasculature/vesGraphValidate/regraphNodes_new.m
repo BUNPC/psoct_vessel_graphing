@@ -1,5 +1,5 @@
-function [segn, nodes, edges, validatedNodes,validatedEdges] =...
-regraphNodes_new(segn, nodes, edges,validatedNodes, delta)
+function [nodes, edges, validatedNodes,validatedEdges] =...
+regraphNodes_new(nodes, edges,validatedNodes, delta)
 %%regraphNodes_new Downsample a graph
 % INPUTS
 %   segn (array): The segment index of the respective node.
@@ -75,95 +75,88 @@ validatedNodesNew(1) = validatedNodes(1);
 
 %% Regraph (downsample)
 
-hwait = waitbar(0,'Downsampling nodes...');
+hwait = waitbar(0,'Downsampling nodes...');   
+for ii=2:nNodes
+    % Waitbar update
+    if isequal(rem(ii,1000),0)
+        waitbar(ii/nNodes,hwait);   %updateing waitbar takes a long time. 
+    end
+   
+    % Temporary variable for node position
+    pos = nodePos(ii,:);
 
-% Iterate over segment ID number. Each node has a correpsonding segment ID
-% for n = 1:max(segn)
-    % Find all nodes corresponding to segment ID number
-%     idx = find(segn==n);
-    
-    for ii=2:nNodes
-        % Waitbar update
-        if isequal(rem(ii,1000),0)
-            waitbar(ii/nNodes,hwait);   %updateing waitbar takes a long time. 
+    % If this node has not been validated
+    if validatedNodes(ii)==0  
+        redundant_nodes = find(pos(1)>=(nodePosNew(:,1)-hxy) & pos(1)<=(nodePosNew(:,1)+hxy) & ...
+            pos(2)>=(nodePosNew(:,2)-hxy) & pos(2)<=(nodePosNew(:,2)+hxy) & ...
+            pos(3)>=(nodePosNew(:,3)-hz) & pos(3)<=(nodePosNew(:,3)+hz) );
+        
+        %%% This is old code which doesn't work.
+        %{
+        % in the redundant_nodes remove unconnected nodes to current processing node. This will
+        % avoid unwanted connections and loops
+        temp_lst = redundant_nodes;
+        new_lst = [];
+        curr_node = ii;
+        for u = 1:length(redundant_nodes)
+           node_edges = edges(:,1) == curr_node | edges(:,2) == curr_node;
+           conn_nodes = edges(node_edges,:);
+           conn_nodes = conn_nodes(:);
+           common_node = intersect(temp_lst,conn_nodes);
+           if isempty(common_node)
+               break;
+           else
+              new_lst = [new_lst; common_node];
+              curr_node = common_node(1);
+              temp_lst = setdiff(temp_lst,curr_node);
+           end
         end
-       
-        % Temporary variable for node position
-        pos = nodePos(ii,:);
-
-        % If this node has not been validated
-        if validatedNodes(ii)==0  
-            redundant_nodes = find(pos(1)>=(nodePosNew(:,1)-hxy) & pos(1)<=(nodePosNew(:,1)+hxy) & ...
-                pos(2)>=(nodePosNew(:,2)-hxy) & pos(2)<=(nodePosNew(:,2)+hxy) & ...
-                pos(3)>=(nodePosNew(:,3)-hz) & pos(3)<=(nodePosNew(:,3)+hz) );
-            
-            %%% This is old code which doesn't work.
-            %{
-            % in the redundant_nodes remove unconnected nodes to current processing node. This will
-            % avoid unwanted connections and loops
-            temp_lst = redundant_nodes;
-            new_lst = [];
-            curr_node = ii;
-            for u = 1:length(redundant_nodes)
-               node_edges = edges(:,1) == curr_node | edges(:,2) == curr_node;
-               conn_nodes = edges(node_edges,:);
-               conn_nodes = conn_nodes(:);
-               common_node = intersect(temp_lst,conn_nodes);
-               if isempty(common_node)
-                   break;
-               else
-                  new_lst = [new_lst; common_node];
-                  curr_node = common_node(1);
-                  temp_lst = setdiff(temp_lst,curr_node);
-               end
-            end
-            redundant_nodes = new_lst;
-            %}
-            %%%
-            
-            % No nodes within search radius [hxy, hxy, hz] of current node
-            if isempty(redundant_nodes)
-                nNodesUnique = nNodesUnique+1;
-                nodeMap(ii) = nNodesUnique;
-                nodeUnique(ii) = 1;
-                nodePosNew(nNodesUnique,:) = pos;
-                nodeDiamNew(nNodesUnique) = nodeDiam(ii);
-                validatedNodesNew(nNodesUnique) = 0;
-            
-            % At least 1 node within search radius [hxy, hxy, hz]
-            else
-                % If more than one node within radius
-                if length(redundant_nodes)>1
-                    % Initialize array to track distance between current
-                    % node and the nodes within search radius.
-                    d = zeros(length(redundant_nodes),1);
-                    % Iterate over list of nodes within search radius
-                    for r=1:length(redundant_nodes)
-                        d(r) = norm(pos-nodePosNew(redundant_nodes(r),:));
-                    end
-                    % Retrieve index of closest node in redundant_nodes
-                    [~, closestNode] = min(d);
-                    % Delete local variable
-                    clear d
-                else
-                    closestNode = 1;
-                end
-                % Replace current node with closest node
-                nodeMap(ii) = redundant_nodes(closestNode);
-            end
-       
-        % If this is a validated node
-        else
+        redundant_nodes = new_lst;
+        %}
+        %%%
+        
+        % No nodes within search radius [hxy, hxy, hz] of current node
+        if isempty(redundant_nodes)
             nNodesUnique = nNodesUnique+1;
             nodeMap(ii) = nNodesUnique;
             nodeUnique(ii) = 1;
             nodePosNew(nNodesUnique,:) = pos;
             nodeDiamNew(nNodesUnique) = nodeDiam(ii);
-            validatedNodesNew(nNodesUnique) = 1;
-        end
+            validatedNodesNew(nNodesUnique) = 0;
         
+        % At least 1 node within search radius [hxy, hxy, hz]
+        else
+            % If more than one node within radius
+            if length(redundant_nodes)>1
+                % Initialize array to track distance between current
+                % node and the nodes within search radius.
+                d = zeros(length(redundant_nodes),1);
+                % Iterate over list of nodes within search radius
+                for r=1:length(redundant_nodes)
+                    d(r) = norm(pos-nodePosNew(redundant_nodes(r),:));
+                end
+                % Retrieve index of closest node in redundant_nodes
+                [~, closestNode] = min(d);
+                % Delete local variable
+                clear d
+            else
+                closestNode = 1;
+            end
+            % Replace current node with closest node
+            nodeMap(ii) = redundant_nodes(closestNode);
+        end
+   
+    % If this is a validated node
+    else
+        nNodesUnique = nNodesUnique+1;
+        nodeMap(ii) = nNodesUnique;
+        nodeUnique(ii) = 1;
+        nodePosNew(nNodesUnique,:) = pos;
+        nodeDiamNew(nNodesUnique) = nodeDiam(ii);
+        validatedNodesNew(nNodesUnique) = 1;
     end
-% end
+    
+end
 
 % Close the wait bar.
 close(hwait);

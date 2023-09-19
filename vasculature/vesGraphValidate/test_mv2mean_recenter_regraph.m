@@ -14,7 +14,8 @@
 % downsample nodes along the same edge.
 
 % TODO:
-% - modify regraph to only downsample nodes in same segment
+% - find nodes only belonging to loops
+%       - will need to update "remove_loops" after this update
 
 clear; clc; close all;
 
@@ -52,15 +53,13 @@ gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_graph_data.mat';
 Data = load(fullfile(dpath, subid, subdir, sigdir, gdata), 'Data');
 Data = Data.Data;
 
-% Create new variable to match format of function
+%%% Create new variable to match format of function
 % im.angio = tmp.angio;
 im.nodes = Data.Graph.nodes;
 im.edges = Data.Graph.edges;
 im.segn = Data.Graph.segInfo.nodeSegN;
 
-%%% x,y,z limits for examining loop removal in graph
-xlims = [0, 30]; ylims = [0, 250]; zlims = [120, 140];
-%% Load volumetric information and set threshold
+%%% Load volumetric information and set threshold
 % Import volume
 vol = TIFF2MAT(fullfile(dpath, subid, subdir, vdata));
 im.angio = vol;
@@ -78,15 +77,47 @@ elseif strcmp(class(vol),'uint8')
     im_thresh = im_thresh .* r;
 end
 
-%% Load segmentation stack
+%%% Load segmentation stack
 % Import volume
 seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
 volshow(seg);
 
-%% Visualize graph prior to processing
+%%% Parameters to convert graph to 3D skeleton
+%  sz =  the size of output volume. The order is [ y x z ]
+sz = size(seg);
+%  res = resolution of the nifti image [y,x,z] centimeters
+res = [0.0012, 0.0012, 0.0015];
+%  ds_flag = 1 or 0. (1=downsampled. 0=no-downsampled)
+ds_flag = 1;
+%  save_flag = to save the skeleton or not
+save_flag = 0;
+
+
+%% Call function to remove loops (regraph + move to mean)
+
+%%% [x,y,z] limits for visualizing graph
+% Cropped limits of branch point
+% xlims = 100:180; ylims = 130:220; zlims = 60:80;
+% Cropped limits of graph with loops
+% xlims = 1:250; ylims = 1:30; zlims = 120:140;
+% Cropped limits of tiered loops
+xlims = 150:300; ylims = 120:300; zlims = 10:50;
+
+%%% Visualize graph prior to processing
 graph_vis(im.nodes, im.edges, 'Graph Before Processing');
-xlim(xlims); ylim(ylims); zlim(zlims);
-set(gca, 'FontSize', 25);
+% xlim(xlims); ylim(ylims); zlim(zlims);
+
+%%% Call remove loops function
+% Minimum voxel intensity threshold for moving to mean
+vmin = 0.5;
+[n, e] = remove_loops(im.nodes, im.edges, vol, vmin);
+
+%%% Plot results
+t_str = strcat("Delta = 2. ",'Voxel Intensity Threshold = ',num2str(vmin));
+g_title = {'Regraphed & Moved to Mean', t_str};
+graph_vis(n, e, g_title)
+% xlim(xlims); ylim(ylims); zlim(zlims);
+
 %% Downsample (regraph)
 % Initialized validated nodes vector so that regraph code runs
 validated_nodes = zeros(size(im.nodes,1),1);
@@ -107,7 +138,6 @@ xlim(xlims); ylim(ylims); zlim(zlims);
 %% Test move to mean and thresholding
 th_norm = [0.25, 0.5, 0.75, 0.9, 0.95];
 tarray = th_norm .* r;
-
 for ii = 2:2
     im_mv = im_ds;
     for j=1:5
@@ -121,6 +151,7 @@ for ii = 2:2
     graph_vis(im_mv.nodes, im_mv.edges, g_title)
 end
 xlim(xlims); ylim(ylims); zlim(zlims);
+
 %% Downsampling (regraph) to collapse loop
 validated_nodes = zeros(size(im.nodes,1),1);
 % Regraph
@@ -135,47 +166,6 @@ t_str = strcat("Regraph Delta = ", num2str(delta),...
 % Visualize title
 graph_vis(im_re.nodes, im_re.edges, {'Regraphed, Moved to Mean, Regraphed', t_str})
 % xlim(xlims); ylim(ylims); zlim(zlims);
-%% Centering (determine which centering function to use)
-%{
-% There are several different centering functions. David recommended trying
-% or reviewing each to determine which is most suitable.
-
-%%% Replace the angio (PS-OCT volume) with the segmentation
-% This is a debugging step. The PSOCT has poor contrast, so centering does
-% not work. David recommended centering with the segmentation.
-im_re.angio = seg;
-% im_re.angio = vol;
-
-% Normalize posM
-centerStep1vox = 0;
-
-% Visualization
-visualize_flag = 0;
-
-% Run centering function
-im_centered = center_nodes_xyz(im_re, centerStep1vox, visualize_flag, im_thresh);
-
-%%% Programatically compared uncentered w/ centered
-nodes_cent = im_centered.nodes;
-nodes_uncent = im_re.nodes;
-cent_comp = nodes_cent == nodes_uncent;
-
-%%% Graph after centering
-% Visualize centered graph
-graph_vis(im_centered.nodes, im_centered.edges, 'Graph After Centering')
-xlim(xlims); ylim(ylims); zlim(zlims);
-% xlim([200, 300]); ylim([150,300]); zlim([50, 150]);
-%}
-
-%% Parameters to convert graph to 3D skeleton
-%  sz =  the size of output volume. The order is [ y x z ]
-sz = size(seg);
-%  res = resolution of the nifti image [y,x,z] centimeters
-res = [0.0012, 0.0012, 0.0015];
-%  ds_flag = 1 or 0. (1=downsampled. 0=no-downsampled)
-ds_flag = 1;
-%  save_flag = to save the skeleton or not
-save_flag = 0;
 
 %% Overlay segmentation w/ skeleton (from centered graph)
 %{
@@ -224,9 +214,8 @@ h.OverlayAlphamap = 0.3;
 %}
 
 %% Overlay segmentation w/ processed (but uncentered) skeleton
-% GOAL: ensure we can remove loops without modifying branch points
-% - todo: find branch point
-% - Verify it does not grossly modify/eliminate branch points
+% GOAL: ensure we can remove loops without modifying branch points. This
+% was verified visually that it does not remove branch points.
 
 % Cropped limits of branch point
 % xlims = 100:180; ylims = 130:220; zlims = 60:80;
@@ -265,7 +254,7 @@ h.Parent.BackgroundColor = 'w';
 h.OverlayData = seg_crop;
 h.OverlayAlphamap = 0.1;
 
-%% Overlay cropped skeletons
+%% Overlay skeletons and segmentation from cropped volume
 % Cropped limits of tiered loops
 xlims = 150:300; ylims = 120:300; zlims = 10:50;
 % Crop the segmentation into a subvolume 
@@ -297,7 +286,6 @@ h.OverlayAlphamap = 0.1;
 %% Visualize graph
 function graph_vis(nodes, edges, title_str)
 % Copy edges into standard format
-
 s = edges(:,1); % source node
 t = edges(:,2); % target node
 
@@ -364,6 +352,84 @@ for idx = 1:length(vec)
 end
 
 end
+
+%% Regraph and move to mean until all loops removed
+
+function [nodes, edges] = remove_loops(nodes, edges, angio, v_min)
+%rm_loops Remove loops in graph.
+%   Outline:
+%       - Use graph function "allcycles" to find loops
+%       - While loops exist:
+%           - convert from graph back to nodes/edges
+%           - regraph (downsample nodes within search radius)
+%           - move to mean (collapse loops)
+%
+%   INPUTS:
+%       nodes ([n,3] array): node locations
+%       edges ([m,2] array): edges connecting each node
+%       im.angio (double matrix): PS-OCT intensity volume (vessels are
+%               bright)
+%       v_min (double): minimum voxel intensity threshold. The new voxel
+%               position will only be reassigned if the voxel intensity of
+%               the new node position is >= v_min.
+%   OUTPUTS:
+%       n ([n,3] array): node locations
+%       e ([m,2] array): edges connecting each node
+
+%% Convert from nodes + edges into Matlab graph
+% Create standard Matlab graph
+g = graph(edges(:,1), edges(:,2));
+
+% Detect loops in graph
+cycles = allcycles(g);
+
+%% While loops exist: regraph + move to mean
+while ~isempty(cycles)
+    %%% Regraph (downsample) to remove collapsed loops
+    % Initialized validated nodes vector so that regraph code runs
+    validated_nodes = zeros(size(nodes,1),1);
+    % Search delta for the x,y,z directions (units = voxels)
+    delta = 2;
+    % Call function to regraph
+    [nodes, edges, ~, ~] =...
+        regraphNodes_new(nodes, edges, validated_nodes, delta);
+    
+    %%% Move to mean (collapse loops)
+    % Create copy of regraphed graph
+    im_mv = struct();
+    im_mv.nodes = nodes;
+    im_mv.edges = edges;
+    im_mv.angio = angio;
+    % Perform move to mean five times to collapse nodes. This number was
+    % determined emprically from testing a data subset.
+    for j=1:5
+        im_mv = mv_to_mean(im_mv, v_min);
+    end
+    
+    %%% Regraph to smooth collapse loops
+    [nodes, edges, ~, ~] =...
+        regraphNodes_new(im_mv.nodes, im_mv.edges, validated_nodes, delta);
+    
+    %%% Detect loops in graph
+    g = graph(edges(:,1), edges(:,2));
+    cycles = allcycles(g);
+end
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
