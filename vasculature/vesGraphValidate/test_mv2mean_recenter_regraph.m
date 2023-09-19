@@ -47,8 +47,8 @@ seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23.tif';
 % Graphed data after Gaussian filtering segmentation
 gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_graph_data.mat';
 %%% Data with nested loops (probability threshold = 0.21)
-% seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
-% gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
+seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
+gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
 
 %% Load PSOCT graph
 Data = load(fullfile(dpath, subid, subdir, sigdir, gdata), 'Data');
@@ -102,11 +102,11 @@ save_flag = 0;
 % Cropped limits of graph with loops
 % xlims = 1:250; ylims = 1:30; zlims = 120:140;
 % Cropped limits of tiered loops
-xlims = 150:300; ylims = 120:300; zlims = 10:50;
+xlims = [150,300]; ylims = [120,300]; zlims = [10,50];
 
 %%% Visualize graph prior to processing
 graph_vis(im.nodes, im.edges, 'Graph Before Processing');
-% xlim(xlims); ylim(ylims); zlim(zlims);
+xlim(xlims); ylim(ylims); zlim(zlims);
 
 %%% Call remove loops function
 % Minimum voxel intensity threshold for moving to mean
@@ -117,7 +117,7 @@ vmin = 0.5;
 t_str = strcat("Delta = 2. ",'Voxel Intensity Threshold = ',num2str(vmin));
 g_title = {'Regraphed & Moved to Mean', t_str};
 graph_vis(n, e, g_title)
-% xlim(xlims); ylim(ylims); zlim(zlims);
+xlim(xlims); ylim(ylims); zlim(zlims);
 
 %% Downsample (regraph)
 % Initialized validated nodes vector so that regraph code runs
@@ -293,17 +293,30 @@ t = edges(:,2); % target node
 % Create standard Matlab graph
 g = graph(s, t);
 
-% Plot graph before removing loops
+%%% Plot graph
 figure;
 p = plot(g, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
 % Set nodes red
-p.NodeColor = 'red';
+p.NodeColor = '#77AC30';
 % Set line width of edges
 p.LineWidth = 4;
+p.EdgeColor = 'b';
 
+%%% Highlight Loops
+% Determine if the graph contains cycles
+[~, edgecycles] = allcycles(g);
+% If so, then highlight them
+if ~isempty(edgecycles)
+    % Highlight edges
+    for ii=1:length(edgecycles)
+        highlight(p,'Edges',edgecycles{ii},'EdgeColor','r',...
+                  'LineWidth',1.5,'NodeColor','r','MarkerSize',6)
+    end
+end
+
+%%% Format figure
 % initialize camera view
 view(3);
-
 % Labels, title, fontsize, grid
 title(title_str); xlabel('x'); ylabel('y'); zlabel('z')
 set(gca, 'FontSize', 25);
