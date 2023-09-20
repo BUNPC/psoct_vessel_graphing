@@ -93,6 +93,14 @@ ds_flag = 1;
 %  save_flag = to save the skeleton or not
 save_flag = 0;
 
+%%% Overlay graph and segmentation
+% Convert graph to skeleton
+[skel] = sk3D(sz, im, 'foo', res, ds_flag, save_flag);
+t_str = 'Unprocessed Volume';
+% Overlay the graph skeleton and the segmentation
+graph_seg_overlay(t_str, skel, seg)
+
+
 
 %% Call function to remove loops (regraph + move to mean)
 
@@ -103,20 +111,28 @@ save_flag = 0;
 % xlims = 1:250; ylims = 1:30; zlims = 120:140;
 % Cropped limits of tiered loops
 xlims = [150,300]; ylims = [120,300]; zlims = [10,50];
-
-%%% Visualize graph prior to processing
+xlim(xlims); ylim(ylims); zlim(zlims);
+% Visualize graph prior to processing
 graph_vis(im.nodes, im.edges, 'Graph Before Processing');
 xlim(xlims); ylim(ylims); zlim(zlims);
 
-%%% Call remove loops function
+%% Call remove loops function
 % Minimum voxel intensity threshold for moving to mean
-vmin = 0.5;
+vmin = 0.99;
 [n, e] = rm_loops(im.nodes, im.edges, vol, vmin);
+im_rm.nodes = n;
+im_rm.edges = e;
+im_rm.angio = vol;
 
-%%% Plot results
-t_str = strcat("Delta = 2. ",'Voxel Intensity Threshold = ',num2str(vmin));
-g_title = {'Regraphed & Moved to Mean', t_str};
-graph_vis(n, e, g_title)
+%% Overlay graph and segmentation
+% Convert graph to skeleton
+[skel] = sk3D(sz, im_rm, 'foo', res, ds_flag, save_flag);
+t_str = strcat("Regraphed & Moved to Mean. Delta = 2. ",'Voxel Intensity Threshold = ',num2str(vmin));
+
+% Overlay the graph skeleton and the segmentation
+graph_seg_overlay(t_str, skel, seg)
+xlim(xlims); ylim(ylims); zlim(zlims);
+graph_vis(n, e, t_str)
 xlim(xlims); ylim(ylims); zlim(zlims);
 
 %% Downsample (regraph)
@@ -284,6 +300,28 @@ h.Parent.BackgroundColor = 'w';
 h.OverlayData = seg_crop;
 h.OverlayAlphamap = 0.1;
 
+function graph_seg_overlay(fig_title, skel, seg)
+%graph_seg_overlay Overlay the graph and segmentation to visually verify
+% INPUTS:
+%   fig_title (string): name of figure
+%   skel (matrix): skeleton of graph (binary)
+%   seg (matrix): segmentation (binary)
+
+% Initialize the 3D figure properties
+view_panel = uifigure(figure,'Name',fig_title); close;
+v = viewer3d(view_panel);
+v.BackgroundColor = 'w';
+v.BackgroundGradient = 'off';
+
+% Display volume of skeleton (from graph)
+h = volshow(skel,'Parent',v);
+h.Parent.BackgroundColor = 'w';
+
+% Overlay the segmentation
+h.OverlayData = seg;
+h.OverlayAlphamap = 0.1;
+end
+
 %% Visualize graph
 function graph_vis(nodes, edges, title_str)
 % Copy edges into standard format
@@ -297,10 +335,11 @@ g = graph(s, t);
 figure;
 p = plot(g, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
 % Set nodes red
-p.NodeColor = '#77AC30';
+p.NodeColor = 'k';
 % Set line width of edges
-p.LineWidth = 4;
-p.EdgeColor = 'b';
+p.LineWidth = 2;
+p.EdgeColor = [0.5 0.5 0.5];
+p.MarkerSize = 3;
 
 %%% Highlight Loops
 % Determine if the graph contains cycles
@@ -310,7 +349,7 @@ if ~isempty(edgecycles)
     % Highlight edges
     for ii=1:length(edgecycles)
         highlight(p,'Edges',edgecycles{ii},'EdgeColor','r',...
-                  'LineWidth',1.5,'NodeColor','r','MarkerSize',6)
+                  'LineWidth',4,'NodeColor','r','MarkerSize',6)
     end
 end
 
