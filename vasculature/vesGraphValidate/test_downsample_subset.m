@@ -52,6 +52,10 @@ s = edges(:,1); % source node
 t = edges(:,2); % target node
 % Create standard Matlab g
 g_mat = graph(s, t);
+% Visualize graph
+visualize_graph(nodes, edges, 'Graph Before Downsampling',[])
+% Show subset of data with loops
+xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 
 %%% Load volumetric information and set threshold
 % Import volume
@@ -70,7 +74,7 @@ end
 %%% Load segmentation stack
 % Import volume
 seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
-volshow(seg);
+% volshow(seg);
 
 %%% Parameters to convert graph to 3D skeleton
 %  sz =  the size of output volume. The order is [ y x z ]
@@ -87,7 +91,7 @@ save_flag = 0;
 [skel] = sk3D(sz, Data.Graph, 'foo', res, ds_flag, save_flag);
 t_str = 'Unprocessed Volume';
 % Overlay the graph skeleton and the segmentation
-graph_seg_overlay(t_str, skel, seg)
+% graph_seg_overlay(t_str, skel, seg)
 
 %%% Create list of nodes/edges in loops to down sample
 % Find the nodes and edges belonging to loops
@@ -147,44 +151,4 @@ h.Parent.BackgroundColor = 'w';
 % Overlay the segmentation
 h.OverlayData = seg;
 h.OverlayAlphamap = 0.1;
-end
-
-%% Visualize graph (highlight loops)
-function graph_vis(nodes, edges, title_str)
-% Copy edges into standard format
-s = edges(:,1); % source node
-t = edges(:,2); % target node
-
-% Create standard Matlab graph
-g = graph(s, t);
-
-%%% Plot graph
-figure;
-p = plot(g, 'XData', nodes(:,1), 'YData', nodes(:,2), 'ZData', nodes(:,3));
-% Set nodes red
-p.NodeColor = 'k';
-% Set line width of edges
-p.LineWidth = 2;
-p.EdgeColor = [0.5 0.5 0.5];
-p.MarkerSize = 3;
-
-%%% Highlight Loops
-% Determine if the graph contains cycles
-[~, edgecycles] = allcycles(g);
-% If so, then highlight them
-if ~isempty(edgecycles)
-    % Highlight edges
-    for ii=1:length(edgecycles)
-        highlight(p,'Edges',edgecycles{ii},'EdgeColor','r',...
-                  'LineWidth',4,'NodeColor','r','MarkerSize',6)
-    end
-end
-
-%%% Format figure
-% initialize camera view
-view(3);
-% Labels, title, fontsize, grid
-title(title_str); xlabel('x'); ylabel('y'); zlabel('z')
-set(gca, 'FontSize', 25);
-grid on;
 end
