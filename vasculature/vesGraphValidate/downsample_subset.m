@@ -202,16 +202,31 @@ and edges:
     The following section removes these redundant edges.
 %}
 
-% Set search delta for x,y,z
+%%% Set search delta for x,y,z
 hxy = delta;
 hz = delta;
 
-% Number of nodes in the down sampling subset
-n_nodes = size(nodes_ds_re, 1);
+%%% Create array of nodes that will NOT be down sampled
+% The goal is to preserve the morphology of the non-loop segments. Placing
+% the non-loop nodes into "pos_new" will ensure these nodes are considered
+% "unique," and they will not be down sampled.
+%
+% Create array of node indices 
+nkeep = 1:1:size(nodes,1);
+nkeep = nkeep';
+% Find nodes not in loops
+nkeep = ~ismember(nkeep, nodes_ds);
+% Find array indices equal to 1. These are the node indices of non-loop
+% segments, which should be preserved during down sampling.
+nkeep = find(nkeep == 1);
 
-% Struct for storing mapping
-node_map = zeros(n_nodes,1);
-node_map(1) = 1;
+% Add the end node indices to the array of nodes to keep
+nkeep = [nkeep; end_nodes];
+% Take unique elements of nkeep to avoid duplicates
+nkeep = unique(nkeep);
+
+node_map = zeros(size(nodes,1), 1);
+node_map(1:length(nkeep)) = 1:length(nkeep);
 
 %%% "pos_new" tracks the index positions of unique nodes.
 % The current node position in the for loop (pos_tmp) is compared to all
@@ -225,17 +240,30 @@ node_map(1) = 1;
 % nodes, since they should remain after down sampling. This is to ensure
 % the down sampled loops can be reintegrated back into the non-loop
 % segments.
+pos_new = nodes(nkeep,:);
+n_unique = size(pos_new, 1);
+pos_new(n_unique,:) = nodes(n_unique,:);
 
-% Idea: place all non-loop nodes into pos_new
+%%% Code from reindexing method
+%{
+% Number of nodes in the down sampling subset
+n_nodes = size(nodes_ds_re, 1);
 
+% Struct for storing mapping
+node_map = zeros(n_nodes,1);
+node_map(1) = 1;
+
+% Assign first node as unique
 pos_new = nodes_ds_re(end_nodes_re,:);
 n_unique = size(pos_new, 1);
 pos_new(n_unique,:) = nodes_ds_re(1,:);
+%}
 
 %%% Iterate over all nodes & perform down sampling
-for ii=2:n_nodes
+for ii=2:size(nodes,1)
     % Position of node under comparison
-    pos_tmp = nodes_ds_re(ii,:);
+%     pos_tmp = nodes_ds_re(ii,:);
+    pos_tmp = nodes(ii,:);
     % Find nodes within the search radius of pos_tmp
     redundant_nodes = find(...
         pos_tmp(1)>=(pos_new(:,1)-hxy) & pos_tmp(1)<=(pos_new(:,1)+hxy) & ...
@@ -247,7 +275,7 @@ for ii=2:n_nodes
     % This will map the new node position (after down sampling) to the
     % current unique node position.
     if isempty(redundant_nodes)
-        n_unique = n_unique+1;
+        n_unique = n_unique + 1;
         node_map(ii) = n_unique;
         pos_new(n_unique,:) = pos_tmp;
     % At least 1 node within search radius [hxy, hxy, hz]
@@ -275,7 +303,8 @@ for ii=2:n_nodes
 end
 
 % Find the new edges based upon node_map
-edges_mapped = node_map(edges_ds_re);
+% edges_mapped = node_map(edges_ds_re);
+edges_mapped = node_map(edges);
 
 %% Code for marching ellipsoid (may not be used here)
 %{
