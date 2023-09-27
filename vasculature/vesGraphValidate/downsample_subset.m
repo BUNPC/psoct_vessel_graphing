@@ -76,38 +76,46 @@ assert(isempty(node_diff),...
 % This is necessary for reintegrating the down-sampled loops back
 % into the non-loop vessels.
 
-% Find the end node of the non-loop segment connected to the loop.
+%%% Find the end node of the non-loop segment connected to the loop.
 seg_end_nodes = setdiff(unique(edges_ds(:)), unique(nodes_ds(:)));
 
-%%% Find the node in the loop connected to the segment end-node via an edge
-en = [];
+%%% Find node(s) in loop(s) connected to the segment end-node
+% There could be multiple loops connected to the same segment end point.
+% "n_idcs" stores the end-node index in the loop
+n_idcs = [];
 for n = 1:length(seg_end_nodes)
-    % Find all edges connected to nodes_ds(n)
-    idcs = find((edges(:,1)==seg_end_nodes(n) | edges(:,2)==seg_end_nodes(n)));
-    % From these edges, take just the node belonging to a loop
-    idx = idcs(ismember(idcs, nodes_ds(:)));
-    % Add to array for storing edge indices
-    en = [en; idx];
+    %%% Find array indices of all edges connected to seg_end_nodes(n)
+    edge_idcs = edges_ds(:,1)==seg_end_nodes(n) | edges_ds(:,2)==seg_end_nodes(n);
+    % Use edges_ds array index to retrieve node indices of end points
+    node_idcs = edges_ds(edge_idcs,:);
+    % Convert from 2D array to 1D vertical array to enable concatenation in
+    % last step of for-loop.
+    node_idcs = node_idcs(:);
+    
+    %%% Find end nodes belonging just to a loop
+    idx = node_idcs(ismember(node_idcs, nodes_ds(:)));
+    % Store node indices
+    n_idcs = [n_idcs; idx];
 end
-en = unique(en);
-
-%%% Create matrix of edges connecting non-loop segments to loop segments
-end_edges = edges(en,:);
-loop_end_nodes = end_edges(:);
-% Combine nodes in "seg_end_nodes" and "loop_end_nodes"
-end_nodes = [loop_end_nodes; seg_end_nodes];
+% Find unique nodes
+n_idcs = unique(n_idcs);
+% Combine segment end nodes and loop end nodes
+end_nodes = [seg_end_nodes; n_idcs];
 end_nodes = unique(end_nodes);
 
+%%% Find edges connecting non-loop segments to loop segments
+% The array "end_nodes" contains the end node indices of both non-loop and
+% loop segments. This finds edges where both start and end node belong to
+% the set of end_nodes.
+e_idcs = find(ismember(edges(:,1), end_nodes) & ismember(edges(:,2), end_nodes));
+% Convert from array indices to edge values
+end_edges = edges(e_idcs,:);
+
 %%% Visualize the graph
-visualize_graph(nodes, edges, 'Loop End Nodes',loop_end_nodes);
-visualize_graph(nodes, edges, 'Seg End Nodes',seg_end_nodes);
-visualize_graph(nodes, edges, 'End Nodes',end_nodes);
+visualize_graph(nodes, edges, 'All End Nodes (exclude from down sampling)',end_nodes);
 xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 
-%%% Add these edges to the list of edges_ds to be down sampled.
-edges_ds = [edges_ds; end_edges];
-
-%% Re-index the nodes in group_idcs
+%% Re-index the nodes in subset_node_idcs
 % The node indices in subset_node_idcs are indexed based on the
 % non-downsampled graph. These indices must be reindexed to 1. Similarly,
 % the edge indices must also be reindexed to 1.
@@ -148,16 +156,12 @@ end
 % This command will replace the value edso(k) with nre(k) in edges_ds
 edges_ds_re = changem(edges_ds, nre, edso);
 
-%%% Remap node indices belonging to edges of end point
-% end_nodes_re = changem(seg_end_nodes, nre, edso);
-end_nodes_re = changem(en, nre, edso);
+%%% Remap node indices belonging to segment and loop end points
+end_nodes_re = changem(end_nodes, nre, edso);
 
 %%% Verify subgraph visually (figure) and programatically
 visualize_graph(nodes_ds_re, edges_ds_re, 'Subset of graph',end_nodes_re);
 xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
-
-% Compare programatically
-
 
 %% Regraph (downsample)
 %{
@@ -221,6 +225,9 @@ node_map(1) = 1;
 % nodes, since they should remain after down sampling. This is to ensure
 % the down sampled loops can be reintegrated back into the non-loop
 % segments.
+
+% Idea: place all non-loop nodes into pos_new
+
 pos_new = nodes_ds_re(end_nodes_re,:);
 n_unique = size(pos_new, 1);
 pos_new(n_unique,:) = nodes_ds_re(1,:);
