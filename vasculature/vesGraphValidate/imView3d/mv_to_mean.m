@@ -1,10 +1,27 @@
-function im = mv_to_mean(im, Ithresh)
-%% Move nodes towards mean of neighboring nodes
-% This script will iterate over every node index in the graph structure.
-% The comments reference "current node index," which is referring to
-% the ii'th node index in the list of total node indices.
+function im = mv_to_mean(im, v_min)
+%mv_to_mean Move nodes towards mean of neighboring nodes (collapse loops)
+% Outline:
+%   - iterate over every node index in the graph structure.
+%   - "current node index" is the ii'th node index in the list of total node indices.
+%   - posO = location of current node
+%   - posC = mean location of connected nodes
+%   - posN = new position as average of norm(posC - posO)
+%   - verify that posN is within v_min (voxel intensity)
+%
+%   INPUTS:
+%       im.nodes ([n,3] array): node locations
+%       im.edges ([m,2] array): edges connecting each node
+%       im.angio (double matrix): PS-OCT intensity volume (vessels are
+%               bright)
+%       v_min (double): minimum voxel intensity threshold. The new voxel
+%               position will only be reassigned if the voxel intensity of
+%               the new node position is >= v_min.
+%   OUTPUTS:
+%       n ([n,3] array): node locations
+%       e ([m,2] array): edges connecting each node
 
-% Assign local variables
+
+%% Assign local variables
 nodes = im.nodes;
 nLst = 1:size(nodes,1);
 hwait = waitbar(0,'Moving nodes towards mean of neighboring nodes');
@@ -34,7 +51,7 @@ for ii = 1:size(nodes,1)
         posN = pos0 + (posC-pos0) / max(norm(posC-pos0),1);
         % If new position is within vessel (>=vox. intensity threshold)
         % Then reassign node position to new position.
-        if im.angio(round(posN(1)),round(posN(2)),round(posN(3)))>=Ithresh
+        if im.angio(round(posN(1)),round(posN(2)),round(posN(3)))>=v_min
             nodes(nidx,:) = posN;
         end
     end
