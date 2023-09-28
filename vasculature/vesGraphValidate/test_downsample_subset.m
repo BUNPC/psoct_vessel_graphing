@@ -107,17 +107,15 @@ delta = 2;
 
 %%% Plot with scatterplot and lines
 graph_title_str = 'Down Sampled Marching Ellipsoid Segment Groups';
-scatter_graph(cedges_ds, cnodes_ds, graph_title_str);
 
-%%% Plot result
-% Copy edges into standard format
-s = cedges_ds(:,1); % source node
-t = cedges_ds(:,2); % target node
-% Create standard Matlab g
-g = graph(s, t);
-graph_title_str = 'Down Sampled Marching Ellipsoid Segment Groups';
-% Plot matlab graph
-plot_graph(g, cnodes_ds, graph_title_str);
+%% Call function to move2mean and down sample with new method
+% - Merge in branch with function that runs move2mean + D.S.
+% - place new downsample into this function. add a flag to call either down
+% sampling function
+% - Test with dataset
+% - plot results
+
+
 
 %% Down sample nodes w/ old method (entire graph)
 % Search distance (voxels)
@@ -127,8 +125,6 @@ validatedNodes = zeros(size(nodes,1),1);
 % Call old down sample method
 [nodes_old_method, edges_old_method, ~,~] = ...
     regraphNodes_new(nodes, edges, validatedNodes, delta, delta);
-
-%%% Visualize results from old method
 
 %% Overlay graph and segmentation
 function graph_seg_overlay(fig_title, skel, seg)

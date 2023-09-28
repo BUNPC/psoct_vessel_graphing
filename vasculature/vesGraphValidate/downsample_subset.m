@@ -119,7 +119,9 @@ xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 % The node indices in subset_node_idcs are indexed based on the
 % non-downsampled graph. These indices must be reindexed to 1. Similarly,
 % the edge indices must also be reindexed to 1.
-
+% TODO: make this into a function outside of this function. It will not be
+% used here, but it may be useful later.
+%{
 %%% Initialize variables for re-indexing
 % Create ordered list of edge indices
 edso = sort(edges_ds(:));
@@ -162,7 +164,7 @@ end_nodes_re = changem(end_nodes, nre, edso);
 %%% Verify subgraph visually (figure) and programatically
 visualize_graph(nodes_ds_re, edges_ds_re, 'Subset of graph',end_nodes_re);
 xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
-
+%}
 %% Regraph (downsample)
 %{
 CODE EXPLANATION:
@@ -262,7 +264,6 @@ pos_new(n_unique,:) = nodes_ds_re(1,:);
 %%% Iterate over all nodes & perform down sampling
 for ii=2:size(nodes,1)
     % Position of node under comparison
-%     pos_tmp = nodes_ds_re(ii,:);
     pos_tmp = nodes(ii,:);
     % Find nodes within the search radius of pos_tmp
     redundant_nodes = find(...
@@ -303,39 +304,8 @@ for ii=2:size(nodes,1)
 end
 
 % Find the new edges based upon node_map
-% edges_mapped = node_map(edges_ds_re);
 edges_mapped = node_map(edges);
 
-%% Code for marching ellipsoid (may not be used here)
-%{
-%%% DEBUGGING: Create new edges based upon node_map
-% Map edges to new node positions in nmap
-emap = nmap(edges_ds_re(1:10,:));
-% Plot nmap and emap
-scatter_graph(emap, pos_new, 'After Downsampling Graph');
-
-%%% Create master list of node_map for entire graph
-
-% BUG: node_map_master is too long. Then length of this should max the
-% maximum element of edges_ds_re. There is a book-keeping issue when
-% creating the arrays node_map and pos_new.
-
-% Convert from struct to cell array
-node_map_master = struct2cell(map);
-% Concatenate cell arrays into a double array
-node_map_master = cell2mat(node_map_master(1,:));
-% Find the new edges based upon node_map
-edges_mapped = node_map_master(edges_ds_re);
-
-%%% Create master list of new node positions
-% Convert from struct to cell array
-pos_new = struct2cell(map);
-pos_new = pos_new(2,:);
-% Concatenate cell arrays into a double array
-pos_new = vertcat(pos_new{:});
-%%% Verify subgraph with figure
-scatter_graph(edges_mapped, pos_new, 'After Downsampling Graph');
-%}
 %% Remove single-node edges and redundant edges
 % Remove single-node edges that are connecting the same node
 edges_mapped = edges_mapped(edges_mapped(:,1)~=edges_mapped(:,2),:);
