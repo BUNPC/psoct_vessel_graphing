@@ -98,6 +98,7 @@ t_str = 'Unprocessed Volume';
 [cnodes, cedges] = allcycles(g_mat);
 
 %% Downsample with new method
+%{
 % Search distance (voxels)
 delta = 2;
 
@@ -109,15 +110,20 @@ delta = 2;
 graph_title_str = 'Down Sampled Loops';
 visualize_graph(nodes_out, edges_out, graph_title_str,[]);
 xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
+%}
 
 %% Call function to move2mean and down sample with new method
-% - Merge in branch 3-prune_loops-removes-non-loop-vessels
-%       which has the function that runs move2mean + D.S.
-% - place new downsample into this function. add a flag to call either down
-%       sampling function
-% - Test with dataset
-% - plot results
-
+% TODO: The function "downsample_subset" preserves the end nodes, so
+% loops are preserved if they contain 3 or more end nodes.
+% - Add an if-statement to "rm_loops" to check if this condition occurs.
+%       Track the number of nodes in cycles for each iteration. Once this
+%       number reaches a constant, then:
+%           - set "rm_end_node = True"
+%           - pass "rm_end_node" into "downsample_subset"
+% - Update "downsample_subset" to include/exclude end nodes from the
+%       "pos_new" array of unique nodes.
+delta = 6;
+[node_rm, edges_rm] = rm_loops(nodes, edges, vol, 0.99, 'True', delta);
 
 
 %% Down sample nodes w/ old method (entire graph)

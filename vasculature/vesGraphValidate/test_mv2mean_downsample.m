@@ -100,10 +100,6 @@ t_str = 'Unprocessed Volume';
 % Overlay the graph skeleton and the segmentation
 graph_seg_overlay(t_str, skel, seg)
 
-
-
-%% Call function to remove loops (regraph + move to mean)
-
 %%% [x,y,z] limits for visualizing graph
 % Cropped limits of branch point
 % xlims = 100:180; ylims = 130:220; zlims = 60:80;
@@ -116,7 +112,7 @@ xlim(xlims); ylim(ylims); zlim(zlims);
 graph_vis(im.nodes, im.edges, 'Graph Before Processing');
 xlim(xlims); ylim(ylims); zlim(zlims);
 
-%% Call remove loops function
+%% Call remove loops function (regraph + move to mean)
 % Minimum voxel intensity threshold for moving to mean
 vmin = 0.99;
 [n, e] = rm_loops(im.nodes, im.edges, vol, vmin);

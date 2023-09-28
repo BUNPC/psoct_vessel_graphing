@@ -1,4 +1,4 @@
-function [nodes, edges] = rm_loops(nodes, edges, angio, v_min)
+function [nodes, edges] = rm_loops(nodes, edges, angio, v_min, loop_flag, delta)
 %rm_loops Remove loops in graph.
 %   Outline:
 %       - Use graph function "allcycles" to find loops
@@ -15,28 +15,45 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, v_min)
 %       v_min (double): minimum voxel intensity threshold. The new voxel
 %               position will only be reassigned if the voxel intensity of
 %               the new node position is >= v_min.
+%       loop_flag (logical):
+%               true = down sample loops with "downsample_subset"
+%               false = down sample entire graph
+%       delta (int): Search radius for x,y,z directions (units = voxels)
 %   OUTPUTS:
 %       n ([n,3] array): node locations
 %       e ([m,2] array): edges connecting each node
+
+%% TODO
+% The function "downsample_subset" preserves the end nodes, so
+% loops are preserved if they contain 3 or more end nodes.
+% - Add an if-statement to "rm_loops" to check if this condition occurs.
+%       Track the number of nodes in cycles for each iteration. Once this
+%       number reaches a constant, then:
+%           - set "rm_end_node = True"
+%           - pass "rm_end_node" into "downsample_subset"
+% - Update "downsample_subset" to include/exclude end nodes from the
+%       "pos_new" array of unique nodes.
 
 %% Convert from nodes + edges into Matlab graph
 % Create standard Matlab graph
 g = graph(edges(:,1), edges(:,2));
 
 % Detect loops in graph
-cycles = allcycles(g);
+[cnodes, ~] = allcycles(g);
 
 %% While loops exist: regraph + move to mean
-while ~isempty(cycles)
+while ~isempty(cnodes)
     %%% Regraph (downsample) to remove collapsed loops
     % Initialized validated nodes vector so that regraph code runs
     validated_nodes = zeros(size(nodes,1),1);
-    % Search delta for the x,y,z directions (units = voxels)
-    delta = 2;
     % Call function to regraph
-    [nodes, edges, ~, ~] =...
-        regraphNodes_new(nodes, edges, validated_nodes, delta);
-    
+    if loop_flag
+        [nodes, edges] = downsample_subset(cnodes, nodes, edges, delta);
+    else
+        [nodes, edges, ~, ~] =...
+            regraphNodes_new(nodes, edges, validated_nodes, delta);
+    end
+
     %%% Move to mean (collapse loops)
     % Create copy of regraphed graph
     im_mv = struct();
@@ -49,13 +66,9 @@ while ~isempty(cycles)
         im_mv = mv_to_mean(im_mv, v_min);
     end
     
-    %%% Regraph to smooth collapse loops
-    [nodes, edges, ~, ~] =...
-        regraphNodes_new(im_mv.nodes, im_mv.edges, validated_nodes, delta);
-    
     %%% Detect loops in graph
     g = graph(edges(:,1), edges(:,2));
-    cycles = allcycles(g);
+    [cnodes, ~] = allcycles(g);
 end
 
 end
