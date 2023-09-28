@@ -106,12 +106,15 @@ delta = 2;
     downsample_subset(cnodes, nodes, edges, delta);
 
 %%% Plot with scatterplot and lines
-graph_title_str = 'Down Sampled Marching Ellipsoid Segment Groups';
+graph_title_str = 'Down Sampled Loops';
+visualize_graph(nodes_out, edges_out, graph_title_str,[]);
+xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 
 %% Call function to move2mean and down sample with new method
-% - Merge in branch with function that runs move2mean + D.S.
+% - Merge in branch 3-prune_loops-removes-non-loop-vessels
+%       which has the function that runs move2mean + D.S.
 % - place new downsample into this function. add a flag to call either down
-% sampling function
+%       sampling function
 % - Test with dataset
 % - plot results
 
