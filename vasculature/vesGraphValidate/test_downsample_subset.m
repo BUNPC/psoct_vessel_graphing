@@ -12,6 +12,9 @@ Overview:
 - call regraph for nodes from adjacent segments
 %}
 clear; close all; clc;
+%% Flag for visualization or debugging
+visual = false;
+
 %% Add top-level directory of code repository to path
 % Start in current directory
 mydir  = pwd;
@@ -32,11 +35,13 @@ subid = 'NC_6839';
 subdir = '\dist_corrected\volume\';
 sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
 vdata = 'ref_4ds_norm_inv_crop2.tif';
+
 %%% Data with fewer nested loops (probability threshold = 0.23)
-seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23.tif';
-% Graphed data after Gaussian filtering segmentation
-gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_graph_data.mat';
-%%% Data with nested loops (probability threshold = 0.21)
+% seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23.tif';
+% % Graphed data after Gaussian filtering segmentation
+% gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_graph_data.mat';
+
+%%% Data with many nested loops (probability threshold = 0.21)
 seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
 gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
 
@@ -47,15 +52,6 @@ Data = load(fullfile(dpath, subid, subdir, sigdir, gdata), 'Data');
 Data = Data.Data;
 nodes = Data.Graph.nodes;
 edges = Data.Graph.edges;
-% Copy edges into standard format
-s = edges(:,1); % source node
-t = edges(:,2); % target node
-% Create standard Matlab g
-g_mat = graph(s, t);
-% Visualize graph
-visualize_graph(nodes, edges, 'Graph Before Downsampling',[])
-% Show subset of data with loops
-xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 
 %%% Load volumetric information and set threshold
 % Import volume
@@ -74,7 +70,9 @@ end
 %%% Load segmentation stack
 % Import volume
 seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
-% volshow(seg);
+if visual == true
+    volshow(seg);
+end
 
 %%% Parameters to convert graph to 3D skeleton
 %  sz =  the size of output volume. The order is [ y x z ]
@@ -91,11 +89,52 @@ save_flag = 0;
 [skel] = sk3D(sz, Data.Graph, 'foo', res, ds_flag, save_flag);
 t_str = 'Unprocessed Volume';
 % Overlay the graph skeleton and the segmentation
-% graph_seg_overlay(t_str, skel, seg)
+if visual
+    graph_seg_overlay(t_str, skel, seg);
+end
 
 %%% Create list of nodes/edges in loops to down sample
+% Copy edges into standard format
+s = edges(:,1); % source node
+t = edges(:,2); % target node
+% Create standard Matlab g
+g_mat = graph(s, t);
 % Find the nodes and edges belonging to loops
 [cnodes, cedges] = allcycles(g_mat);
+cnodes = unique(horzcat(cnodes{:}));
+cnodes = cnodes';
+
+%%% Create list of nodes to NOT down sample
+% Create array of node indices 
+nkeep = 1:1:size(nodes,1);
+nkeep = nkeep';
+% Find nodes not in loops
+nkeep = ~ismember(nkeep, cnodes);
+% Find array indices equal to 1. These are the node indices of non-loop
+% segments, which should be preserved during down sampling.
+nkeep = find(nkeep == 1);
+
+%%% Visualize graph
+if visual
+    visualize_graph(nodes, edges, 'Graph Before Loop Removal',nkeep)
+    % Show subset of data with loops
+    xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
+end
+%% Remove Loops function (move2mean and down sample loops)
+% TODO: The function "downsample_loops" preserves the end nodes, so
+% loops are preserved if they contain 3 or more end nodes.
+% - Add an if-statement to "rm_loops" to check if this condition occurs.
+%       Track the number of nodes in cycles for each iteration. Once this
+%       number reaches a constant, then:
+%           - set "rm_end_node = True"
+%           - pass "rm_end_node" into "downsample_loops"
+% - Update "downsample_loops" to include/exclude end nodes from the
+%       "pos_new" array of unique nodes.
+delta = 6;
+[node_rm, edges_rm] = rm_loops(nodes, edges, vol, 0.99, 'True', delta);
+
+%%% Overlay the result with the segmentation
+
 
 %% Downsample with new method
 %{
@@ -104,36 +143,13 @@ delta = 2;
 
 % Downsample just loop nodes
 [cnodes_ds, cedges_ds] =...
-    downsample_subset(cnodes, nodes, edges, delta);
+    downsample_loops(cnodes, nodes, edges, delta);
 
 %%% Plot with scatterplot and lines
 graph_title_str = 'Down Sampled Loops';
 visualize_graph(nodes_out, edges_out, graph_title_str,[]);
 xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 %}
-
-%% Call function to move2mean and down sample with new method
-% TODO: The function "downsample_subset" preserves the end nodes, so
-% loops are preserved if they contain 3 or more end nodes.
-% - Add an if-statement to "rm_loops" to check if this condition occurs.
-%       Track the number of nodes in cycles for each iteration. Once this
-%       number reaches a constant, then:
-%           - set "rm_end_node = True"
-%           - pass "rm_end_node" into "downsample_subset"
-% - Update "downsample_subset" to include/exclude end nodes from the
-%       "pos_new" array of unique nodes.
-delta = 6;
-[node_rm, edges_rm] = rm_loops(nodes, edges, vol, 0.99, 'True', delta);
-
-
-%% Down sample nodes w/ old method (entire graph)
-% Search distance (voxels)
-delta = 2;
-% Set all nodes to not validated so regraph down samples all ndoes
-validatedNodes = zeros(size(nodes,1),1);
-% Call old down sample method
-[nodes_old_method, edges_old_method, ~,~] = ...
-    regraphNodes_new(nodes, edges, validatedNodes, delta, delta);
 
 %% Overlay graph and segmentation
 function graph_seg_overlay(fig_title, skel, seg)

@@ -1,5 +1,5 @@
 function [nodes_out, edges_out] =...
-downsample_subset(subset_node_idcs, nodes, edges, delta)
+downsample_loops(subset_node_idcs, nodes, edges, delta, protect)
 %%regraphNodes_new Downsample a graph
 % INPUTS
 %   subset_node_idcs (cell array): [1,1,N] each entry contains an array of
@@ -7,10 +7,13 @@ downsample_subset(subset_node_idcs, nodes, edges, delta)
 %   nodes (array): [X, 3] matrix of coordinates for nodes
 %   edges (array): [Y,2] matrix of edges connecting node indices
 %   delta (uint): step size for searching
-% OUTPUTS
-%   nodes (array): coordinates of nodes after down sampling
-%   edges (array): matrix of edges after down sampling
+%   protect (boolean): 
+%                      True = protect end points.
+%                      False = down sample end points.
 %
+% OUTPUTS
+%   nodes_out (array): coordinates of nodes after down sampling
+%   edges_out (array): matrix of edges after down sampling
 %{
 --------------------------------------------------------------------------
 PURPOSE:
@@ -19,19 +22,13 @@ meant to avoid down sampling non-loop strucutres, to retain the original
 vascular morphology.
 --------------------------------------------------------------------------
 TODO:
-1) Re-index the nodes/edges NOT in the array subset_node_idcs
-    - create separate arrays/matrices for storing these:
-    - nodepos_og, edges_og
-2) Identify enpoints of loops connected to non-loops
-    - this is currently not finding all end point in the loops. It may
-    suffice to just use the end points of the non-loop segments.
-    - find edges containing one node in a loop (subset_node_idcs)
-    - add these nodes to the pos_new matrix so they are categorized as
-    unique.
-3) After downsampling, recombine the down-sampled graph with the
-    non-down-sampled graph.
-    - Since we maintain the non-loop edges connected to loops, we may be
-    able to reindex both sets to connect the edges.
+1) Add function to remove disconnected nodes and then reindex the nodes and
+edges accordingly.
+
+2) Some loops are not being disconnected, even when the delta is larger
+than the distance between nodes. This may be due to some nodes remaining
+protected, thus preventing complete removal of all loops. Need to
+investigate futher.
 --------------------------------------------------------------------------
 %}
 
@@ -103,19 +100,7 @@ n_idcs = unique(n_idcs);
 end_nodes = [seg_end_nodes; n_idcs];
 end_nodes = unique(end_nodes);
 
-%%% Find edges connecting non-loop segments to loop segments
-% The array "end_nodes" contains the end node indices of both non-loop and
-% loop segments. This finds edges where both start and end node belong to
-% the set of end_nodes.
-e_idcs = find(ismember(edges(:,1), end_nodes) & ismember(edges(:,2), end_nodes));
-% Convert from array indices to edge values
-end_edges = edges(e_idcs,:);
-
-%%% Visualize the graph
-visualize_graph(nodes, edges, 'All End Nodes (exclude from down sampling)',end_nodes);
-xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
-
-%% Re-index the nodes in subset_node_idcs
+%% Re-index the nodes in subset_node_idcs (move to separate function)
 % The node indices in subset_node_idcs are indexed based on the
 % non-downsampled graph. These indices must be reindexed to 1. Similarly,
 % the edge indices must also be reindexed to 1.
@@ -213,7 +198,7 @@ hz = delta;
 % the non-loop nodes into "pos_new" will ensure these nodes are considered
 % "unique," and they will not be down sampled.
 %
-% Create array of node indices 
+% Create array of node indices to keep
 nkeep = 1:1:size(nodes,1);
 nkeep = nkeep';
 % Find nodes not in loops
@@ -222,13 +207,25 @@ nkeep = ~ismember(nkeep, nodes_ds);
 % segments, which should be preserved during down sampling.
 nkeep = find(nkeep == 1);
 
-% Add the end node indices to the array of nodes to keep
-nkeep = [nkeep; end_nodes];
+% If protecting the end nodes, then add indices to array of nodes to keep.
+% Otherwise nkeep will only be the nodes in loops.
+if protect
+    nkeep = [nkeep; end_nodes];
+end
+
 % Take unique elements of nkeep to avoid duplicates
 nkeep = unique(nkeep);
 
+% Initialize node_map to have an index for every node
 node_map = zeros(size(nodes,1), 1);
+
+% Set the indices of the nodes to protect. The mapped index will be equal
+% to the index in the array node_map. This ensures a one-to-one mapping for
+% the protected nodes, so they will retain their original positions.
 node_map(1:length(nkeep)) = 1:length(nkeep);
+
+%%% Visualize the graph with protected nodes
+visualize_graph(nodes, edges,'Protected Nodes (green)', nkeep);
 
 %%% "pos_new" tracks the index positions of unique nodes.
 % The current node position in the for loop (pos_tmp) is compared to all
@@ -325,18 +322,32 @@ end
 % Remove redundant edges
 edges_mapped = edges_mapped(sort(unique_edge_idx),:);
 
-%% check for new dangling nodes (i.e. nodes with nB=1 that were nB=2
-% if we want to implement this, we just need to have nB_old and nB_new and
-% use the node_map to find when nB_new=1 and nB_old=2 for given nodes and
-% then delete all nodes and edges back to the bifurcation node
+%% Check for unconnected nodes
+%%% TODO: A more robust method is to remove all solo nodes and then reindex
+% the nodes and edges accordingly.
+% Create array from 1 to length of nodes_out
+nodes_out_indices = 1:size(pos_new,1);
+
+% Find nodes excluded from node map
+solo = ~ismember(nodes_out_indices, node_map);
+solo = find(solo == 1);
+
+%%% Brute force: find nodes exceeding the max node index in edge list
+% Remove these nodes from the pos_new array
+% pos_new = pos_new(1:max(edges_mapped(:)), :);
 
 %% Reassign output variables
 nodes_out = pos_new;
 edges_out = edges_mapped;
 fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_out,1))
 %%% Verify subgraph with figure
-visualize_graph(nodes_out, edges_out, 'After Downsampling Graph',[]);
-xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
+% Highlight end nodes in visualize_graph
+highlight_nodes = node_map(1:length(nkeep));
+visualize_graph(nodes_out, edges_out, 'After Downsampling Graph',highlight_nodes);
+% xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
+% Other nested loops
+% xlim([40, 120]); ylim([180, 260]); zlim([70,110]); view(3);
+
 pause(0.01)
 
 end
