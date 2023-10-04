@@ -26,18 +26,18 @@ p.MarkerSize = 3;
 %%% Highlight Loops
 % Determine if the graph contains cycles
 [~, edgecycles] = allcycles(g);
+fprintf('Number of edgecycles (loops) = %d\n', length(edgecycles))
 % If so, then highlight them
 if ~isempty(edgecycles)
     % Highlight edges
     for ii=1:length(edgecycles)
         highlight(p,'Edges',edgecycles{ii},'EdgeColor','r',...
-                  'LineWidth',4,'NodeColor','r','MarkerSize',6)
+                  'LineWidth',4,'NodeColor','r','MarkerSize',6);
     end
 end
 
 %%% Highlight end points and nodes in edges connecting end points
 if ~isempty(node_highlight)
-    % Highlight nodes
     highlight(p,node_highlight,'NodeColor','g')
 end
 

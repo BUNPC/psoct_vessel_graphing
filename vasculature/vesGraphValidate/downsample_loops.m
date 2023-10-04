@@ -1,4 +1,4 @@
-function [nodes_out, edges_out] =...
+function [pos_new, edges_mapped] =...
 downsample_loops(subset_node_idcs, nodes, edges, delta, protect)
 %%regraphNodes_new Downsample a graph
 % INPUTS
@@ -22,10 +22,7 @@ meant to avoid down sampling non-loop strucutres, to retain the original
 vascular morphology.
 --------------------------------------------------------------------------
 TODO:
-1) Add function to remove disconnected nodes and then reindex the nodes and
-edges accordingly.
-
-2) Some loops are not being disconnected, even when the delta is larger
+1) Some loops are not being downsampled, even when the delta is larger
 than the distance between nodes. This may be due to some nodes remaining
 protected, thus preventing complete removal of all loops. Need to
 investigate futher.
@@ -100,56 +97,6 @@ n_idcs = unique(n_idcs);
 end_nodes = [seg_end_nodes; n_idcs];
 end_nodes = unique(end_nodes);
 
-%% Re-index the nodes in subset_node_idcs (move to separate function)
-% The node indices in subset_node_idcs are indexed based on the
-% non-downsampled graph. These indices must be reindexed to 1. Similarly,
-% the edge indices must also be reindexed to 1.
-% TODO: make this into a function outside of this function. It will not be
-% used here, but it may be useful later.
-%{
-%%% Initialize variables for re-indexing
-% Create ordered list of edge indices
-edso = sort(edges_ds(:));
-% Track the new re-indexed node index
-ni = 1;
-% Array for storing reindexed node indices
-nre = zeros(length(edso),1);
-% Temporary variable for storing last element for comparison
-last = edso(1);
-% Matrix for storing node positions (after re-indexing)
-nodes_ds_re = zeros(length(unique(edso)),3);
-
-%%% Iterate over ordered list of node indices in edges_ds
-for e=1:length(edso)
-    % If the current element of the ordered indices equals the prior elem.
-    if edso(e) == last
-        % Set the reindexed node index equal to the last node index
-        nre(e) = ni;
-        % Update reindexed node position
-        nodes_ds_re(ni,:) = nodes(edso(e), :);
-    else
-        % Increment the new reindexed node index
-        ni = ni + 1;
-        % Update reindexed node index
-        nre(e) = ni;
-        % Update reindexed node position
-        nodes_ds_re(ni,:) = nodes(edso(e), :);
-    end
-    % Update the value of the last element for comparison
-    last = edso(e);
-end
-
-%%% Remap node indices in edges_ds with the re-indexed values
-% This command will replace the value edso(k) with nre(k) in edges_ds
-edges_ds_re = changem(edges_ds, nre, edso);
-
-%%% Remap node indices belonging to segment and loop end points
-end_nodes_re = changem(end_nodes, nre, edso);
-
-%%% Verify subgraph visually (figure) and programatically
-visualize_graph(nodes_ds_re, edges_ds_re, 'Subset of graph',end_nodes_re);
-xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
-%}
 %% Regraph (downsample)
 %{
 CODE EXPLANATION:
@@ -323,31 +270,33 @@ end
 edges_mapped = edges_mapped(sort(unique_edge_idx),:);
 
 %% Check for unconnected nodes
-%%% TODO: A more robust method is to remove all solo nodes and then reindex
-% the nodes and edges accordingly.
-% Create array from 1 to length of nodes_out
-nodes_out_indices = 1:size(pos_new,1);
 
-% Find nodes excluded from node map
-solo = ~ismember(nodes_out_indices, node_map);
-solo = find(solo == 1);
+%%% Array of indices representing indices of the new node positions. 
+% Create array from 1 to length of pos_new (downsampled node positions)
+node_ds_idcs = 1:size(pos_new,1);
 
-%%% Brute force: find nodes exceeding the max node index in edge list
-% Remove these nodes from the pos_new array
-% pos_new = pos_new(1:max(edges_mapped(:)), :);
+%%% Find unconnected nodes (not contained in edges (edges_mapped))
+solo = ~ismember(node_ds_idcs, edges_mapped);
+solo = find(solo == 1, 1);
+fprintf('Total disjoint nodes = %d\n', length(solo))
 
-%% Reassign output variables
-nodes_out = pos_new;
-edges_out = edges_mapped;
-fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_out,1))
+%%% If unconnected nodes, then reindex edges to exclude them
+if ~isempty(solo)
+    [pos_new, edges_mapped] = rm_disjoint_nodes(pos_new, edges_mapped);
+end
+
+%% Visual Verification
+
+%%% Print number of removed nodes
+fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(pos_new,1))
+
 %%% Verify subgraph with figure
 % Highlight end nodes in visualize_graph
-highlight_nodes = node_map(1:length(nkeep));
-visualize_graph(nodes_out, edges_out, 'After Downsampling Graph',highlight_nodes);
+% highlight_nodes = node_map(1:length(nkeep));
+visualize_graph(pos_new, edges_mapped, 'After Downsampling Graph',[]);
 % xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
+
 % Other nested loops
 % xlim([40, 120]); ylim([180, 260]); zlim([70,110]); view(3);
-
-pause(0.01)
 
 end

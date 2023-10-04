@@ -130,11 +130,33 @@ end
 %           - pass "rm_end_node" into "downsample_loops"
 % - Update "downsample_loops" to include/exclude end nodes from the
 %       "pos_new" array of unique nodes.
+
+% Move to mean minimum voxel intensity
+v_min = 0.99;
+
+% Loop flag. true = down sample loops with "downsample_loops"
+% false = down sample entire graph
+loop_flag = 'true';
+
+% Down sample search radius
 delta = 6;
-[node_rm, edges_rm] = rm_loops(nodes, edges, vol, 0.99, 'True', delta);
+
+% Number of iterations for move to mean
+mv_iter = 1;
+
+[node_rm, edges_rm] =...
+    rm_loops(nodes, edges, vol, loop_flag, delta, v_min, mv_iter);
 
 %%% Overlay the result with the segmentation
+% Assign nodes/edges to graph for creating skeleton
+g.nodes = node_rm;
+g.edges = edges_rm;
+% Create skeleton of graph
+[skel] = sk3D(sz, g, 'foo', res, ds_flag, save_flag);
 
+% Overlay skeleton with segmentation
+fig_title = 'Loops Removed';
+graph_seg_overlay(fig_title, skel, seg)
 
 %% Downsample with new method
 %{

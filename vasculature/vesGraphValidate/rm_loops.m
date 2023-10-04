@@ -1,4 +1,4 @@
-function [nodes, edges] = rm_loops(nodes, edges, angio, v_min, loop_flag, delta)
+function [nodes, edges] = rm_loops(nodes, edges, angio, loop_flag, delta, v_min, mv_iter)
 %rm_loops Remove loops in graph.
 %   Outline:
 %       - Use graph function "allcycles" to find loops
@@ -12,13 +12,15 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, v_min, loop_flag, delta)
 %       edges ([m,2] array): edges connecting each node
 %       im.angio (double matrix): PS-OCT intensity volume (vessels are
 %               bright)
-%       v_min (double): minimum voxel intensity threshold. The new voxel
-%               position will only be reassigned if the voxel intensity of
-%               the new node position is >= v_min.
 %       loop_flag (logical):
 %               true = down sample loops with "downsample_loops"
 %               false = down sample entire graph
 %       delta (int): Search radius for x,y,z directions (units = voxels)
+%       v_min (double): minimum voxel intensity threshold for the move to
+%               mean function. The new voxel position will only be
+%               reassigned if the voxel intensity of the new node position
+%               is >= v_min.
+%       mv_iter (int): number of iterations in move to mean.
 %   OUTPUTS:
 %       n ([n,3] array): node locations
 %       e ([m,2] array): edges connecting each node
@@ -54,9 +56,13 @@ n_pre = length(cnodes);
 protect = true;
 
 %% While loops exist: regraph + move to mean
-while ~isempty(cnodes)
-    
+% Counter to track number of iterations
+cnt = 1;
 
+while ~isempty(cnodes)
+    %%% Print iteration
+    sprintf('Loop Removal Iteration = %i\n', cnt)
+    
     %%% Regraph (downsample) to remove collapsed loops
     % Initialized validated nodes vector so that regraph code runs
     validated_nodes = zeros(size(nodes,1),1);
@@ -74,11 +80,10 @@ while ~isempty(cnodes)
     im_mv.nodes = nodes;
     im_mv.edges = edges;
     im_mv.angio = angio;
-    % Perform move to mean five times to collapse nodes. This number was
-    % determined emprically from testing a data subset.
-%     for j=1:5
+    % Perform move to mean to collapse nodes.
+    for j=1:mv_iter
         im_mv = mv_to_mean(im_mv, v_min);
-%     end
+    end
     % Extract nodes from struct (edges are constant)
     nodes = im_mv.nodes;
     
@@ -107,6 +112,12 @@ while ~isempty(cnodes)
     else
         n_pre = n_post;
     end
+
+    % Iterate the loop counter
+    cnt = cnt + 1;
 end
+
+%%% Visualize graph after removing loops
+visualize_graph(nodes, edges, 'After Loop Removal', []);
 
 end
