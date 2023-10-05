@@ -26,15 +26,8 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, loop_flag, delta, v_min,
 %       e ([m,2] array): edges connecting each node
 
 %% TODO
-% The function "downsample_loops" preserves the end nodes, so
-% loops are preserved if they contain 3 or more end nodes.
-% - Add an if-statement to "rm_loops" to check if this condition occurs.
-%       Track the number of nodes in cycles for each iteration. Once this
-%       number reaches a constant, then:
-%           - set "rm_end_node = True"
-%           - pass "rm_end_node" into "downsample_loops"
-% - Update "downsample_loops" to include/exclude end nodes from the
-%       "pos_new" array of unique nodes.
+% Some loops remain, even after increasing the delta an unprotecting the
+% end nodes. Need to investigate root cause.
 %
 % The function "move to mean" is currently operating on all nodes of the
 % graph, rather than just the nodes in the loops. Prior tests found that
@@ -115,6 +108,9 @@ while ~isempty(cnodes)
 
     % Iterate the loop counter
     cnt = cnt + 1;
+
+    % Close figures from iteration
+    close all;
 end
 
 %%% Visualize graph after removing loops
