@@ -26,7 +26,7 @@ p.MarkerSize = 3;
 %%% Highlight Loops
 % Determine if the graph contains cycles
 [~, edgecycles] = allcycles(g);
-fprintf('Number of edgecycles (loops) = %d\n', length(edgecycles))
+
 % If so, then highlight them
 if ~isempty(edgecycles)
     % Highlight edges

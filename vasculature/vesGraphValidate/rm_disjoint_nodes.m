@@ -39,6 +39,9 @@ prior = edso(1);
 % Matrix for storing node positions (after re-indexing)
 nodes_re = zeros(length(unique(edso)),3);
 
+% Enter debug on error
+dbstop if error
+
 %%% Iterate over ordered list of node indices in edges
 for e=1:length(edso)
     % If the current element of the ordered indices equals the prior elem.

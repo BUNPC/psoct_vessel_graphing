@@ -51,17 +51,22 @@ protect = true;
 %% While loops exist: regraph + move to mean
 % Counter to track number of iterations
 cnt = 1;
+% Counter to track number of increments to delta (search radius)
+dcnt = 0;
+% Boolean - connect endpoints of loops
+loop_close = false;
 
 while ~isempty(cnodes)
     %%% Print iteration
-    sprintf('Loop Removal Iteration = %i\n', cnt)
+    fprintf('\nLoop Removal Iteration = %i\n', cnt)
     
     %%% Regraph (downsample) to remove collapsed loops
     % Initialized validated nodes vector so that regraph code runs
     validated_nodes = zeros(size(nodes,1),1);
     % Call function to down sample
     if loop_flag
-        [nodes, edges] = downsample_loops(cnodes, nodes, edges, delta, protect);
+        [nodes, edges] =...
+            downsample_loops(cnodes, nodes, edges, delta, protect, loop_close);
     else
         [nodes, edges, ~, ~] =...
             regraphNodes_new(nodes, edges, validated_nodes, delta);
@@ -92,17 +97,23 @@ while ~isempty(cnodes)
 
     % Number of loop nodes after last iteration
     n_post = length(cnodes);
-    
-    % Compare number of loop nodes before/after last iteration
-    % If the number of nodes remains constant (and loops remain), then
-    % unprotect the end point nodes.
-    if n_pre == n_post
+    fprintf('Number of edgecycles (loops) after DS + M2M = %d\n', n_post)
+
+    %%% Compare number of loop nodes before/after last iteration
+    % If the number of nodes remains constant (and loops remain)
+    if (n_pre == n_post) && (dcnt < 3)
+        % Unprotect the end point nodes.
         protect = false;
         % Increase search radius to try to collapse all loops
         delta = delta + 50;
-    % Otherwise, set n_pre equal to n_post, so that n_pre will be compared
-    % in the following iteration.
+        % Counter for number of delta increases
+        dcnt = dcnt + 1;
+    % Elseif delta has been incremented to > 100
+    elseif (n_pre == n_post) && (dcnt >= 3)
+        % Set flag to close loops by connecting end points
+        loop_close = 1;
     else
+        % Update n_pre for next iteration
         n_pre = n_post;
     end
 

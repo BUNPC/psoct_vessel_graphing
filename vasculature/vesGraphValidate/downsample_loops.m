@@ -1,5 +1,5 @@
-function [pos_unique, edges_mapped] =...
-downsample_loops(loop_node_idcs, nodes, edges, delta, protect)
+function [nodes_keep_re, edges_mapped_re] =...
+downsample_loops(loop_node_idcs, nodes, edges, delta, protect, loop_close)
 %%regraphNodes_new Downsample a graph
 % INPUTS
 %   loop_node_idcs (cell array): [1,1,N] each entry contains an array of
@@ -8,12 +8,17 @@ downsample_loops(loop_node_idcs, nodes, edges, delta, protect)
 %   edges (array): [M, 2] matrix of edges connecting node indices
 %   delta (uint): step size for searching
 %   protect (boolean): 
-%                      True = protect end points.
-%                      False = down sample end points.
+%           True = protect end points.
+%           False = down sample end points.
+%   loop_close (boolean):
+%           True = connect end points of loops
+%           False = normal down sampling of loops
 %
 % OUTPUTS
-%   nodes_out (array): coordinates of nodes after down sampling
-%   edges_out (array): matrix of edges after down sampling
+%   nodes_keep_re (array): coordinates of nodes after down sampling and
+%           reindexing to exclude hanging nodes
+%   edges_mapped_re (array): matrix of edges after down sampling and
+%           reindexing to remove hanging nodes
 %{
 --------------------------------------------------------------------------
 PURPOSE:
@@ -23,25 +28,67 @@ vascular morphology.
 --------------------------------------------------------------------------
 TODO:
 1) Some loops are not being downsampled, even when the delta is larger
-than the distance between nodes. This may be due to some nodes remaining
-protected, thus preventing complete removal of all loops. Need to
-investigate futher.
+than the distance between nodes. This is due to the logic in the 
 --------------------------------------------------------------------------
 %}
+
+%% Determine if loops must be closed via new edges
+% This occurs when there are more than two segments involved in a loop. In
+% this case, downsampling will just replace each endpoint with another node
+% further away from the loop, thus expanding the loop.
+% In this scenario, one of the nodes must be designated as the "anchor" and
+% the other end points must be connected to it. Then, the edges without
+% connections to the end points must be removed. This will effectively
+% close the loops
+
+if loop_close
+    for ii = 1:size(loop_node_idcs, 1)
+        % Find end points for each loop
+        eidx = loop_node_idcs{ii};
+        
+        %%% Select one end point to be the "anchor"  
+        % Find difference between each point
+        pmat = nodes(eidx,:);
+        dmat = pdist(pmat, 'euclidean');
+    
+        % TODO: update this logic
+        % Find end point with shortest average eucl. distance to other nodes
+        [~, didx] = min(dmat);
+        
+        % Convert index to subscript
+        sz = [length(eidx), length(eidx)];
+        [r,c] = ind2sub(sz, didx);
+        
+        % Convert subscript to node index?
+    
+        % Connect all other end points to anchor
+        anchor = 1; % (debugging)
+    
+        % Remove loop edges NOT connected to anchor
+        
+        % Reindex edges and nodes
+
+    end
+    
+    % Verify that loops are closed
+
+    % Leave the downsample loops function
+    return
+end
 
 %% Re-index the edges containing the nodes to downsample
 %%% Create list of node indices (from all segment groups) to downsample.
 % This will be used to find all edges involved in downsampling, which will
 % be used to create a separate edge list.
-nodes_ds = unique(horzcat(loop_node_idcs{:}));
-nodes_ds = nodes_ds';
+nidx_ds = unique(horzcat(loop_node_idcs{:}));
+nidx_ds = nidx_ds';
 
 %%% Iterate over all nodes and find edges connected to loops
 % Variable for storing edge indices
 edges_ds = [];
-for n = 1:length(nodes_ds)
-    % Find all edges connected to nodes_ds(n)
-    idcs = find(edges(:,1)==nodes_ds(n) | edges(:,2)==nodes_ds(n));
+for n = 1:length(nidx_ds)
+    % Find all edges connected to nidx_ds(n)
+    idcs = find(edges(:,1)==nidx_ds(n) | edges(:,2)==nidx_ds(n));
     % Add to array for storing edge indices (edge_ds)
     edges_ds = [edges_ds; idcs];
 end
@@ -50,17 +97,17 @@ edges_ds = unique(edges_ds);
 
 %%% Create new matrix of edges (containing nodes to down sample)
 % The values in edges_ds are the indices of all edges that contain at least
-% one of the nodes in nodes_ds. The matrix "edges" contains all edges in
+% one of the nodes in nidx_ds. The matrix "edges" contains all edges in
 % the entire graph. This line of code will use the edge indices in edges_ds
 % to create a new matrix of edges [node_start, node_end].
 edges_ds = edges(edges_ds,:);
 
 %%% Verify that all nodes in loop_node_idcs are contained in edges_ds
 % Note that there will likely be nodes in edges_ds that are not contained
-% within nodes_ds. A loop may contain a node, which connects via an edge to
+% within nidx_ds. A loop may contain a node, which connects via an edge to
 % another node not in the loop. In this case, the non-loop node in the edge
-% will be contained within "edges_ds" but not "nodes_ds"
-node_diff = setdiff(unique(nodes_ds(:)), unique(edges_ds(:)));
+% will be contained within "edges_ds" but not "nidx_ds"
+node_diff = setdiff(unique(nidx_ds(:)), unique(edges_ds(:)));
 assert(isempty(node_diff),...
     'At least one node in the node down sample list is not contained ',...
     'within the list of edges.')
@@ -71,7 +118,7 @@ assert(isempty(node_diff),...
 % into the non-loop vessels.
 
 %%% Find the end node of the non-loop segment connected to the loop.
-seg_end_nodes = setdiff(unique(edges_ds(:)), unique(nodes_ds(:)));
+seg_end_nodes = setdiff(unique(edges_ds(:)), unique(nidx_ds(:)));
 
 %%% Find node(s) in loop(s) connected to the segment end-node
 % There could be multiple loops connected to the same segment end point.
@@ -87,7 +134,7 @@ for n = 1:length(seg_end_nodes)
     node_idcs = node_idcs(:);
     
     %%% Find end nodes belonging just to a loop
-    idx = node_idcs(ismember(node_idcs, nodes_ds(:)));
+    idx = node_idcs(ismember(node_idcs, nidx_ds(:)));
     % Store node indices
     n_idcs = [n_idcs; idx];
 end
@@ -97,7 +144,10 @@ n_idcs = unique(n_idcs);
 end_nodes = [seg_end_nodes; n_idcs];
 end_nodes = unique(end_nodes);
 
-%% Regraph (downsample)
+%%% Visualize the graph with protected nodes
+% visualize_graph(nodes, edges,'Protected Nodes (green)', end_nodes);
+
+%% Setup arrays for down sampling
 %{
 CODE EXPLANATION:
 
@@ -106,7 +156,7 @@ Inside (for ii=2:n_nodes), this function performs the following
     search radius (+/- [delta, delta, delta]).
     
     if there are no nodes within radius:
-        add the current node position to the array "pos_unique", which will be
+        add the current node position to the array "nodes_keep", which will be
         the new node positions after completing the for loop.
     else:
 
@@ -114,7 +164,7 @@ Inside (for ii=2:n_nodes), this function performs the following
         loop. Reassign the index of the current node to the index of the
         closest redundant node. This is performed in the following line:
     
-            node_map(ii) = redundant_nodes(closestNode);
+            node_map(ii) = nkeep_close(closestNode);
     
         This will essentially remove the current node and replace it with
         the closest redundant node. This replacement occurs after the for
@@ -124,7 +174,7 @@ After (for ii=2:n_nodes), this function calls a line for remapping the nodes
 and edges:
 
     edges_mapped = node_map(edges_mapped);
-    nodes_out = pos_unique;
+    nodes_out = nodes_keep;
     edges_out = edges_mapped;
 
     The array edges_mapped is an Mx2 array containing the node indices for each
@@ -142,132 +192,112 @@ hz = delta;
 
 %%% Create array of nodes that will NOT be down sampled
 % The goal is to preserve the morphology of the non-loop segments. Placing
-% the non-loop nodes into "pos_unique" will ensure these nodes are considered
+% the non-loop nodes into "nodes_keep" will ensure these nodes are considered
 % "unique," and they will not be down sampled.
-%
+
 % Create array of node indices to keep
-nkeep = 1:1:size(nodes,1);
-nkeep = nkeep';
+nidx_keep = 1:1:size(nodes,1);
+nidx_keep = nidx_keep';
 
 %%% If protecting end nodes
 %       - add indices to array of nodes to keep.
 %       - remove from indices of nodes to downsample.
-% Otherwise nkeep will only be the nodes in loops.
+% Otherwise nidx_keep will only be the nodes in loops.
 if protect
     % Remove end node indices from array of node indices to down sample
-    idcs = ~ismember(end_nodes, nodes_ds);
-    nodes_ds = nodes_ds(idcs,:);
+    nidx_ds = setdiff(nidx_ds, end_nodes);
+    % Verify that end nodes were removed
+    assert(~all(ismember(end_nodes, nidx_ds)),...
+        'Not all end nodes removed from down sample list.');
 end
 
-%%% Array of nodes to not down sample
-nkeep = ~ismember(nkeep, nodes_ds);
-% Find array indices equal to 1. These are the node indices of non-loop
-% segments, which should be preserved during down sampling.
-nkeep = find(nkeep == 1);
-% Take unique elements of nkeep to avoid duplicates
-nkeep = unique(nkeep);
+%%% Array of node indices to preserve when down sampling
+% Remove down sample node indices from list of nodes to keep
+nidx_keep = setdiff(nidx_keep, nidx_ds);
 
 %%% Initialize node_map to have an index for every node
 node_map = zeros(size(nodes,1), 1);
-% TODO: this logic may be incorrect. May need to map the index of nkeep to
-% the respective index in node_map.
-node_map(nkeep) = nkeep;
-% % Set the indices of the nodes to protect. The mapped index will be equal
-% % to the index in the array node_map. This ensures a one-to-one mapping for
-% % the protected nodes, so they will retain their original positions.
-% node_map(1:length(nkeep)) = 1:length(nkeep);
+% Set nidx_keep indices equal to 1
+node_map(nidx_keep) = nidx_keep;
 
 %%% Visualize the graph with protected nodes
-visualize_graph(nodes, edges,'Protected Nodes (green)', nkeep);
+visualize_graph(nodes, edges,'Protected Nodes (green)', nidx_keep);
+xlim([270, 300]); ylim([140, 170]); zlim([0,5]); view(3);
 
-%%% "pos_unique" tracks the index positions of unique nodes.
+%%% "nodes_keep" tracks the index positions of unique nodes.
 % The current node position in the for loop (pos_tmp) is compared to all
-% nodes within pos_unique. 
-%
-% When a node in "nodes_ds" lacks neighbors within the search radius,
-% its position is added to this list, and its index is added to node_map.
-% The index "n_unique" tracks the position in the "pos_unique" matrix.
+% nodes within nodes_keep. 
 %
 % The nodes belonging to the non-loop edges will be categorized as unique
 % nodes, since they should remain after down sampling. This is to ensure
 % the down sampled loops can be reintegrated back into the non-loop
 % segments.
-pos_unique = nodes(nkeep,:);
-n_unique = length(nkeep);
-pos_unique(n_unique,:) = nodes(n_unique,:);
+nodes_keep = nodes(nidx_keep,:);
 
-%%% Matrix of loop node coordinates
-pos_loop = nodes(nodes_ds,:);
-% TODO:
-%   - may need additional variable, similar to pos_unique. 
-%   - may need to update pos_loop within the if statement "isempty(red...)
-
-%% Issue: loop nodes are not contained within "pos_unique"
-% The find function compares the position of the current node "pos_tmp" to
-% the nodes in pos_unique. However, pos_unique only contains protected nodes
-% (not belonging to cycles).
-% TODO:
-%   - compare pos_tmp to the other nodes in loops (nodes_ds)
-%   - reindex the output to match the node_map
-
+%% Down Sample Loops
 %%% Iterate over all nodes & perform down sampling
-for ii=1:size(nodes_ds,1)
+for ii=1:size(nidx_ds,1)
 % for ii=2:size(nodes,1)
     % Position of node under comparison
-%     pos_tmp = nodes(ii,:);
-    pos_tmp = pos_loop(ii,:);
+    pos_tmp = nodes(nidx_ds(ii),:);
     % If the node is protected, then skip this for-loop iteration
-    if ~all(ismember(pos_tmp, pos_unique))
+    if ~all(ismember(pos_tmp, nodes_keep))
         pause(0.1);
     end
     % Find nodes within the search radius of pos_tmp
-%     redundant_nodes = find(...
-%         pos_tmp(1)>=(pos_unique(:,1)-hxy) & pos_tmp(1)<=(pos_unique(:,1)+hxy) & ...
-%         pos_tmp(2)>=(pos_unique(:,2)-hxy) & pos_tmp(2)<=(pos_unique(:,2)+hxy) & ...
-%         pos_tmp(3)>=(pos_unique(:,3)-hz) & pos_tmp(3)<=(pos_unique(:,3)+hz) );
-
-    redundant_nodes = find(...
-        pos_tmp(1)>=(pos_loop(:,1)-hxy) & pos_tmp(1)<=(pos_loop(:,1)+hxy) & ...
-        pos_tmp(2)>=(pos_loop(:,2)-hxy) & pos_tmp(2)<=(pos_loop(:,2)+hxy) & ...
-        pos_tmp(3)>=(pos_loop(:,3)-hz) & pos_tmp(3)<=(pos_loop(:,3)+hz) );
-    
+    nkeep_close = find(...
+        pos_tmp(1)>=(nodes_keep(:,1)-hxy) & pos_tmp(1)<=(nodes_keep(:,1)+hxy) & ...
+        pos_tmp(2)>=(nodes_keep(:,2)-hxy) & pos_tmp(2)<=(nodes_keep(:,2)+hxy) & ...
+        pos_tmp(3)>=(nodes_keep(:,3)-hz) & pos_tmp(3)<=(nodes_keep(:,3)+hz) );    
     %%% No nodes within search radius [hxy, hxy, hz] of current node.
-    % Iterate n_unique & set node index in node_map(ii) equal to n_unique.
-    % This will map the new node position (after down sampling) to the
-    % current unique node position.
-    if isempty(redundant_nodes)
-        n_unique = n_unique + 1;
-        node_map(ii) = n_unique;
-        pos_unique(n_unique,:) = pos_tmp;
+    % Categorize current node as "unique" and place into nodes_keep
+    if isempty(nkeep_close)
+        % Set node_map position to its current index (one-to-one mapping)
+        node_map(nidx_ds(ii)) = nidx_ds(ii);
+        % Add loop node position to list of nodes to keep
+        nodes_keep(end + 1,:) = pos_tmp;
     % At least 1 node within search radius [hxy, hxy, hz]
     else
         % If more than one node within radius
-        if length(redundant_nodes)>1
+        if length(nkeep_close)>1
             % Delete local variable
             clear d
             % Initialize array to track distance between current
             % node and the nodes within search radius.
-            d = zeros(length(redundant_nodes),1);
+            d = zeros(length(nkeep_close),1);
             % Iterate over list of nodes within search radius
-            for r=1:length(redundant_nodes)
-                d(r) = norm(pos_tmp-pos_unique(redundant_nodes(r),:));
+            for r=1:length(nkeep_close)
+                d(r) = norm(pos_tmp-nodes_keep(nkeep_close(r),:));
             end
-            % Retrieve index of closest node in redundant_nodes
+            % Retrieve index of closest node in nkeep_close
             [~, closest_node] = min(d);
         % Otherwise the index of closest node is the first element
         else
             closest_node = 1;
         end
-        %%% Replace current node with closest loop node.
+        %%% Replace current node with closest loop node (prior version)
         % The array node_map is for mapping all nodes in the graph.
-        % The array nodes_ds contains the indices of all loop nodes (and
+        % The array nidx_ds contains the indices of all loop nodes (and
         % end nodes if protect is false), in the context of the entire
-        % graph. Therefore, an index of X in nodes_ds corresponds to node
+        % graph. Therefore, an index of X in nidx_ds corresponds to node
         % index X in the graph.
-        % The following line converts the index within redundant_nodes to
+        % The following line converts the index within nkeep_close to
         % the index within the entire graph.
-        node_map(nodes_ds(ii)) = nodes_ds(redundant_nodes(closest_node));
-%         node_map(ii) = redundant_nodes(closest_node);
+%         node_map(nidx_ds(ii)) = nidx_ds(nkeep_close(closest_node));
+        
+        %%% Replace current node with closest loop node (newer version)
+        % The index in nkeep_close(closest_node) corresponds to the
+        % index in "nidx_keep", which is set by the line: nodes_keep = nodes(nidx_keep,:)
+        % Therefore, the index "nidx_keep" must be remapped back to the
+        % original index in "nodes".
+        %
+        % Position of closest node
+        pos = nodes_keep(nkeep_close(closest_node), :);
+        % Find position within entire list of nodes
+        [~, nidx] = ismember(pos, nodes, 'rows');
+        % Add index original node index to node map
+        node_map(nidx_ds(ii)) = nidx;
+
     end
 end
 
@@ -295,32 +325,40 @@ edges_mapped = edges_mapped(sort(unique_edge_idx),:);
 
 %% Check for unconnected nodes
 
-%%% Array of indices representing indices of the new node positions. 
-% Create array from 1 to length of pos_unique (downsampled node positions)
-node_ds_idcs = 1:size(pos_unique,1);
+%%% Array of indices representing indices of the mapped positions. 
+idcs_re = 1:max(node_map(:));
 
-%%% Find unconnected nodes (not contained in edges (edges_mapped))
-solo = ~ismember(node_ds_idcs, edges_mapped);
-solo = find(solo == 1, 1);
+%%% Find hanging nodes (not contained in edges_mapped)
+solo = setdiff(idcs_re, edges_mapped(:));
 fprintf('Total disjoint nodes = %d\n', length(solo))
 
 %%% If unconnected nodes, then reindex edges to exclude them
 if ~isempty(solo)
-    [pos_unique, edges_mapped] = rm_disjoint_nodes(pos_unique, edges_mapped);
+    [nodes_keep_re, edges_mapped_re] = rm_disjoint_nodes(nodes, edges_mapped);
+    %%% Verify the edges were reindexed 
+    % Array of indices for remapped nodes
+    nre = 1:size(nodes_keep_re,1);
+    assert(isempty(setdiff(nre, edges_mapped_re)),...
+        'Nodes and edges incorrectly reindexed.');
+else
+    %%% Assign output variable
+    nodes_keep_re = nodes_keep;
+    edges_mapped_re = edges_mapped;
 end
 
 %% Visual Verification
 
 %%% Print number of removed nodes
-fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(pos_unique,1))
+fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_keep,1))
 
 %%% Verify subgraph with figure
 % Highlight end nodes in visualize_graph
-% highlight_nodes = node_map(1:length(nkeep));
-visualize_graph(pos_unique, edges_mapped, 'After Downsampling Graph',[]);
-% xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
-
+% highlight_nodes = node_map(1:length(nidx_keep));
 % Other nested loops
 % xlim([40, 120]); ylim([180, 260]); zlim([70,110]); view(3);
 
+visualize_graph(nodes_keep_re, edges_mapped_re, 'After Downsampling Graph',[]);
+xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
+
+pause(0.001)
 end
