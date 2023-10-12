@@ -53,8 +53,6 @@ protect = true;
 cnt = 1;
 % Counter to track number of increments to delta (search radius)
 dcnt = 0;
-% Boolean - connect endpoints of loops
-loop_close = false;
 
 while ~isempty(cnodes)
     %%% Print iteration
@@ -66,7 +64,7 @@ while ~isempty(cnodes)
     % Call function to down sample
     if loop_flag
         [nodes, edges] =...
-            downsample_loops(cnodes, nodes, edges, delta, protect, loop_close);
+            downsample_loops(cnodes, nodes, edges, delta, protect);
     else
         [nodes, edges, ~, ~] =...
             regraphNodes_new(nodes, edges, validated_nodes, delta);
@@ -110,8 +108,11 @@ while ~isempty(cnodes)
         dcnt = dcnt + 1;
     % Elseif delta has been incremented to > 100
     elseif (n_pre == n_post) && (dcnt >= 3)
-        % Set flag to close loops by connecting end points
-        loop_close = 1;
+        % Remove longest edge of loop
+        edges = rm_loop_edge(cnodes, nodes, edges);
+        %%% Detect loops in graph
+        g = graph(edges(:,1), edges(:,2));
+        [cnodes, ~] = allcycles(g);
     else
         % Update n_pre for next iteration
         n_pre = n_post;

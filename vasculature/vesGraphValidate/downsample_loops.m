@@ -1,5 +1,5 @@
 function [nodes_keep_re, edges_mapped_re] =...
-downsample_loops(loop_node_idcs, nodes, edges, delta, protect, loop_close)
+downsample_loops(loop_node_idcs, nodes, edges, delta, protect)
 %%regraphNodes_new Downsample a graph
 % INPUTS
 %   loop_node_idcs (cell array): [1,1,N] each entry contains an array of
@@ -26,55 +26,7 @@ This function was designed to down sample nodes belonging to loops. It is
 meant to avoid down sampling non-loop strucutres, to retain the original
 vascular morphology.
 --------------------------------------------------------------------------
-TODO:
-1) Some loops are not being downsampled, even when the delta is larger
-than the distance between nodes. This is due to the logic in the 
---------------------------------------------------------------------------
 %}
-
-%% Determine if loops must be closed via new edges
-% This occurs when there are more than two segments involved in a loop. In
-% this case, downsampling will just replace each endpoint with another node
-% further away from the loop, thus expanding the loop.
-% In this scenario, one of the nodes must be designated as the "anchor" and
-% the other end points must be connected to it. Then, the edges without
-% connections to the end points must be removed. This will effectively
-% close the loops
-
-if loop_close
-    for ii = 1:size(loop_node_idcs, 1)
-        % Find end points for each loop
-        eidx = loop_node_idcs{ii};
-        
-        %%% Select one end point to be the "anchor"  
-        % Find difference between each point
-        pmat = nodes(eidx,:);
-        dmat = pdist(pmat, 'euclidean');
-    
-        % TODO: update this logic
-        % Find end point with shortest average eucl. distance to other nodes
-        [~, didx] = min(dmat);
-        
-        % Convert index to subscript
-        sz = [length(eidx), length(eidx)];
-        [r,c] = ind2sub(sz, didx);
-        
-        % Convert subscript to node index?
-    
-        % Connect all other end points to anchor
-        anchor = 1; % (debugging)
-    
-        % Remove loop edges NOT connected to anchor
-        
-        % Reindex edges and nodes
-
-    end
-    
-    % Verify that loops are closed
-
-    % Leave the downsample loops function
-    return
-end
 
 %% Re-index the edges containing the nodes to downsample
 %%% Create list of node indices (from all segment groups) to downsample.

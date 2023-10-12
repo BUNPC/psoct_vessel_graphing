@@ -8,12 +8,15 @@ the regraphNodes_new function:
 
 Overview:
 - load a graph structure
-- call regraph for nodes from single segment
-- call regraph for nodes from adjacent segments
+- Call remove loops function
+
+TODO:
+- Fiji macro to export overlaid segment + graph
+
 %}
 clear; close all; clc;
 %% Flag for visualization or debugging
-visual = false;
+visual = true;
 
 %% Add top-level directory of code repository to path
 % Start in current directory
@@ -44,6 +47,10 @@ vdata = 'ref_4ds_norm_inv_crop2.tif';
 %%% Data with many nested loops (probability threshold = 0.21)
 seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
 gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
+
+%%% Output Data filenames
+skel_out = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data_noloops.tif';
+skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
 
 %% Load PSOCT graph, volume, segmentation
 
@@ -86,11 +93,11 @@ save_flag = 0;
 
 %%% Overlay graph and segmentation
 % Convert graph to skeleton
-[skel] = sk3D(sz, Data.Graph, 'foo', res, ds_flag, save_flag);
+[skel_pre] = sk3D(sz, Data.Graph, 'foo', res, ds_flag, save_flag);
 t_str = 'Unprocessed Volume';
 % Overlay the graph skeleton and the segmentation
 if visual
-    graph_seg_overlay(t_str, skel, seg);
+    graph_seg_overlay(t_str, skel_pre, seg);
 end
 
 %%% Create list of nodes/edges in loops to down sample
@@ -120,16 +127,7 @@ if visual
     % Show subset of data with loops
     xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 end
-%% Remove Loops function (move2mean and down sample loops)
-% TODO: The function "downsample_loops" preserves the end nodes, so
-% loops are preserved if they contain 3 or more end nodes.
-% - Add an if-statement to "rm_loops" to check if this condition occurs.
-%       Track the number of nodes in cycles for each iteration. Once this
-%       number reaches a constant, then:
-%           - set "rm_end_node = True"
-%           - pass "rm_end_node" into "downsample_loops"
-% - Update "downsample_loops" to include/exclude end nodes from the
-%       "pos_new" array of unique nodes.
+%% Call Remove Loops function (move2mean and down sample loops)
 
 % Move to mean minimum voxel intensity
 v_min = 0.99;
@@ -153,25 +151,21 @@ g.nodes = node_rm;
 g.edges = edges_rm;
 % Create skeleton of graph
 [skel] = sk3D(sz, g, 'foo', res, ds_flag, save_flag);
+% Save output skeleton
+segmat2tif(skel, skel_out);
 
 % Overlay skeleton with segmentation
-fig_title = 'Loops Removed';
-graph_seg_overlay(fig_title, skel, seg)
+if visual
+    % Display graph with all nodes green
+    nidx = 1:size(node_rm,1);
+    visualize_graph(node_rm, edges_rm, 'Graph Before Loop Removal',nidx);
+    % Debugging view
+    xlim([190, 210]); ylim([25, 45]); zlim([22, 28]); view(3);
 
-%% Downsample with new method
-%{
-% Search distance (voxels)
-delta = 2;
-
-% Downsample just loop nodes
-[cnodes_ds, cedges_ds] =...
-    downsample_loops(cnodes, nodes, edges, delta);
-
-%%% Plot with scatterplot and lines
-graph_title_str = 'Down Sampled Loops';
-visualize_graph(nodes_out, edges_out, graph_title_str,[]);
-xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
-%}
+    % Overlay skeleton with segmentation
+    fig_title = 'Loops Removed';
+    graph_seg_overlay(fig_title, skel, seg)
+end
 
 %% Overlay graph and segmentation
 function graph_seg_overlay(fig_title, skel, seg)

@@ -27,15 +27,15 @@ if ispc
     
     % Volume directory + volume filename (same for each subject)
     voldir = '\dist_corrected\volume\';
-    volname = 'ref_4ds_norm_inv';
+    volname = 'ref_4ds_norm_inv_crop2';
 
     % Directory to segmentation
-    segdir = '\dist_corrected\volume\gsigma_13-15-17_gsize_53-61-69\';
+    segdir = '\dist_corrected\volume\gsigma_1-3-5_gsize_5-13-21\';
     % Subject IDs
     subid = {'NC_6839'};
     
     % Filename to parse (this is test data)
-    segname = 'ref_4ds_norm_inv_segment_pmin_0.23_mask40';
+    segname = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21';
 
     % filename extension
     ext = '.tif';
