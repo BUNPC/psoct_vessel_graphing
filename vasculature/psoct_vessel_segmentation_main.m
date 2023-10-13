@@ -37,10 +37,10 @@ addpath(genpath(topdir));
 if ispc
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
-    subid = 'NC_6839';
+    subid = 'AD_20832';
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
-    fname = 'ref_4ds_norm_inv_crop2';
+    fname = 'ref_4ds_norm_inv_crop_small';
     % filename extension
     ext = '.tif';
     % sigma for Gaussian smoothing
@@ -51,7 +51,7 @@ elseif isunix
     % Path to top-level directory
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
     % Subfolder containing data
-    subdir = '/dist_corrected/volume/';
+    subdir = '/dist_corrected/volume/gsigma_1-3-5_gsize_5-13-21/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
     % filename extension

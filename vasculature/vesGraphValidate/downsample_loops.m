@@ -174,7 +174,7 @@ node_map(nidx_keep) = nidx_keep;
 
 %%% Visualize the graph with protected nodes
 visualize_graph(nodes, edges,'Protected Nodes (green)', nidx_keep);
-xlim([270, 300]); ylim([140, 170]); zlim([0,5]); view(3);
+% xlim([270, 300]); ylim([140, 170]); zlim([0,5]); view(3);
 
 %%% "nodes_keep" tracks the index positions of unique nodes.
 % The current node position in the for loop (pos_tmp) is compared to all
@@ -310,7 +310,7 @@ fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_keep,1))
 % xlim([40, 120]); ylim([180, 260]); zlim([70,110]); view(3);
 
 visualize_graph(nodes_keep_re, edges_mapped_re, 'After Downsampling Graph',[]);
-xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
+% xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 
 pause(0.001)
 end
