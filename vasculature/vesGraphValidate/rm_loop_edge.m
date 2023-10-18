@@ -1,4 +1,4 @@
-function [edges_rm] = rm_loop_edge(loop_node_idcs, nodes, edges)
+function [edges_rm] = rm_loop_edge(nodes, edges, sp, csp)
 %rm_loop_edge Remove longest edge of loop.
 % -------------------------------------------------------------------------
 % PURPOSE:
@@ -7,44 +7,58 @@ function [edges_rm] = rm_loop_edge(loop_node_idcs, nodes, edges)
 % endpoint with another node further away from the loop, thus expanding the
 % loop. In this case, the longest edge will be removed, removing the loop.
 % -------------------------------------------------------------------------
-% TODO:
-% - Determine if all end point nodes should be connected to one end node.
-% In this scenario, one of the nodes must be designated as the "anchor" and
-% the other end points must be connected to it. Then, the edges without
-% connections to the end points must be removed. This would remove some of
-% the morphology of the branching, so it must be compared to the
-% segmentation.
-% -------------------------------------------------------------------------
 % INPUTS
-%   loop_node_idcs (cell array): [1,1,N] each entry contains an array of
-%                            indices that can be down sampled.
+%   g (graph): the original graph struct
 %   nodes (array): [X, Y, Z] matrix of coordinates for nodes
 %   edges (array): [M, 2] matrix of edges connecting node indices
+%   csp (cell array): Each row in the cell array contains the node
+%           indices for a sparse loop.
 %
 % OUTPUTS
 %   edges_rm (matrix): edge matrix without longest edge for each loop
-%
 
-for ii = 1:size(loop_node_idcs, 1)
-    % Find end points for each loop
-    nidx_loop = loop_node_idcs{ii};
-    
-    %%% Calculate euclidean distance between nodes in loop
+%% TODO:
+% In the case of adjoined sparse cycles, a for-loop may result in removing
+% more edges than intended. Instead, a while loop will ensure that the
+% sparsity matrix is regenerated between iterations and each loop is
+% handled individually. 
+%
+%   - Change to while loop:
+%       - remove longest edge of loop
+%       - call graph_sparsity again
+%   - Replace logic with builtin "distances" function (faster).
+%   - Test removing other edges in loop and connecting end points to anchor.
+%       - Define anchor point
+%       - Remove loop edges NOT connected to anchor
+%       - Reindex edges and nodes
+
+%% Remove longest edge in each loop
+
+% While at least one cycle is still sparse
+while any(sp)
+    % Extract the first sparse loop from cell array
+    cnodes = csp{1,:};
+   
+    %%% Calculate euclidean distance between nodes in edges
+    % TODO: this is calculating distance between all nodes (even
+    % unconnected ones). Need to modify to only calculate distance between
+    % nodes defined in edges.
+
     % Extract coordinates of each node in loop
-    pmat = nodes(nidx_loop,:);
+    pmat = nodes(cnodes,:);
     % Find difference between each point
     dmat = pdist(pmat, 'euclidean');
     % Convert difference to lower triangle square matrix
     dmat = tril(squareform(dmat),-1);
 
     %%% Find end nodes of longest edge
-    % Find longest edge (longest eucl. dist. to other nodes)
+    % Find dmat index of longest edge (longest eucl. dist. to other nodes)
     [~, edge_idx] = max(dmat,[],"all","linear");
-    % Convert edge index to dmat subscripts
+    % Convert matrix index to subscript
     [r, c] = ind2sub(size(dmat), edge_idx);
-    % Convert dmat subscripts to node indices in "nodes"
-    e1_idx = nidx_loop(r);
-    e2_idx = nidx_loop(c);
+    % Convert from matrix subscript to node index
+    e1 = cnodes(r);
+    e2 = cnodes(c);
 
     %%% Remove long edge from "edges" matrix
     % Find long edge in "edges" matrix
@@ -52,23 +66,9 @@ for ii = 1:size(loop_node_idcs, 1)
         (edges(:,1)==e2_idx & edges(:,2)==e1_idx));
     % Remove edge from "edges" matrix
     edges(e_idx,:) = [];
-       
-    %%% TODO:
-    %   - Test removing other edges in loop and connecting end points to anchor.
-    % Steps:
-    %   - Define anchor point
-    %   - Remove loop edges NOT connected to anchor
-    %   - Reindex edges and nodes
 
 end
 
-%%% Verify that loops are closed
-% Create graph
-g = graph(edges(:,1), edges(:,2));
-% Find cycles
-[~, edgecycles] = allcycles(g);
-% Assert that no cycles remain
-assert(isempty(edgecycles), 'Loops remain after removing longest edge.')
 
 %%% Reassign output variable to make Matlab happy
 edges_rm = edges;

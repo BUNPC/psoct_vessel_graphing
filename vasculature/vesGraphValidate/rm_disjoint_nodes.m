@@ -66,9 +66,4 @@ end
 % This command will replace the value edso(k) with nre(k) in edges
 edges_re = changem(edges, nre, edso);
 
-%%% Verify subgraph visually (figure) and programatically
-visualize_graph(nodes_re, edges_re, 'Subset of graph',[1,2]);
-xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
-
-
 end

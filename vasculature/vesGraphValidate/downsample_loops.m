@@ -32,20 +32,18 @@ vascular morphology.
 %%% Create list of node indices (from all segment groups) to downsample.
 % This will be used to find all edges involved in downsampling, which will
 % be used to create a separate edge list.
-nidx_ds = unique(horzcat(loop_node_idcs{:}));
-nidx_ds = nidx_ds';
+
+% If loop_node_idcs is the indices for a single loop
+if isa(loop_node_idcs, 'double')
+    nidx_ds = loop_node_idcs';
+% Otherwise, it is a cell array for all loops
+else
+    nidx_ds = unique(horzcat(loop_node_idcs{:}));
+    nidx_ds = nidx_ds';
+end
 
 %%% Iterate over all nodes and find edges connected to loops
-% Variable for storing edge indices
-edges_ds = [];
-for n = 1:length(nidx_ds)
-    % Find all edges connected to nidx_ds(n)
-    idcs = find(edges(:,1)==nidx_ds(n) | edges(:,2)==nidx_ds(n));
-    % Add to array for storing edge indices (edge_ds)
-    edges_ds = [edges_ds; idcs];
-end
-% Find unique edge subscripts
-edges_ds = unique(edges_ds);
+edges_ds = find_connected_edges(nidx_ds, edges);
 
 %%% Create new matrix of edges (containing nodes to down sample)
 % The values in edges_ds are the indices of all edges that contain at least
@@ -173,7 +171,7 @@ node_map = zeros(size(nodes,1), 1);
 node_map(nidx_keep) = nidx_keep;
 
 %%% Visualize the graph with protected nodes
-visualize_graph(nodes, edges,'Protected Nodes (green)', nidx_keep);
+% visualize_graph(nodes, edges,'Protected Nodes (green)', nidx_keep);
 % xlim([270, 300]); ylim([140, 170]); zlim([0,5]); view(3);
 
 %%% "nodes_keep" tracks the index positions of unique nodes.
@@ -298,19 +296,8 @@ else
     edges_mapped_re = edges_mapped;
 end
 
-%% Visual Verification
-
 %%% Print number of removed nodes
 fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_keep,1))
-
-%%% Verify subgraph with figure
-% Highlight end nodes in visualize_graph
-% highlight_nodes = node_map(1:length(nidx_keep));
-% Other nested loops
-% xlim([40, 120]); ylim([180, 260]); zlim([70,110]); view(3);
-
-visualize_graph(nodes_keep_re, edges_mapped_re, 'After Downsampling Graph',[]);
-% xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 
 pause(0.001)
 end

@@ -1,22 +1,12 @@
 %% Test regraphNodes with list of nodes
 %{
-The purpose of this test script is to test the following functionality of
-the regraphNodes_new function:
-- iterate over a list of nodes
-- list of nodes from one segment
-- list of nodes from multiple segments
-
-Overview:
+Purpose:
 - load a graph structure
 - Call remove loops function
-
-TODO:
-- Fiji macro to export overlaid segment + graph
-
 %}
 clear; close all; clc;
 %% Flag for visualization or debugging
-visual = true;
+visual = false;
 
 %% Add top-level directory of code repository to path
 % Start in current directory
@@ -168,7 +158,7 @@ delta = 6;
 mv_iter = 1;
 
 [node_rm, edges_rm] =...
-    rm_loops(nodes, edges, vol, loop_flag, delta, v_min, mv_iter);
+    rm_loops(nodes, edges, vol, delta, v_min, mv_iter);
 
 %% Visualize Results and Save
 
