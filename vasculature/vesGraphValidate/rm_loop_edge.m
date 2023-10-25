@@ -62,8 +62,8 @@ while any(sp)
 
     %%% Remove long edge from "edges" matrix
     % Find long edge in "edges" matrix
-    e_idx = ((edges(:,1)==e1_idx & edges(:,2)==e2_idx) |...
-        (edges(:,1)==e2_idx & edges(:,2)==e1_idx));
+    e_idx = ((edges(:,1)==e1 & edges(:,2)==e2) |...
+        (edges(:,1)==e2 & edges(:,2)==e1));
     % Remove edge from "edges" matrix
     edges(e_idx,:) = [];
 
