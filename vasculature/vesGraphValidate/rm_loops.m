@@ -49,10 +49,10 @@ im_mv = struct();
 im_mv.angio = angio;
 
 % Counter to track number of iterations
-cnt = 1;
+cnt_outer = 1;
 
-% Counter to track number of increments to delta (search radius)
-dcnt = 0;
+% Original delta size
+delta0 = delta;
 
 % Plotting limits for viewing cycles
 lim.x = [70, 100];
@@ -60,54 +60,40 @@ lim.y = [60, 100];
 lim.z = [60, 100];
 
 % Graph prior to preprocessing
-visualize_graph(nodes, edges, 'Before Loop Removal', []);
+% visualize_graph(nodes, edges, 'Before Loop Removal', []);
 
-%% Determine if the loop is sparse
-% Compare number of adjoined segments to number of nodes. If these
-% are equal, then down sampling will not remove the node. The
-% solution would be to remove the longest edge.
-
-%%% Compute sparsity for each loop in the graph
-% This returns a binary array (1=sparse, 0=not sparse)
-loop_sparsity = graph_sparsity(edges);
-
-% Indices of sparse loops
-sidx = find(loop_sparsity); %#ok<EFIND> 
-
-% If there are sparse loops
-if ~isempty(sidx)
-    % Subset of cell array of nodes in loop
-    
-    % Call function to remove longest edge from sparse loops
-    edges_rm = rm_loop_edge(nodes, edges, nidx_loop);
-    % Reassign output for continuity in function
-    edges = edges_rm;
-    % Recalculate loops
-    [n_pre, cnodes, cedges] = count_loops(edges);
-end
+%% Remove longest edge of sparse loops
+[n_pre, cnodes, cedges, edges] = open_sparse_loops(nodes, edges);
 
 %% Perform move to mean, down sample, and remove longest edge
 while ~isempty(cnodes)
     %%% Debugging information + Visualization
+    % Initialize inner while-loop counter
+    cnt_inner = 1;
     % Outer while-loop iteration
-    fprintf('\nLoop Removal Iteration = %i\n', cnt)    
+    fprintf('\nOuter while-loop iteration = %i\n', cnt_outer)    
     % Visualize Graph
-    iter_str = strcat('Iteration ',num2str(cnt));
+    iter_str = strcat('Iteration ',num2str(cnt_outer));
     tstr = {'Before Mv2Mean & Downsampling Graph',iter_str};
     visualize_graph(nodes, edges, tstr, []);
     xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
     %% Initialize variables for inner while-loop
+    % Restore delta if it was incremented
+    delta = delta0;
     % Nodes from first loop in list
     n_idcs = cnodes{1,:};
     % Edge indices from first loop in list
     e_idcs = cedges{1,:};
     % Number of loops before inner while-loop
     n_pre = length(cnodes);
-    % Number of loops after down sample, move to mean, remove longest edge
-    % Initialize this equal to n_pre, before entering inner while-loop
+    % npost = # loops after down sample, move to mean, remove longest edge.
+    % Initialize equal to n_pre before entering inner while-loop.
     npost = n_pre;
+
     while npost >= n_pre        
+        %% Debugging information
+        fprintf('\nInner while-loop iteration = %i\n', cnt_inner)
         %% Move to mean (collapse loops)
         % Create struct of graph to be compatible with move to mean
         im_mv.nodes = nodes;
@@ -133,37 +119,32 @@ while ~isempty(cnodes)
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
         %% Check for sparse loops. If exist, remove longest edge
-        % TODO: this section replicates the one above. Place into fun.
-
-        % Function to find sparse loops
-
-        % Function to remove longest edge
-
-        % Reassign to nodes_ds, edges_ds for continuity
+        [npost, cnodes, cedges, edges_ds] = open_sparse_loops(nodes_ds, edges_ds);
+        
+        % Reassign edges & nodes for next iteration of while-loop
+        edges = edges_ds;
+        nodes = nodes_ds;
 
         %% Determine if number of loops decreased
-        % TODO: rethink logic here
-
-        % Number of loops after downsampling
-        [npost, cnodes, cedges] = count_loops(edges_ds);
         
-        % If the number of loops reduced
+        %%% If the number of loops decreased
         if npost < n_pre
-            % Reassign nodes/edges and leave inner while-loop 
-            edges = edges_ds;
-            nodes = nodes_ds;
+            % Verify that the updated list of loop nodes does not contain
+            % the node indices from this current iteration of while loop.
+            cnodes_all = horzcat(cnodes{:});
+            assert(all(~ismember(n_idcs, cnodes_all)),...
+                '\nThe function removed a loop but not the one under consideration.');
+            
+            % Iterate the outer while-loop counter
+            cnt_outer = cnt_outer + 1;
+            % Leave inner while-loop
             break
-        % If the loop is fully down sampled
-        elseif 1==1
-            edges = rm_loop_edge(nodes_ds, edges_ds);
-            nodes = nodes_ds;
         else
-            edges = edges_ds;
-            nodes = nodes_ds;
+            % Iterate the inner while-loop counter
+            cnt_inner = cnt_inner + 1;
+            % Increase delta
+            delta = delta + 10;
         end
-
-        % Recalculate number of loops post processing
-        [npost, cnodes, cedges] = count_loops(edges);
     end
 end
 
@@ -171,10 +152,10 @@ end
 %{
 while ~isempty(cnodes)
     %%% Print iteration
-    fprintf('\nLoop Removal Iteration = %i\n', cnt)
+    fprintf('\nLoop Removal Iteration = %i\n', cnt_outer)
     
     % Visualize Graph
-    iter_str = strcat('Iteration ',num2str(cnt));
+    iter_str = strcat('Iteration ',num2str(cnt_outer));
     tstr = {'Before Mv2Mean & Downsampling Graph',iter_str};
     visualize_graph(nodes, edges, tstr, []);
     xlim(lim.x); ylim(lim.y); zlim(lim.z);
@@ -264,7 +245,7 @@ while ~isempty(cnodes)
     end
 
     % Iterate the loop counter
-    cnt = cnt + 1;
+    cnt_outer = cnt_outer + 1;
 
     % Update the number of loops before next iteration
     n_pre = n_post;
@@ -281,12 +262,15 @@ end
 
 %% Function to count number of loops in graph
 function [nloops, cnodes, cedges] = count_loops(edges)
+%count_loops return number of loops in graph, node indices, & edge indices
 %   INPUTS:
 %       edges ([n,2] array): edges of graph
 %   OUTPUTS:
 %       nloops (int): number of loops
-%       cnodes (cell array): each cell array contains node indices
+%       cnodes (cell array): each cell contains node indices
 %                       belonging to a loop
+%       cedges (cell array): each cell contains the respective edge indices
+%
 
 % Convert edges to graph
 g = graph(edges(:,1), edges(:,2));
@@ -298,6 +282,47 @@ g = graph(edges(:,1), edges(:,2));
 nloops = length(cnodes);
 
 end
+
+
+function [nloops, cnodes, cedges, edges] = open_sparse_loops(nodes, edges)
+%open_sparse_loops: remove longest edge of sparse loop
+%   INPUTS:
+%       nodes ([n,3] array): nodes of graph
+%       edges ([n,2] array): edges of graph
+%   OUTPUTS:
+%       nloops (int): number of loops
+%       cnodes (cell array): each cell contains node indices
+%                       belonging to a loop
+%       cedges (cell array): each cell contains the respective edge indices
+
+%%% Identify sparse loops
+sp = graph_sparsity(edges);
+% Convert sparsity array to boolean
+sp = boolean(sp);
+% Count number of loops before removing
+[npre, ~, ~] = count_loops(edges);
+
+%%% Remove longest edge of sparse loops
+if any(sp)
+    % Generate graph
+    g = graph(edges(:,1), edges(:,2));
+    % Find cycles in graph
+    [cnodes, cedges] = allcycles(g);
+    % Keep node indices from sparse cycles
+    cnodes(~sp) = [];
+    cedges(~sp) = [];
+    % Remove the longest edge from each sparse loop
+    edges = rm_loop_edge(nodes, edges, sp, cnodes, cedges);
+end
+
+%%% Recalculate loops
+[nloops, cnodes, cedges] = count_loops(edges);
+%%% Debugging information
+nrm = nloops - npre;
+fprintf('\nSparse Loops Removed Before Down Sampling = %i\n', nrm)
+
+end
+
 
 
 
