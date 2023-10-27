@@ -1,4 +1,4 @@
-function [edges_rm] = rm_loop_edge(nodes, edges, sp, csp)
+function [edges_rm] = rm_loop_edge(nodes, edges, sp, nsp, esp)
 %rm_loop_edge Remove longest edge of loop.
 % -------------------------------------------------------------------------
 % PURPOSE:
@@ -11,62 +11,106 @@ function [edges_rm] = rm_loop_edge(nodes, edges, sp, csp)
 %   g (graph): the original graph struct
 %   nodes (array): [X, Y, Z] matrix of coordinates for nodes
 %   edges (array): [M, 2] matrix of edges connecting node indices
-%   csp (cell array): Each row in the cell array contains the node
-%           indices for a sparse loop.
+%   nsp (cell array): Sparse loop nodes. Each row contains node indices in
+%                       a sparse loop.
+%   esp (cell array): Sparse loop edges. Each row contains edge indices in
+%                       a sparse loop. Edge indices are respective to csp.
 %
 % OUTPUTS
 %   edges_rm (matrix): edge matrix without longest edge for each loop
 
-%% TODO:
-% In the case of adjoined sparse cycles, a for-loop may result in removing
-% more edges than intended. Instead, a while loop will ensure that the
-% sparsity matrix is regenerated between iterations and each loop is
-% handled individually. 
-%
-%   - Change to while loop:
-%       - remove longest edge of loop
-%       - call graph_sparsity again
-%   - Replace logic with builtin "distances" function (faster).
-%   - Test removing other edges in loop and connecting end points to anchor.
-%       - Define anchor point
-%       - Remove loop edges NOT connected to anchor
-%       - Reindex edges and nodes
-
-%% Remove longest edge in each loop
-
-% While at least one cycle is still sparse
+%% Remove longest edge from one cycle until all sparse cycles are opened
+cnt = 1;
 while any(sp)
-    % Extract the first sparse loop from cell array
-    cnodes = csp{1,:};
-   
-    %%% Calculate euclidean distance between nodes in edges
-    % TODO: this is calculating distance between all nodes (even
-    % unconnected ones). Need to modify to only calculate distance between
-    % nodes defined in edges.
 
+    %% Extract the first sparse loop nodes and edges from cell array
+    % Edge indices
+    cedges = esp{1,:};
+    % Edge matrix [source node, target node]
+    cedges = edges(cedges,:);
+    
+    %% Calculate distances for all nodes in graph
+    % Find difference between each point
+    dmat = pdist(nodes, 'euclidean');
+    % Convert difference to upper triangle square matrix (less memory)
+    dmat = triu(squareform(dmat),1);
+
+    %%% Find dmat indices corresponding to edges in the cycle
+    % Convert indices to subscript
+    sb = sub2ind(size(dmat), cedges(:,1), cedges(:,2));
+
+    %%% Set non-edge matrix entries equal to zero
+    % Array of all indices of dmat
+    del_idx = 1: (size(dmat,1) * size(dmat,2));
+    % Remove indices corresponding to real edges
+    del_idx(sb) = [];
+    % Set non-edge distances equal to zero
+    dmat(del_idx) = 0;
+    
+    %% Old method
+    %{
+    %% Calculate euclidean distance between nodes in edges
     % Extract coordinates of each node in loop
     pmat = nodes(cnodes,:);
     % Find difference between each point
     dmat = pdist(pmat, 'euclidean');
-    % Convert difference to lower triangle square matrix
-    dmat = tril(squareform(dmat),-1);
+    % Convert difference to upper triangle square matrix (less memory)
+    dmat = triu(squareform(dmat),1);
+    
+    %% Remove entries that do not correspond to edges
+    % The dmat matrix contains Euclidean distances between nodes that are
+    % not connected by an edge. These should be discarded before finding
+    % the longest edge. The nodes in the edges are indexed according to the
+    % entire graph, but the nodes in dmat are indexed to just the cycle. It
+    % is necessary to reindex the nodes to dmat.
 
+    %%% Find dmat indices corresponding to edges in the cycle
+    % Ordered list of node indices in edges
+    old = sort(unique(cedges(:)));
+    % New list of indices (1 : N)
+    new = 1:1:length(old);
+    % Reindex edges
+    ch = changem(cedges,new, old);
+    % Convert indices to subscript
+    sb = sub2ind(size(dmat), ch(:,1), ch(:,2));
+    
+    %%% Set non-edge matrix entries equal to zero
+    % Array of all indices of dmat
+    del_idx = 1: (size(dmat,1) * size(dmat,2));
+    % Remove indices corresponding to real edges
+    del_idx(sb) = [];
+    % Set non-edge distances equal to zero
+    dmat(del_idx) = 0;
+    %}
+   
+    %% Remove long edge from "edges" matrix
+    
     %%% Find end nodes of longest edge
     % Find dmat index of longest edge (longest eucl. dist. to other nodes)
     [~, edge_idx] = max(dmat,[],"all","linear");
     % Convert matrix index to subscript
     [r, c] = ind2sub(size(dmat), edge_idx);
-    % Convert from matrix subscript to node index
-    e1 = cnodes(r);
-    e2 = cnodes(c);
-
+    % Find edge containing start/end nodes
+    e_idx = (edges(:,1)==r & edges(:,2)==c);
+    
     %%% Remove long edge from "edges" matrix
-    % Find long edge in "edges" matrix
-    e_idx = ((edges(:,1)==e1 & edges(:,2)==e2) |...
-        (edges(:,1)==e2 & edges(:,2)==e1));
-    % Remove edge from "edges" matrix
     edges(e_idx,:) = [];
 
+    %% Recalculate graph sparsity for while-loop
+    sp = graph_sparsity(edges);
+    % Generate graph
+    g = graph(edges(:,1), edges(:,2));
+    % Find cycles in graph
+    [~, esp] = allcycles(g);
+    % Convert sparsity array to boolean
+    sp = boolean(sp);
+    % Keep edge indices from sparse cycles
+    esp(~sp) = [];
+    
+    %% Plot updated graph
+    tstr = strcat('Iteration ', num2str(cnt));
+    visualize_graph(nodes, edges, {'Synthetic Data',tstr},[]);
+    cnt = cnt+1;
 end
 
 
@@ -74,3 +118,4 @@ end
 edges_rm = edges;
 
 end
+
