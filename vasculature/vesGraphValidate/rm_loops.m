@@ -24,11 +24,19 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, l
 %       e ([m,2] array): edges connecting each node
 
 %% TODO
-% 1) downsample_loops function increases the number of loops on some
-% iterations when using noisy data.
-%   - downsample each loop individually
-%   - write logic to determine when a loop has been fully downsampled (ie,
-%       number of nodes = number of edges)
+% 1) In the outer while-loop, I select a subset of nodes to downsample.
+% This subset is the first row in the cell array "cnodes". However, in the
+% case that there are nested/connected loops, these nodes will be contained
+% within multiple cell array rows. Therefore, the code is currently unable
+% to process nested/connected loops because the variable "n_idcs" does not
+% contain all the nodes within the nested structure. This is raising an
+% error later in the code when trying to graph because nodes are being
+% excluded.
+% Solution:
+%   - For each iteration, find the cell array rows with shared nodes.
+%   - Combine these rows into a single array
+%   - This also should be updated at the end of the inner while-loop:
+%       "n_idcs = cnodes{1,:};"
 %
 % 2) Compare the function rm_reindex and my code to see if they are the same
 %
@@ -54,11 +62,6 @@ cnt_outer = 1;
 % Original delta size
 delta0 = delta;
 
-% Plotting limits for viewing cycles
-lim.x = [70, 100];
-lim.y = [60, 100];
-lim.z = [60, 100];
-
 % Graph prior to preprocessing
 % visualize_graph(nodes, edges, 'Before Loop Removal', []);
 
@@ -67,6 +70,21 @@ lim.z = [60, 100];
 
 %% Perform move to mean, down sample, and remove longest edge
 while ~isempty(cnodes)
+    %%% Initialize variables for inner while-loop
+    % TODO: find overlapping cell array nodes
+    % Nodes from first loop in list
+    n_idcs = cnodes{1,:};
+    
+    % Restore delta if it was incremented
+    delta = delta0;
+    % Edge indices from first loop in list
+    e_idcs = cedges{1,:};
+    % Number of loops before inner while-loop
+    n_pre = length(cnodes);
+    % npost = # loops after down sample, move to mean, remove longest edge.
+    % Initialize equal to n_pre before entering inner while-loop.
+    npost = n_pre;
+
     %%% Debugging information + Visualization
     % Initialize inner while-loop counter
     cnt_inner = 1;
@@ -76,24 +94,22 @@ while ~isempty(cnodes)
     iter_str = strcat('Iteration ',num2str(cnt_outer));
     tstr = {'Before Mv2Mean & Downsampling Graph',iter_str};
     visualize_graph(nodes, edges, tstr, []);
+    
+    %%% Set graph limits based upon current cycle under investigation
+    % Coordinates of all nodes
+    lims = nodes(n_idcs,:);
+    % Limits of each axis
+    lim.x = [min(lims(:,1)) - 10, max(lims(:,1)) + 10];
+    lim.y = [min(lims(:,2)) - 10, max(lims(:,2)) + 10];
+    lim.z = [min(lims(:,3)) - 10, max(lims(:,3)) + 10];
+    % Set limits in graphical display
     xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
-    %% Initialize variables for inner while-loop
-    % Restore delta if it was incremented
-    delta = delta0;
-    % Nodes from first loop in list
-    n_idcs = cnodes{1,:};
-    % Edge indices from first loop in list
-    e_idcs = cedges{1,:};
-    % Number of loops before inner while-loop
-    n_pre = length(cnodes);
-    % npost = # loops after down sample, move to mean, remove longest edge.
-    % Initialize equal to n_pre before entering inner while-loop.
-    npost = n_pre;
 
     while npost >= n_pre        
         %% Debugging information
-        fprintf('\nInner while-loop iteration = %i\n', cnt_inner)
+        fprintf('\nInner while-loop iteration = %i', cnt_inner)
+        fprintf('\nNumber of nodes before mv2mean & DS = %i', length(nodes))
         %% Move to mean (collapse loops)
         % Create struct of graph to be compatible with move to mean
         im_mv.nodes = nodes;
@@ -109,7 +125,10 @@ while ~isempty(cnodes)
         tstr = {'After Mv2Mean',iter_str};
         visualize_graph(nodes_mv, edges_mv, tstr, []);
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
-    
+        %%% Recalculate loops
+        [~, cnodes, ~] = count_loops(edges_mv);
+        nnodes = length(cnodes{1,:});
+        fprintf('\nNumber of nodes in loop after mv2mean = %i', length(nodes_mv));
         %% Regraph (downsample) to remove collapsed loops
         [nodes_ds, edges_ds] =...
             downsample_loops(n_idcs, nodes_mv, edges_mv, delta, protect);
@@ -121,7 +140,7 @@ while ~isempty(cnodes)
         %% Check for sparse loops. If exist, remove longest edge
         [npost, cnodes, cedges, edges_ds] = open_sparse_loops(nodes_ds, edges_ds);
         
-        % Reassign edges & nodes for next iteration of while-loop
+        % Reassign edges, nodes for next iteration of while-loop
         edges = edges_ds;
         nodes = nodes_ds;
 
@@ -144,6 +163,10 @@ while ~isempty(cnodes)
             cnt_inner = cnt_inner + 1;
             % Increase delta
             delta = delta + 10;
+            % Reassign loop node indices for next iteration. The indices of
+            % the nodes in the loop may change during downsampling.
+            % Therefore, this must be updated after each iteration.
+            n_idcs = cnodes{1,:};
         end
     end
 end
@@ -323,7 +346,16 @@ fprintf('\nSparse Loops Removed Before Down Sampling = %i\n', nrm)
 
 end
 
+function [n_idcs] = multiloop_nodes(cnodes)
+%multiloop_nodes return node indices for a single loop structure
+% The cell array "cnodes" contains a row containing the node indices for
+% a graph cycle. However, in the case that there are nested/connected
+% loops, these nodes will be contained within multiple cell array rows.
+% This function will search across the entire array to find overlapping
+% rows. Then, it will return the node indices in all rows the first entry.
 
+
+end
 
 
 

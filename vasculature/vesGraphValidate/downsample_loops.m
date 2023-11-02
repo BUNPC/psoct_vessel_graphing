@@ -297,7 +297,7 @@ else
 end
 
 %%% Print number of removed nodes
-fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_keep,1))
+fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_keep_re,1))
 
 pause(0.001)
 end
