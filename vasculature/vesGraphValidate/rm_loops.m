@@ -74,6 +74,9 @@ while ~isempty(cnodes)
     % TODO: find overlapping cell array nodes
     % Nodes from first loop in list
     n_idcs = cnodes{1,:};
+    % Debugging line
+    [n_idcs] = find_multiloop_nodes(cnodes);
+
     
     % Restore delta if it was incremented
     delta = delta0;
@@ -306,7 +309,7 @@ nloops = length(cnodes);
 
 end
 
-
+%% Function to open a sparse loop edge
 function [nloops, cnodes, cedges, edges] = open_sparse_loops(nodes, edges)
 %open_sparse_loops: remove longest edge of sparse loop
 %   INPUTS:
@@ -346,16 +349,88 @@ fprintf('\nSparse Loops Removed Before Down Sampling = %i\n', nrm)
 
 end
 
-function [n_idcs] = multiloop_nodes(cnodes)
-%multiloop_nodes return node indices for a single loop structure
+%% Function to return all nodes in nested loop structure
+function [idcs] = find_multiloop_nodes(cnodes)
+%find_multiloop_nodes
 % The cell array "cnodes" contains a row containing the node indices for
 % a graph cycle. However, in the case that there are nested/connected
 % loops, these nodes will be contained within multiple cell array rows.
-% This function will search across the entire array to find overlapping
-% rows. Then, it will return the node indices in all rows the first entry.
+% This function takes the node indices in the first row and then searches
+% for rows containing the same node indices.
+%
+% In the event no other rows contains the node indices, it will only return
+% the node indices in the first row. If another row contains at least one
+% of the indices, then it will return the corresponding row(s). This will
+% be repeated for the new row until all rows of the multiloop structure are
+% returned.
+%
+% INPUTS:
+%       cnodes (cell array): each cell contains node indices belonging to
+%                               a loop
+% OUTPUTS:
+%   n_idcs (double array):
 
+%%% Take the first entry of the cell array
+idcs = cnodes{1,:};
+
+%%% Initialize variable for comparing 
+cellidx_past = zeros(length(cnodes),1);
+
+% Find cell arrays with the same node indices
+while 1
+    %%% Find all cell arrays containing nodes from the first row (idcs)
+    % This will output an [X, Y] logical matrix for each cell array row,
+    % where X is the length of idcs and Y is the number of elements in row.
+    % This logical matrix must be reduced twice to a single logical (0,1),
+    % where 0 indicates no matching node index and 1 indicates at least 1
+    % matching node index.
+    cellidx = cellfun(@(x) x==idcs(:), cnodes, 'UniformOutput', false);
+    % Reduce dimensionality (2D -> 1D)
+    cellidx = cellfun(@(x) any(x), cellidx, 'UniformOutput', false);
+    % Reduce dimensionality (1D -> single logical)
+    cellidx = cell2mat(cellfun(@(x) any(x), cellidx, 'UniformOutput', false));
+
+    %%% Determine if at least one matching node index
+    % If at least one cell array row contains a matching index
+    if any(cellidx) && any(cellidx_past ~= cellidx)
+        % Retrieve cell array nodes from logical 1 rows
+        extra = cnodes(cellidx);
+        
+        % Convert from cell array to 1D double array
+        e = [];
+        for ii = 1:length(extra)
+            e = [e, cell2mat(extra(ii,:))];
+        end
+        
+        % Add all unique node indices to idcs
+        idcs = unique([idcs, unique(e)]); %#ok<AGROW> 
+
+        % Store the logical array for comparison in next iteration
+        cellidx_past = cellidx;
+
+    % No additional cell array rows contain the nodes.
+    else      
+        % Exit the while loop and return "idcs" to outer function
+        break
+    end
 
 end
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

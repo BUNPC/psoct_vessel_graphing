@@ -18,6 +18,14 @@ function [edges_rm] = rm_loop_edge(nodes, edges, sp, nsp, esp)
 %
 % OUTPUTS
 %   edges_rm (matrix): edge matrix without longest edge for each loop
+%
+% ISSUE: the matlab function "allcycles" is supposed to return edge indices
+% belonging to cycles in a graph. However, it consistently returns the
+% incorrect edge indices. There is no documentation online regarding this
+% issue.
+% RESOLUTION:
+%   - write custom function to determine edges belonging to loops
+%   - Incorporate into this function
 
 %% Remove longest edge from one cycle until all sparse cycles are opened
 cnt = 1;
@@ -109,7 +117,7 @@ while any(sp)
     
     %% Plot updated graph
     tstr = strcat('Iteration ', num2str(cnt));
-    visualize_graph(nodes, edges, {'Synthetic Data',tstr},[]);
+    visualize_graph(nodes, edges, {'Longest Edge Removed',tstr},[]);
     cnt = cnt+1;
 end
 
