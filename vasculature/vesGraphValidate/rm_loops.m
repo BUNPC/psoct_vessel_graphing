@@ -80,8 +80,6 @@ while ~isempty(cnodes)
     
     % Restore delta if it was incremented
     delta = delta0;
-    % Edge indices from first loop in list
-    e_idcs = cedges{1,:};
     % Number of loops before inner while-loop
     n_pre = length(cnodes);
     % npost = # loops after down sample, move to mean, remove longest edge.
@@ -131,7 +129,7 @@ while ~isempty(cnodes)
         %%% Recalculate loops
         [~, cnodes, ~] = count_loops(edges_mv);
         nnodes = length(cnodes{1,:});
-        fprintf('\nNumber of nodes in loop after mv2mean = %i', length(nodes_mv));
+        fprintf('\nNumber of nodes in loop after mv2mean = %i', length(nnodes));
         %% Regraph (downsample) to remove collapsed loops
         [nodes_ds, edges_ds] =...
             downsample_loops(n_idcs, nodes_mv, edges_mv, delta, protect);
@@ -141,7 +139,7 @@ while ~isempty(cnodes)
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
         %% Check for sparse loops. If exist, remove longest edge
-        [npost, cnodes, cedges, edges_ds] = open_sparse_loops(nodes_ds, edges_ds);
+        [npost, cnodes, ~, edges_ds] = open_sparse_loops(nodes_ds, edges_ds);
         
         % Reassign edges, nodes for next iteration of while-loop
         edges = edges_ds;
