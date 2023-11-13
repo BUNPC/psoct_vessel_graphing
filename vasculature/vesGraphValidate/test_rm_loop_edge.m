@@ -32,13 +32,12 @@ sp = boolean(sp);
 % Generate graph
 g = graph(edges(:,1), edges(:,2));
 % Find cycles in graph
-[cnodes, cedges] = allcycles(g);
+[cnodes, ~] = allcycles(g);
 % Keep node indices from sparse cycles
 cnodes(~sp) = [];
-cedges(~sp) = [];
 
 % Remove the longest edge from each
-e_rm = rm_loop_edge(nodes, edges, sp, cnodes, cedges);
+e_rm = rm_loop_edge(nodes, edges, sp, cnodes);
 
 %% Verify that all sparse cycles had edge removed
 % Plot results
