@@ -71,13 +71,8 @@ delta0 = delta;
 %% Perform move to mean, down sample, and remove longest edge
 while ~isempty(cnodes)
     %%% Initialize variables for inner while-loop
-    % TODO: find overlapping cell array nodes
-    % Nodes from first loop in list
-    n_idcs = cnodes{1,:};
-    % Debugging line
-    [n_idcs] = find_multiloop_nodes(cnodes);
-
-    
+    % Find indices of first loop and any connected loop
+    [n_idcs] = find_multiloop_nodes(cnodes);    
     % Restore delta if it was incremented
     delta = delta0;
     % Number of loops before inner while-loop
@@ -148,13 +143,7 @@ while ~isempty(cnodes)
         %% Determine if number of loops decreased
         
         %%% If the number of loops decreased
-        if npost < n_pre
-            % Verify that the updated list of loop nodes does not contain
-            % the node indices from this current iteration of while loop.
-            cnodes_all = horzcat(cnodes{:});
-            assert(all(~ismember(n_idcs, cnodes_all)),...
-                '\nThe function removed a loop but not the one under consideration.');
-            
+        if npost < n_pre           
             % Iterate the outer while-loop counter
             cnt_outer = cnt_outer + 1;
             % Leave inner while-loop
@@ -313,6 +302,7 @@ function [nloops, cnodes, cedges, edges] = open_sparse_loops(nodes, edges)
 %   INPUTS:
 %       nodes ([n,3] array): nodes of graph
 %       edges ([n,2] array): edges of graph
+%
 %   OUTPUTS:
 %       nloops (int): number of loops
 %       cnodes (cell array): each cell contains node indices
@@ -331,12 +321,11 @@ if any(sp)
     % Generate graph
     g = graph(edges(:,1), edges(:,2));
     % Find cycles in graph
-    [cnodes, cedges] = allcycles(g);
+    [cnodes, ~] = allcycles(g);
     % Keep node indices from sparse cycles
     cnodes(~sp) = [];
-    cedges(~sp) = [];
     % Remove the longest edge from each sparse loop
-    edges = rm_loop_edge(nodes, edges, sp, cnodes, cedges);
+    edges = rm_loop_edge(nodes, edges, sp, cnodes);
 end
 
 %%% Recalculate loops

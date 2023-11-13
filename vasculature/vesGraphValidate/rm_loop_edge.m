@@ -1,4 +1,4 @@
-function [edges_rm] = rm_loop_edge(nodes, edges, sp, nsp)
+function [edges_rm] = rm_loop_edge(nodes, edges, sp, nsp, lim)
 %rm_loop_edge Remove longest edge of loop.
 % -------------------------------------------------------------------------
 % PURPOSE:
@@ -40,8 +40,15 @@ while any(sp)
     % Extract the loop edges matrix [source node, target node]
     cedges = edges(tf,:);
 
+    %%% Set graph limits based upon current cycle under investigation
+    % Coordinates of all nodes
+    lims = nodes(cnodes,:);
+    % Limits of each axis
+    lim.x = [min(lims(:,1)) - 10, max(lims(:,1)) + 10];
+    lim.y = [min(lims(:,2)) - 10, max(lims(:,2)) + 10];
+    lim.z = [min(lims(:,3)) - 10, max(lims(:,3)) + 10];
+
     %% Calculate distances for each edge
-    
     % Initialize matrix for storing distances
     dmat = zeros(1,size(cedges,1));
     
@@ -80,9 +87,11 @@ while any(sp)
     % Keep node indices from sparse cycles
     nsp(~sp) = [];
     
-    %% Plot updated graph
+    %% Plot updated graph    
     tstr = strcat('Iteration ', num2str(cnt));
     visualize_graph(nodes, edges, {'Longest Edge Removed',tstr},[]);
+    % Set limits in graphical display
+    xlim(lim.x); ylim(lim.y); zlim(lim.z);
     cnt = cnt+1;
 end
 
