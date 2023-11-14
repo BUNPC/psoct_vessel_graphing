@@ -22,5 +22,5 @@
 #$ -j y
 
 module load matlab/2022b
-matlab -nodisplay -singleCompThread -r "test_downsample_loops; exit"
+matlab -nodisplay -singleCompThread -r "test_rm_loops; exit"
 
