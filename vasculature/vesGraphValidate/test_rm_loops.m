@@ -7,7 +7,7 @@ Purpose:
 clear; close all; clc;
 
 %% Flag for visualization while debugging
-visual = true;
+visual = false;
 
 %% Add top-level directory of code repository to path
 % Start in current directory
@@ -79,7 +79,7 @@ elseif isunix
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     subid = 'NC_6839';
     subdir = '/dist_corrected/volume/';
-    sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
+    sigdir = 'gsigma_1-3-5_gsize_5-13-21/';
     vdata = 'ref_4ds_norm_inv_crop2.tif';
     % Data with many nested loops (probability threshold = 0.21)
     seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
