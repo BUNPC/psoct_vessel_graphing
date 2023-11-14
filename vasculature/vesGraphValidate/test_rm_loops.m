@@ -7,7 +7,7 @@ Purpose:
 clear; close all; clc;
 
 %% Flag for visualization while debugging
-visual = false;
+visual = true;
 
 %% Add top-level directory of code repository to path
 % Start in current directory
@@ -34,11 +34,11 @@ if ispc
     % Segment and graph data
     seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
     gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
-    gdata_out = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data_loops_rm.mat';
     
     % Output Data filenames
     skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
     skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
+    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
     
     %%% Test Data from Etienne
     %{
@@ -46,45 +46,50 @@ if ispc
     fullpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\Martinos_Datasets\data_stats\version_8\post_processed';
     %}
     
-    %%% Test Data from Ann McKee datasets
+    %%% Additional test data from Ann McKee datasets
     %{
-% Top-level directories
-dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
-subid = 'NC_6839';
-subdir = '\dist_corrected\volume\';
-sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
-vdata = 'ref_4ds_norm_inv_crop2.tif';
-
-% Data with fewer nested loops (probability threshold = 0.23)
-% seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23.tif';
-% % Graphed data after Gaussian filtering segmentation
-% gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40_graph_data.mat';
-
-% Data with many nested loops (probability threshold = 0.21)
-seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
-gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
-
-% Output Data filenames
-skel_out = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data_noloops.tif';
-skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
-%}
+    % Top-level directories
+    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
+    subid = 'NC_6839';
+    subdir = '\dist_corrected\volume\';
+    sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
+    vdata = 'ref_4ds_norm_inv_crop2.tif';
+       
+    % Data with many nested loops (probability threshold = 0.21)
+    seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
+    gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
+    %}
 
 elseif isunix
+    %%% AD 20832
+    %{
     % Top-level directories
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     subid = 'AD_20832';
     subdir = '/dist_corrected/volume/';
     sigdir = 'gsigma_1-3-5_gsize_5-13-21/';
     vdata = 'ref_4ds_norm_inv_crop_small.tif';
-    
     % Segment and graph data
     seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
     gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
-    gdata_out = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data_loops_rm.mat';
+    %}
     
-    % Output Data filenames
+    %%% NC_6839
+    % Top-level directories
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+    subid = 'NC_6839';
+    subdir = '/dist_corrected/volume/';
+    sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
+    vdata = 'ref_4ds_norm_inv_crop2.tif';
+    % Data with many nested loops (probability threshold = 0.21)
+    seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
+    gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
+    %}
+
+    %%% Output Data filenames
     skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
     skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
+    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
 end
 %% Load PSOCT graph, volume, segmentation
 
@@ -158,8 +163,6 @@ nkeep = find(nkeep == 1);
 %%% Visualize graph
 if visual
     visualize_graph(nodes, edges, 'Graph Before Loop Removal',nkeep)
-    % Show subset of data with loops
-%     xlim([160, 240]); ylim([0, 80]); zlim([10,50]); view(3);
 end
 %% Call Remove Loops function (move2mean and down sample loops)
 
