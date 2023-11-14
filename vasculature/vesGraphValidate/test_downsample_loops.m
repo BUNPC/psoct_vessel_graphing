@@ -5,7 +5,8 @@ Purpose:
 - Call remove loops function
 %}
 clear; close all; clc;
-%% Flag for visualization or debugging
+
+%% Flag for visualization while debugging
 visual = false;
 
 %% Add top-level directory of code repository to path
@@ -22,30 +23,31 @@ topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
 %% Initialize data paths for dataset with loops
-% Top-level directories
-dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
-subid = 'AD_20832';
-subdir = '\dist_corrected\volume\';
-sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
-vdata = 'ref_4ds_norm_inv_crop_small.tif';
-
-% Segment and graph data
-seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
-gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
-gdata_out = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data_loops_rm.mat';
-
-% Output Data filenames
-skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
-skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
-
-%%% Test Data from Etienne
-%{
-% Top-level directories
-fullpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\Martinos_Datasets\data_stats\version_8\post_processed';
-%}
-
-%%% Test Data from Ann McKee datasets
-%{
+if ispc
+    % TODO: change top-level directories
+    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
+    subid = 'AD_20832';
+    subdir = '\dist_corrected\volume\';
+    sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
+    vdata = 'ref_4ds_norm_inv_crop_small.tif';
+    
+    % Segment and graph data
+    seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
+    gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
+    gdata_out = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data_loops_rm.mat';
+    
+    % Output Data filenames
+    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
+    skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
+    
+    %%% Test Data from Etienne
+    %{
+    % Top-level directories
+    fullpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\Martinos_Datasets\data_stats\version_8\post_processed';
+    %}
+    
+    %%% Test Data from Ann McKee datasets
+    %{
 % Top-level directories
 dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
 subid = 'NC_6839';
@@ -67,6 +69,23 @@ skel_out = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data_noloops.
 skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
 %}
 
+elseif isunix
+    % Top-level directories
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+    subid = 'AD_20832';
+    subdir = '/dist_corrected/volume/';
+    sigdir = 'gsigma_1-3-5_gsize_5-13-21/';
+    vdata = 'ref_4ds_norm_inv_crop_small.tif';
+    
+    % Segment and graph data
+    seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
+    gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
+    gdata_out = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data_loops_rm.mat';
+    
+    % Output Data filenames
+    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
+    skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
+end
 %% Load PSOCT graph, volume, segmentation
 
 %%% Load Graph
@@ -176,9 +195,6 @@ if visual
     % Display graph with all nodes green
     nidx = 1:size(node_rm,1);
     visualize_graph(node_rm, edges_rm, 'Graph After Loop Removal',nidx);
-    % Debugging view
-%     xlim([190, 210]); ylim([25, 45]); zlim([22, 28]); view(3);
-
     % Overlay skeleton with segmentation
     fig_title = 'Loops Removed';
     graph_seg_overlay(fig_title, skel, seg)
