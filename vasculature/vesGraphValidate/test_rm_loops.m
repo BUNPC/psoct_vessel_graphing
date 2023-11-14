@@ -24,29 +24,18 @@ addpath(genpath(topdir));
 
 %% Initialize data paths for dataset with loops
 if ispc
-    % TODO: change top-level directories
+    %%% AD 20832
+    % Top-level directories
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     subid = 'AD_20832';
     subdir = '\dist_corrected\volume\';
     sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
     vdata = 'ref_4ds_norm_inv_crop_small.tif';
-    
     % Segment and graph data
     seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
     gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
     
-    % Output Data filenames
-    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
-    skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
-    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
-    
-    %%% Test Data from Etienne
-    %{
-    % Top-level directories
-    fullpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\Martinos_Datasets\data_stats\version_8\post_processed';
-    %}
-    
-    %%% Additional test data from Ann McKee datasets
+    %%% NC_6839
     %{
     % Top-level directories
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
@@ -54,12 +43,22 @@ if ispc
     subdir = '\dist_corrected\volume\';
     sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
     vdata = 'ref_4ds_norm_inv_crop2.tif';
-       
     % Data with many nested loops (probability threshold = 0.21)
     seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
     gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
     %}
 
+    %%% Test Data from Etienne
+    %{
+    % Top-level directories
+    fullpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\Martinos_Datasets\data_stats\version_8\post_processed';
+    %}
+
+    %%% Output Data filenames
+    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
+    skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
+    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
+    
 elseif isunix
     %%% AD 20832
     %{
