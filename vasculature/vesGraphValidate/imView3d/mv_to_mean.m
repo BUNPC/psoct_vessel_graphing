@@ -22,10 +22,11 @@ function im = mv_to_mean(im, v_min)
 
 
 %% Assign local variables
+[x,y,z] = size(im.angio);
 nodes = im.nodes;
 nLst = 1:size(nodes,1);
 hwait = waitbar(0,'Moving nodes towards mean of neighboring nodes');
-
+dbstop if error
 %% Iterate over nodes
 for ii = 1:size(nodes,1)
     % Retrieve node index
@@ -49,9 +50,12 @@ for ii = 1:size(nodes,1)
         posC = mean(im.nodes(nLst2,:),1);
         % New position = (null position + difference) / Euclidean distance
         posN = pos0 + (posC-pos0) / max(norm(posC-pos0),1);
+        % If the graph node is outside of segmentation, then pass
+        if round(posN(1)) > x || round(posN(2)) > y || round(posN(3)) > z
+            return
         % If new position is within vessel (>=vox. intensity threshold)
         % Then reassign node position to new position.
-        if im.angio(round(posN(1)),round(posN(2)),round(posN(3)))>=v_min
+        elseif im.angio(round(posN(1)),round(posN(2)),round(posN(3)))>=v_min
             nodes(nidx,:) = posN;
         end
     end

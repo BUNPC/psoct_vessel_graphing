@@ -89,7 +89,7 @@ elseif isunix
     %%% CTE_6489
     % Top-level directories
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
-    subid = 'CTE_6489';
+    subid = 'CTE_6912';
     subdir = '/dist_corrected/volume/';
     sigdir = 'gsigma_1-2-3-4-5_gsize_5--9-13-17-21/';
     vdata = 'ref_4ds_norm_inv.tif';
