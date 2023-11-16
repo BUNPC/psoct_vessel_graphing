@@ -3,7 +3,7 @@
 The purpose of this script is to overlay the vessel segmentation and the
 PS-OCT volume (each slice).
 %}
-clear; clc; close all;
+
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
 
@@ -35,13 +35,13 @@ if ispc
     subid = {'NC_6839'};
     
     % Filename to parse (this is test data)
-    segname = 'ref_4ds_norm_inv_crop2_segment_pmin_0.23_mask40';
+    segname = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21';
 
     % filename extension
     ext = '.tif';
 
 elseif isunix
-    error('This script was written to run just on windows.')
+    error('Sorry, bruh. This is designed just for testing locally.')
 end
 
 %% Overlay
@@ -55,95 +55,19 @@ for ii = 1:length(subid)
     % Convert .tif to .MAT
     seg = TIFF2MAT(filename);
     
-    %%% Load PS-OCT volume (inverted)
+    %%% Load PS-OCT volume
     fullpath = fullfile(dpath, subid{ii}, voldir);
     % Define filename of original ps-oct volume
     filename = strcat(fullpath, strcat(volname, ext));
     % Convert .tif to .MAT
-    voli = TIFF2MAT(filename);
+    vol = TIFF2MAT(filename);
     
     %%% Make filepath
     % Save output volume
     fullpath = fullfile(dpath, subid{ii}, segdir);
-    % Define filename for output of overlay
+    % Define filename of original ps-oct volume
     filename = strcat(fullpath, strcat(segname, '_overlay', ext));
     
-    %%% Call overlay function and save
-    overlay_vol_seg(voli, seg, 'green', filename);
-    
-    %% XZ stack projection (for Stephan's paper)
-%{
-    %%% Range for cropping y-axis
-    yrange = 200:300;
-
-    %%% Minimum intensity projection of volume (XZ from non-inverted)
-    % Convert from inverted to non-inverted
-    vol = imcomplement(voli);
-    % Crop Y to improve readability
-    vol = vol(:,yrange, :);
-    % Perform minimum intensity projection
-    minp = min(vol,[],2);
-    % Reshape into XZ
-    [x,~,z] = size(minp);
-    minp_re = reshape(minp, [x,z]);
-    % Transpose matrix so that X coordinate is on x-axis of figure
-    minp_re = minp_re';
-    % Create figure for debugging
-    figure; imagesc(minp_re); colormap(gray);
-    set(gca,'YDir','normal');
-
-
-    %%% Maximum intensity projection of segmentation (green)
-    % Crop Y to improve readability
-    seg = seg(:,yrange, :);
-    % Perform minimum intensity projection
-    maxp = max(seg,[],2);
-    % Reshape into XZ
-    [x,~,z] = size(maxp);
-    maxp_re = reshape(maxp, [x,z]);
-    % Transpose matrix so that X coordinate is on x-axis of figure
-    maxp_re = maxp_re';
-    % Create figure for debugging
-    figure; imagesc(maxp_re); colormap(gray);
-    set(gca,'YDir','normal');
-
-    %%% Overlay projections
-    ov = imoverlay(mat2gray(minp_re), maxp_re, 'green');
-    figure; imshow(ov);
-    % Update filename
-    filename = strcat(filename(1:end-12),'_XZ_overlay.tif');
-    imwrite(ov, filename);
-%}
+    %%% Call overlay function
+    overlay_vol_seg(vol, seg, 'green', filename);
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
