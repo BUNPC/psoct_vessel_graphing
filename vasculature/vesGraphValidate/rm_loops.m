@@ -24,21 +24,8 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, l
 %       e ([m,2] array): edges connecting each node
 
 %% TODO
-% 1) In the outer while-loop, I select a subset of nodes to downsample.
-% This subset is the first row in the cell array "cnodes". However, in the
-% case that there are nested/connected loops, these nodes will be contained
-% within multiple cell array rows. Therefore, the code is currently unable
-% to process nested/connected loops because the variable "n_idcs" does not
-% contain all the nodes within the nested structure. This is raising an
-% error later in the code when trying to graph because nodes are being
-% excluded.
-% Solution:
-%   - For each iteration, find the cell array rows with shared nodes.
-%   - Combine these rows into a single array
-%   - This also should be updated at the end of the inner while-loop:
-%       "n_idcs = cnodes{1,:};"
 %
-% 2) Compare the function rm_reindex and my code to see if they are the same
+% 2) Compare performance b/w the function rm_reindex and my reindexing function.
 %
 % 3) Move to mean operates on all nodes of the graph, rather than just the
 % nodes in the loops. Code will run faster if performed on just the loops.
