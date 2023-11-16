@@ -51,7 +51,7 @@ if ispc
     %%% Test Data from Etienne
     %{
     % Top-level directories
-    fullpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\Martinos_Datasets\data_stats\version_8\post_processed';
+    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\Martinos_Datasets\data_stats\version_8\post_processed';
     %}
 
     %%% Output Data filenames
@@ -74,6 +74,7 @@ elseif isunix
     %}
     
     %%% NC_6839
+    %{
     % Top-level directories
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     subid = 'NC_6839';
@@ -83,6 +84,31 @@ elseif isunix
     % Data with many nested loops (probability threshold = 0.21)
     seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
     gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
+    %}
+
+    %%% CTE_6489
+    % Top-level directories
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+    subid = 'CTE_6489';
+    subdir = '/dist_corrected/volume/';
+    sigdir = 'gsigma_1-2-3-4-5_gsize_5--9-13-17-21/';
+    vdata = 'ref_4ds_norm_inv.tif';
+    % Data with many nested loops (probability threshold = 0.21)
+    seg_name = 'ref_4ds_norm_inv_segment_pmin_0.26_mask40.tif';
+    gdata = 'ref_4ds_norm_inv_segment_pmin_0.26_mask_40_graph_data.mat';
+    %}
+    
+
+    %%% Test Data from Etienne
+    %{
+    % Top-level directories
+    dpath = '/projectnb/npbssmic/ns/martinos_etienne_test_data/data_stats/version_8/post_processed/';
+    % TODO:
+    %   - read in the NIFTI file
+    %   - verify same skel_out filepaths
+    mri = MRIread(strcat(dpath, fname));
+    fprintf('mri loaded.\n')
+    mri.vol = single(mri.vol);
     %}
 
     %%% Output Data filenames
