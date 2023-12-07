@@ -3,6 +3,35 @@
 This script is for analyzing the length density in the dataset:
 /projectnb/npbssmic/ns/Ann_Mckee_samples_10T
 
+These steps must be performed before reanalyzing data:
+- Select Frangi segmentation with best performance
+    - Segment with voxel intensity threshold
+    - Compare performance
+- Apply loop removal to graph
+- Segment the white and grey matter for each volume.
+    - Apply threshold to the TIF file mus[#].tif located in:
+        /projectnb/npbssmic/ns/Ann_Mckee_samples_55T/[subject_ID]/fitting/
+    - This is the scattering map, where the number represents the
+    scattering coefficient for a 150um slice. The same scattering
+    coefficient is used for every axial voxel in the 150um slice.
+    - Apply a threshold to this map to segment the white and grey matter.
+    THen apply this mask to each layer in the 150um slice. Repeat this for
+    every 150um in the entire tissue volume.
+- Recalculate metrics:
+    - Diameter
+    - Tortuosity
+    - Length density (total length per volume)
+    - Perivascular space (currently unable to differentiate)
+    - Blood vessel branch density
+        - # blood vessel branches / unit volume
+        - # blood vessel branches / tree
+    - Fraction Volume (volume of blood vessels / volume of image stack)
+    - The sulcus to crest ratio for each of the following:
+        - Gray matter branch density
+        - Gray matter fraction volume
+        - White matter branch density
+        - White matter fraction volume
+
 %}
 clear; clc; close all;
 
