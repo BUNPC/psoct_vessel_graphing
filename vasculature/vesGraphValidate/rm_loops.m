@@ -1,4 +1,4 @@
-function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, lim)
+function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter)
 %rm_loops Remove loops in graph.
 %   Outline:
 %       - Use graph function "allcycles" to find loops
@@ -18,7 +18,6 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, l
 %               reassigned if the voxel intensity of the new node position
 %               is >= v_min.
 %       mv_iter (int): number of iterations in move to mean.
-%       lim (struct): structure with graph limits for visualization
 %   OUTPUTS:
 %       n ([n,3] array): node locations
 %       e ([m,2] array): edges connecting each node

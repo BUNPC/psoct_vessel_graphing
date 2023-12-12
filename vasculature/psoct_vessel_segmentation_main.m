@@ -8,11 +8,11 @@ This script performs the following:
 - segment the original volume
 - apply a mask to the segmentation
 - convert segmentation to graph
+- Remove loops from graph
+
 To Do:
 - find optimal range for remove_mask_islands
-- prune graph (remove loops and unterminated segments)
-    - remove loops ()
-    - remove segments ()
+- prune spurs from segments in graph
 %}
 clear; clc; close all;
 
@@ -37,10 +37,10 @@ addpath(genpath(topdir));
 if ispc
     dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
     % Subject IDs
-    subid = 'AD_20832';
+    subid = 'NC_6047';
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
-    fname = 'ref_4ds_norm_inv_crop_small';
+    fname = 'ref_4ds_norm_inv_crop';
     % filename extension
     ext = '.tif';
     % sigma for Gaussian smoothing
@@ -239,18 +239,36 @@ for j = 1:length(min_prob)
     end
 end
 
+%% Skeletonize segmentation, convert to graph, remove loops
 function seg_graph_init(seg, vox_dim, fullpath, fname_seg)
 % Initialize graph from segmentation
 % INPUTS:
 %   seg (mat): segmentation matrix
 %   vox_dim (array): 3-element array of voxel dimensions (microns)
-%
 
-%%% Convert segmentation to graph (just the nodes and segments)
-graph_nodes_segs = seg_to_graph(seg, vox_dim);
+%% Convert segmentation to graph (nodes and edges)
+graph = seg_to_graph(seg, vox_dim);
 
-%%% Initialize graph metadata (Graph.Data)
-[Data] = init_graph(graph_nodes_segs);
+%% Remove loops from graph
+% Move to mean minimum voxel intensity
+v_min = 0.99;
+
+% Initail search radius in down sample function (voxels)
+delta = 6;
+
+% # iterations for mv2mean function in for-loop iteration in rm_loops
+mv_iter = 1;
+
+% Call function to remove loops
+% TODO: verify the "seg" angio has the same orientation [x,y,z] as graph
+[nodes_rm, edges_rm] = rm_loops(graph.nodes, graph.edges, seg, delta, v_min, mv_iter);
+
+% Update graph with nodes and edges
+graph.nodes = nodes_rm;
+graph.edges = edges_rm;
+
+%% Initialize graph metadata (Graph.Data)
+[Data] = init_graph(graph);
 
 %%% Append "angio" data (segmentation matrix)
 % Rearrange [x,y,z] --> [z,x,y]. This is the standard in
