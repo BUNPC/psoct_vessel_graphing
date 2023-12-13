@@ -40,36 +40,37 @@ if ispc
     subid = 'NC_6047';
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
-    fname = 'ref_4ds_norm_inv_crop';
+    fname = 'ref_4ds_norm_inv';
     % filename extension
     ext = '.tif';
     % sigma for Gaussian smoothing
-    gsigma = [1, 3, 5];
+    gsigma = [3, 5, 7, 9];
 
 %%% Computing cluster (SCC)
 elseif isunix
     % Path to top-level directory
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
     % Subfolder containing data
-    subdir = '/dist_corrected/volume/gsigma_1-3-5_gsize_5-13-21/';
+    subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
     fname = 'ref_4ds_norm_inv';
     % filename extension
     ext = '.tif';
     
-    % Complete subject ID list for Ann_Mckee_samples_10T
+    %%% Complete subject ID list for Ann_Mckee_samples_10T
     subid = {'AD_10382', 'AD_20832', 'AD_20969',...
              'AD_21354', 'AD_21424',...
-             'CTE_6489', 'CTE_6855', 'CTE_6912',...
+             'CTE_6489','CTE_6912',...
              'CTE_7019','CTE_8572','CTE_7126',...
-             'NC_21499', 'NC_6047', 'NC_6839',...
+             'NC_6047', 'NC_6839',...
              'NC_6974', 'NC_7597',...
-             'NC_8095', 'NC_8653'};
+             'NC_8095', 'NC_8653',...
+             'NC_21499','NC_301181'};
     
-    % Gaussian sigma arrays:
+    %%% Gaussian sigma arrays:
     % Small vessel sigma array = [1, 3, 5]
-    % Medium vessel sigma array = [7, 9, 11]
-    % Large vessel sigma array = [13, 15, 17]
+    % Medium vessel sigma array = [5, 7, 9]
+    % Large vessel sigma array = [7, 9, 11]
     sigmas = [1,3,5; 5,7,9; 7,9,11];
     
     %%% Create cell array of subject ID and sigma for job array on the SCC 
@@ -124,7 +125,7 @@ end
 gsize = 2.*ceil(2.*gsigma)+1;
 
 %%% Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.20:0.01:0.26;
+min_prob = 0.22:0.01:0.24;
 
 %%% A segment with < "min_conn" voxels will be removed
 min_conn = 30;
@@ -135,6 +136,8 @@ radii = 40;
 %%% Boolean for converting segment to graph (0 = do not convert. 1 = convert)
 graph_boolean = 1;
 
+%%% Boolean for applying mask
+mask_boolean = 1;
 
 %% Load raw volume (TIF) and convert to MAT
 % Define entire filepath 
@@ -205,7 +208,8 @@ for j = 1:length(min_prob)
     overlay_fout = fullfile(fullpath, overlay_name);
     % Call function to overlay mask and segmentation
     overlay_vol_seg(vol_uint16, I_seg, 'green', overlay_fout);
-
+    
+    % TODO: remove this call prior to masking
     if graph_boolean
         seg_graph_init(I_seg, vox_dim, fullpath, fname_seg);
     end
@@ -216,27 +220,30 @@ for j = 1:length(min_prob)
     % apply the mask to the segmentation volume, and save the output.
     % If the graph_boolean is true (1), then the masked segmentation will be
     % converted to a graph.
-
-    % Create 3D mask from original volume
-    mask = logical(vol);
-    for k = 1:length(radii)
-        %%% Apply mask and save .MAT and .TIF
-        [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
-                                        fullpath, fname_seg);
-        
-        %%% Overlay mask volume (grayscale) and segmentation (green)
-        % Create output filename
-        overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
-        overlay_fout = fullfile(fullpath, overlay_name);
-        % Call function to overlay mask and segmentation
-        overlay_vol_seg(vol_uint16, I_seg_masked, 'green', overlay_fout);
-
-        %%% Convert masked segmentation to graph
-        if graph_boolean
-            fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
-            seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked);
+    
+    if mask_boolean
+        % Create 3D mask from original volume
+        mask = logical(vol);
+        for k = 1:length(radii)
+            %%% Apply mask and save .MAT and .TIF
+            [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
+                                            fullpath, fname_seg);
+            
+            %%% Overlay mask volume (grayscale) and segmentation (green)
+            % Create output filename
+            overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
+            overlay_fout = fullfile(fullpath, overlay_name);
+            % Call function to overlay mask and segmentation
+            overlay_vol_seg(vol_uint16, I_seg_masked, 'green', overlay_fout);
+    
+            %%% Convert masked segmentation to graph
+            if graph_boolean
+                fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
+                seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked);
+            end
         end
     end
+    
 end
 
 %% Skeletonize segmentation, convert to graph, remove loops
@@ -260,7 +267,6 @@ delta = 6;
 mv_iter = 1;
 
 % Call function to remove loops
-% TODO: verify the "seg" angio has the same orientation [x,y,z] as graph
 [nodes_rm, edges_rm] = rm_loops(graph.nodes, graph.edges, seg, delta, v_min, mv_iter);
 
 % Update graph with nodes and edges
