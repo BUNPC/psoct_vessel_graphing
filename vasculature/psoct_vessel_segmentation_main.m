@@ -49,7 +49,7 @@ if ispc
 %%% Computing cluster (SCC)
 elseif isunix
     % Path to top-level directory
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_10T/';
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     % Subfolder containing data
     subdir = '/dist_corrected/volume/';
     % Filename to parse (this will be the same for each subject)
