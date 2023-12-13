@@ -134,7 +134,7 @@ min_conn = 30;
 radii = 40;
 
 %%% Boolean for converting segment to graph (0 = do not convert. 1 = convert)
-graph_boolean = 1;
+graph_boolean = 0;
 
 %%% Boolean for applying mask
 mask_boolean = 1;
@@ -209,7 +209,7 @@ for j = 1:length(min_prob)
     % Call function to overlay mask and segmentation
     overlay_vol_seg(vol_uint16, I_seg, 'green', overlay_fout);
     
-    % TODO: remove this call prior to masking
+    %%% Create a graph of the segmentation
     if graph_boolean
         seg_graph_init(I_seg, vox_dim, fullpath, fname_seg);
     end
@@ -220,29 +220,28 @@ for j = 1:length(min_prob)
     % apply the mask to the segmentation volume, and save the output.
     % If the graph_boolean is true (1), then the masked segmentation will be
     % converted to a graph.
-    
-    if mask_boolean
-        % Create 3D mask from original volume
-        mask = logical(vol);
-        for k = 1:length(radii)
-            %%% Apply mask and save .MAT and .TIF
-            [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
-                                            fullpath, fname_seg);
-            
-            %%% Overlay mask volume (grayscale) and segmentation (green)
-            % Create output filename
-            overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
-            overlay_fout = fullfile(fullpath, overlay_name);
-            % Call function to overlay mask and segmentation
-            overlay_vol_seg(vol_uint16, I_seg_masked, 'green', overlay_fout);
-    
-            %%% Convert masked segmentation to graph
-            if graph_boolean
-                fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
-                seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked);
-            end
+
+    % Create 3D mask from original volume
+    mask = logical(vol);
+    for k = 1:length(radii)
+        %%% Apply mask and save .MAT and .TIF
+        [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
+                                        fullpath, fname_seg);
+        
+        %%% Overlay mask volume (grayscale) and segmentation (green)
+        % Create output filename
+        overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
+        overlay_fout = fullfile(fullpath, overlay_name);
+        % Call function to overlay mask and segmentation
+        overlay_vol_seg(vol_uint16, I_seg_masked, 'green', overlay_fout);
+
+        %%% Convert masked segmentation to graph
+        if graph_boolean
+            fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
+            seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked);
         end
     end
+    
     
 end
 
