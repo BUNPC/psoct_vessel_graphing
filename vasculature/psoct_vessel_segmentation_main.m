@@ -71,24 +71,31 @@ elseif isunix
     % Small vessel sigma array = [1, 3, 5]
     % Medium vessel sigma array = [5, 7, 9]
     % Large vessel sigma array = [7, 9, 11]
-    sigmas = [1,3,5; 5,7,9; 7,9,11];
+%     sigmas = [1,3,5; 5,7,9; 7,9,11];
+    sigmas = [3,5,7];
     
     %%% Create cell array of subject ID and sigma for job array on the SCC 
-    nrow = length(subid)*size(sigmas,2);
-    nsigma = size(sigmas,2);
-    sub_sigma = cell(length(subid).*size(sigmas,2), 2);
+    nrow = length(subid)*size(sigmas,1);
+    nsigma = size(sigmas,1);
+    sub_sigma = cell(length(subid).*size(sigmas,1), 2);
     idx = 1;
-    % Fill sub_sigma cell array with each sigma array for each subject
-    for i = 1:3:nrow
-        sub_sigma{i,1} = subid{idx};
-        sub_sigma{(i+1),1} = subid{idx};
-        sub_sigma{(i+2),1} = subid{idx};
-        idx = idx + 1;
-        for j = 1:nsigma
-            sub_sigma{(i+j-1),2} = sigmas(j,:);
+    if size(sigmas,1) > 1
+        % Fill sub_sigma cell array with each sigma array for each subject
+        for i = 1:size(sigmas,1):nrow
+            sub_sigma{i,1} = subid{idx};
+            sub_sigma{(i+1),1} = subid{idx};
+            sub_sigma{(i+2),1} = subid{idx};
+            idx = idx + 1;
+            for j = 1:nsigma
+                sub_sigma{(i+j-1),2} = sigmas(j,:);
+            end
+        end
+    else
+        for i = 1:nrow
+            sub_sigma{i,1} = subid{i};
+            sub_sigma{i,2} = sigmas;
         end
     end
-    
     %%% Reassign subid and sigma based on job array counter
     % Retrieve SGE_TASK_ID from system (job array index)
     batch_idx = getenv('SGE_TASK_ID');
