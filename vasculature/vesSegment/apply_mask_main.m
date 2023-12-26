@@ -24,25 +24,38 @@ topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
 %% Import files
-% Laptop directory structure
-laptop_path = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200726PSOCT\';
+if ispc
+    % Laptop directory structure
+    laptop_path = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_human_brain_resources\test_data\Hui_Frangi_dataset\200726PSOCT\';
+    
+    % Import volume
+    vol_name = 'volume_nor_inverted';
+    filename = strcat(laptop_path, strcat(vol_name,'.tif'));
+    vol = TIFF2MAT(filename);
+    
+    % Import mask
+    mask_name = 'volume_mask';
+    filename = strcat(laptop_path, strcat(mask_name,'.tif'));
+    mask = TIFF2MAT(filename);
+    
+    % Verify matrices of same size
+    if size(vol) ~= size(mask)
+        error('Mask and volume matrices are different sizes.')
+    end
 
-% Import volume
-vol_name = 'volume_nor_inverted';
-filename = strcat(laptop_path, strcat(vol_name,'.tif'));
-vol = TIFF2MAT(filename);
-
-% Import mask
-mask_name = 'volume_mask';
-filename = strcat(laptop_path, strcat(mask_name,'.tif'));
-mask = TIFF2MAT(filename);
-
-% Verify matrices of same size
-if size(vol) ~= size(mask)
-    error('Mask and volume matrices are different sizes.')
+elseif isunix
+    dpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/CTE_7126/' ...
+        'dist_corrected/volume/gsigma_3-5-7_gsize_13-21-29/'];
+    vol_name = 'ref_4ds_norm_inv_segment_pmin_0.22';
+    filename = fullfile(dpath, strcat(vol_name,'.tif'));
+    vol = TIFF2MAT(filename);
 end
 
+%% Segment
+
+
 %% Perform operations on mask and image
+%{
 % TODO: find optimal range for remove_mask_islands
 % TODO: create function "clean_mask" and perform both:
 %       - imerode - remove boundaries
@@ -65,6 +78,6 @@ vol_masked = apply_mask(vol, mask_isl);
 % Convert masked image back to tif
 fout = strcat(laptop_path, strcat(vol_name,'_masked_eroded_island_rm.tif'));
 segmat2tif(vol_masked, fout);
-
+%}
 
 
