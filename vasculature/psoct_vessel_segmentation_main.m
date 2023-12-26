@@ -66,13 +66,17 @@ elseif isunix
              'NC_6974', 'NC_7597',...
              'NC_8095', 'NC_8653',...
              'NC_21499','NC_301181'};
+
+    subid = {'CTE_6489','NC_7597'};
+
     
     %%% Gaussian sigma arrays:
     % Small vessel sigma array = [1, 3, 5]
     % Medium vessel sigma array = [5, 7, 9]
     % Large vessel sigma array = [7, 9, 11]
 %     sigmas = [1,3,5; 5,7,9; 7,9,11];
-    sigmas = [3,5,7];
+%     sigmas = [3,5,7];
+    sigmas = [3,5,7; 5,7,9; 7,9,11];
     
     %%% Create cell array of subject ID and sigma for job array on the SCC 
     nrow = length(subid)*size(sigmas,1);
