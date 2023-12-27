@@ -33,10 +33,14 @@ addpath(genpath(topdir));
 if ispc
     % Top-level path to data
     dpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
-        'test_data\Ann_Mckee_samples_10T\'];    
+        'test_data\Ann_Mckee_samples_10T\'];  
+    % Subdirectory to volume 
+    subdir = '\dist_corrected\volume\';
 elseif isunix
     % Top-level path to data
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T';
+    % Subdirectory to volume 
+    subdir = '/dist_corrected/volume/';
 end
 
 % Subject IDs
@@ -48,9 +52,6 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
              'NC_6974', 'NC_7597',...
              'NC_8095', 'NC_8653',...
              'NC_21499','NC_301181'};
-
-% Subdirectory to volume 
-subdir = '\dist_corrected\volume\';
 
 % Volume filename
 volname = 'ref_4ds_norm_inv.tif';
