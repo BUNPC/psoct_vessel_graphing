@@ -13,7 +13,7 @@ elseif isunix
 end
 % Remove the two sub folders to reach parent
 % (psoct_human_brain\vasculature\vesSegment)
-topdir = mydir(1:idcs(end));
+topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
 %% Lookup table of pia pixel intensity reference values
