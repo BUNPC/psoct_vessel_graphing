@@ -25,7 +25,7 @@ elseif isunix
     idcs = strfind(mydir,'/');
 end
 % Truncate path to reach top-level directory (psoct_vessel_graphing)
-topdir = mydir(1:idcs(end));
+topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
 %% Initialize directory paths for all subjects
