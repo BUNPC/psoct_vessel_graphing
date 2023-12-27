@@ -78,9 +78,11 @@ for ii = 1:length(subid)
     else
         vox_dim = [30, 30, 35];
     end
-    % Initialize graph + remove loops + save output
+    %%% Initialize graph + remove loops + save output
     graph_path = fullfile(dpath, subid{ii}, subdir1, subdir2, segdir);
-    seg_graph_init(seg, vox_dim, graph_path, seg_name);
+    % Visualization boolean
+    viz = false;
+    seg_graph_init(seg, vox_dim, graph_path, seg_name, viz);
 
 end
 

@@ -1,10 +1,11 @@
-function seg_graph_init(seg, vox_dim, fullpath, fname_seg)
+function seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz)
 % Initialize graph from segmentation
 % INPUTS:
-%   seg (mat): segmentation matrix
-%   vox_dim (array): 3-element array of voxel dimensions (microns) [x,y,z]
-%   fullpath (string): output directory for graph
-%   fname_seg (string): filename of segmentation
+%       seg (mat): segmentation matrix
+%       vox_dim (array): 3-element array of voxel dimensions (microns) [x,y,z]
+%       fullpath (string): output directory for graph
+%       fname_seg (string): filename of segmentation
+%       viz (bool): 1 = display debugging graph figures.
 
 %% Convert segmentation to graph (nodes and edges)
 graph = seg_to_graph(seg, vox_dim);
@@ -20,7 +21,8 @@ delta = 6;
 mv_iter = 1;
 
 % Call function to remove loops
-[nodes_rm, edges_rm] = rm_loops(graph.nodes, graph.edges, seg, delta, v_min, mv_iter);
+[nodes_rm, edges_rm] = rm_loops(graph.nodes, graph.edges, seg, delta, ...
+                                v_min, mv_iter, viz);
 
 % Update graph with nodes and edges
 graph.nodes = nodes_rm;

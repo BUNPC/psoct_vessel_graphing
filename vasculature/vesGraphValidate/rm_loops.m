@@ -1,4 +1,4 @@
-function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter)
+function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, viz)
 %rm_loops Remove loops in graph.
 %   Outline:
 %       - Use graph function "allcycles" to find loops
@@ -18,6 +18,7 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter)
 %               reassigned if the voxel intensity of the new node position
 %               is >= v_min.
 %       mv_iter (int): number of iterations in move to mean.
+%       viz (bool): 1 = display debugging graph figures.
 %   OUTPUTS:
 %       n ([n,3] array): node locations
 %       e ([m,2] array): edges connecting each node
@@ -48,9 +49,6 @@ cnt_outer = 1;
 % Original delta size
 delta0 = delta;
 
-% Graph prior to preprocessing
-% visualize_graph(nodes, edges, 'Before Loop Removal', []);
-
 %% Remove longest edge of sparse loops
 [n_pre, cnodes, cedges, edges] = open_sparse_loops(nodes, edges);
 
@@ -75,7 +73,9 @@ while ~isempty(cnodes)
     % Visualize Graph
     iter_str = strcat('Iteration ',num2str(cnt_outer));
     tstr = {'Before Mv2Mean & Downsampling Graph',iter_str};
-    visualize_graph(nodes, edges, tstr, []);
+    if viz
+        visualize_graph(nodes, edges, tstr, []);
+    end
     
     %%% Set graph limits based upon current cycle under investigation
     % Coordinates of all nodes
@@ -105,7 +105,9 @@ while ~isempty(cnodes)
         edges_mv = im_mv.edges;
         % Visualize Graph
         tstr = {'After Mv2Mean',iter_str};
-        visualize_graph(nodes_mv, edges_mv, tstr, []);
+        if viz
+            visualize_graph(nodes_mv, edges_mv, tstr, []);
+        end
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
         %%% Recalculate loops
         [~, cnodes, ~] = count_loops(edges_mv);
@@ -116,7 +118,9 @@ while ~isempty(cnodes)
             downsample_loops(n_idcs, nodes_mv, edges_mv, delta, protect);
         % Visualize after downsample
         tstr = {'After Mv2Mean + Downsample',iter_str};
-        visualize_graph(nodes_ds, edges_ds, tstr, []);
+        if viz
+            visualize_graph(nodes_ds, edges_ds, tstr, []);
+        end
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
         %% Check for sparse loops. If exist, remove longest edge
@@ -255,7 +259,9 @@ end
 %}
 
 %%% Visualize graph after removing loops
-visualize_graph(nodes, edges, 'After Loop Removal', []);
+if viz
+    visualize_graph(nodes, edges, 'After Loop Removal', []);
+end
 
 end
 

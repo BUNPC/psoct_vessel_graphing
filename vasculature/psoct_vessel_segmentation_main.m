@@ -148,6 +148,9 @@ graph_boolean = 0;
 %%% Boolean for applying mask
 mask_boolean = 1;
 
+%%% Boolean for visualizing the graph debugging plots
+viz = false;
+
 %% Load raw volume (TIF) and convert to MAT
 % Define entire filepath 
 fullpath = fullfile(dpath, subid, subdir);
@@ -220,7 +223,7 @@ for j = 1:length(min_prob)
     
     %%% Create a graph of the segmentation
     if graph_boolean
-        seg_graph_init(I_seg, vox_dim, fullpath, fname_seg);
+        seg_graph_init(I_seg, vox_dim, fullpath, fname_seg, viz);
     end
 
     %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
@@ -247,7 +250,7 @@ for j = 1:length(min_prob)
         %%% Convert masked segmentation to graph
         if graph_boolean
             fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
-            seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked);
+            seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked, viz);
         end
     end
     
