@@ -74,8 +74,6 @@ elseif isunix
     % Small vessel sigma array = [1, 3, 5]
     % Medium vessel sigma array = [5, 7, 9]
     % Large vessel sigma array = [7, 9, 11]
-%     sigmas = [1,3,5; 5,7,9; 7,9,11];
-%     sigmas = [3,5,7];
     sigmas = [3,5,7; 5,7,9; 7,9,11];
     
     %%% Create cell array of subject ID and sigma for job array on the SCC 
@@ -112,8 +110,8 @@ elseif isunix
         [subid, gsigma] = sub_sigma{batch_idx, :};
     % Otherwise, set the Gaussian sigma manually
     else
-        subid = 'NC_6839';
-        gsigma = [7, 9, 11];
+        subid = 'CTE_6489';
+        gsigma = [5,7,9];
     end
 end
 
