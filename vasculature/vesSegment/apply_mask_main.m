@@ -28,25 +28,31 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
              'NC_6974', 'NC_7597',...
              'NC_8095', 'NC_8653',...
              'NC_21499','NC_301181'};
+
+subid =     {'NC_6047', 'NC_6839',...
+             'NC_6974', 'NC_7597',...
+             'NC_8095', 'NC_8653',...
+             'NC_21499','NC_301181'};
+
 piaref = struct;
 piaref.AD_10382 = 6e4;
 piaref.AD_20832 = 6e4;
-piaref.AD_20969 = 5e4;
+piaref.AD_20969 = 6e4;
 piaref.AD_21354 = 6e4;
-piaref.AD_21424 = 5.5e4;
+piaref.AD_21424 = 6e4;
 piaref.CTE_6489 = 6e4;
 piaref.CTE_6912 = 6e4;
 piaref.CTE_7019 = 6e4;
 piaref.CTE_8572 = 6e4;
 piaref.CTE_7126 = 6e4;
-piaref.NC_6047 = 5e4;
-piaref.NC_6839 = 5.5e4;
-piaref.NC_6974 = 5e4;
-piaref.NC_7597 = 4e4;
-piaref.NC_8095 = 4.5e4;
-piaref.NC_8653 = 5e4;
-piaref.NC_21499 = 5e4;
-piaref.NC_301181 = 5e4;
+piaref.NC_6047 = 6e4;
+piaref.NC_6839 = 6e4;
+piaref.NC_6974 = 6e4;
+piaref.NC_7597 = 6e4;
+piaref.NC_8095 = 6e4;
+piaref.NC_8653 = 6e4;
+piaref.NC_21499 = 6e4;
+piaref.NC_301181 = 6e4;
 
 %% Import files
 if ispc
