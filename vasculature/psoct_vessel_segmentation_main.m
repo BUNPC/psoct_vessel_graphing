@@ -111,7 +111,7 @@ elseif isunix
     % Otherwise, set the Gaussian sigma manually
     else
         subid = 'CTE_6489';
-        gsigma = [5,7,9];
+        gsigma = [7,9,11];
     end
 end
 
