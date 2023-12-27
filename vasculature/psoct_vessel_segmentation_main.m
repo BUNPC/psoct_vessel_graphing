@@ -103,13 +103,13 @@ elseif isunix
     batch_idx = getenv('SGE_TASK_ID');
     
     % If this is a job array, then batch_idx will not be empty.
-    if ~isempty(batch_idx)
+    if ~strcmp(batch_idx,'undefined')
         % Convert from ASCII to double
         batch_idx = str2double(batch_idx);
         % Retrieve corresponding row from sub_sigma
         [subid, gsigma] = sub_sigma{batch_idx, :};
     % Otherwise, set the Gaussian sigma manually
-    else
+    elseif strcmp(batch_idx,'undefined')
         subid = 'NC_7597';
         gsigma = [5,7,9];
     end
