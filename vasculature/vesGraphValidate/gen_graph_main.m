@@ -26,6 +26,15 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
              'NC_8095', 'NC_8653',...
              'NC_21499','NC_301181'};
 
+% Subset of subjects with good segmentation
+subid =     {'AD_10382', 'AD_20832', 'AD_20969',...
+             'AD_21354', 'AD_21424',...
+             'CTE_6489','CTE_6912',...
+             'CTE_7019','CTE_7126',...
+             'NC_6839','NC_6974',...
+             'NC_7597','NC_8653',...
+             'NC_21499','NC_301181'};
+
 %% Import files
 if ispc
     % Laptop directory structure
@@ -49,48 +58,41 @@ segdir = 'gsigma_3-5-7_5-7-9_7-9-11';
 % Filename with combined segmentations
 seg_name = 'seg_masked';
 
+%%% Assign subid based on job array counter
+% Retrieve SGE_TASK_ID from system (job array index)
+batch_idx = getenv('SGE_TASK_ID');
+% Convert from ASCII to double
+batch_idx = str2double(batch_idx);
+% Assign local subject ID
+sub = subid{batch_idx};
 
 %% Iterate through subjects. Generate graph
-for ii = 1:length(subid)
-    %%% Import combined segmentation file
-    fpath = fullfile(dpath, subid{ii}, subdir1, subdir2, segdir, strcat(seg_name,'.mat'));
-    tmp = load(fpath,'segm');
-    seg = tmp.segm;
-    
-    %%% Pre-process combined segmentation prior to graphing
-    % Remove small segments (fewer than voxmin)
-    voxmin = 30;
-    seg = rm_short_vessels(seg, voxmin);
-    % Remove large islands (likley pia boundary false positives)
-    % Some of the segmentations contain large blobs in the pia. I need to
-    % write a function to identify + remove these.
 
-    % Smooth segmentation (Gaussian)
-    sigma = 3;
-    seg = imgaussfilt3(seg,sigma);
+%%% Import combined segmentation file
+fpath = fullfile(dpath, sub, subdir1, subdir2, segdir, strcat(seg_name,'.mat'));
+tmp = load(fpath,'segm');
+seg = tmp.segm;
 
-    %%% Convert to graph
-    % Set the voxel size
-    if regexp(vol_name, '4ds')
-        vox_dim = [12, 12, 15];
-    elseif regexp(vol_name, '10ds')
-        vox_dim = [30, 30, 35];
-    else
-        vox_dim = [30, 30, 35];
-    end
-    %%% Initialize graph + remove loops + save output
-    graph_path = fullfile(dpath, subid{ii}, subdir1, subdir2, segdir);
-    % Visualization boolean
-    viz = false;
-    seg_graph_init(seg, vox_dim, graph_path, seg_name, viz);
+%%% Pre-process combined segmentation prior to graphing
+% Remove small segments (fewer than voxmin)
+voxmin = 30;
+seg = rm_short_vessels(seg, voxmin);
+% Remove large islands (likley pia boundary false positives)
+% Some of the segmentations contain large blobs in the pia. I need to
+% write a function to identify + remove these.
 
+%%% Convert to graph
+% Set the voxel size
+if regexp(vol_name, '4ds')
+    vox_dim = [12, 12, 15];
+elseif regexp(vol_name, '10ds')
+    vox_dim = [30, 30, 35];
+else
+    vox_dim = [30, 30, 35];
 end
-
-
-
-
-
-
-
-
+%%% Initialize graph + remove loops + save output
+graph_path = fullfile(dpath, sub, subdir1, subdir2, segdir);
+% Visualization boolean
+viz = false;
+seg_graph_init(seg, vox_dim, graph_path, seg_name, viz);
 
