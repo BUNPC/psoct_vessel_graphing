@@ -34,6 +34,8 @@ subid =     {'NC_6047', 'NC_6839',...
              'NC_8095', 'NC_8653',...
              'NC_21499','NC_301181'};
 
+subid = {'AD_20969','AD_21424'};
+
 piaref = struct;
 piaref.AD_10382 = 6e4;
 piaref.AD_20832 = 6e4;
