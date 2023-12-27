@@ -110,8 +110,8 @@ elseif isunix
         [subid, gsigma] = sub_sigma{batch_idx, :};
     % Otherwise, set the Gaussian sigma manually
     else
-        subid = 'CTE_6489';
-        gsigma = [7,9,11];
+        subid = 'NC_7597';
+        gsigma = [5,7,9];
     end
 end
 
