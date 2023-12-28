@@ -1,7 +1,7 @@
 %% Main script for creating graph from segmentation
 % This script will call the function for generating a graph. This will also
 % remove loops from the graph.
-
+clear; clc; close all;
 %% Add top-level directory of code repository to path
 % Print current working directory
 mydir  = pwd;
@@ -68,10 +68,14 @@ if isunix
     sub = subid{batch_idx};
     % Disable visualization of plots
     viz = false;
+    % Set the remove loop boolean to zero
+    rmloop_bool = 0;
 else
     sub = subid{1};
     % Enable visualization of plots
     viz = false;
+    % Set the remove loop boolean to zero
+    rmloop_bool = 0;
 end
 
 %% Iterate through subjects. Generate graph
@@ -100,5 +104,5 @@ else
 end
 %%% Initialize graph + remove loops + save output
 graph_path = fullfile(dpath, sub, subdir1, subdir2, segdir);
-seg_graph_init(seg, vox_dim, graph_path, seg_name, viz);
+seg_graph_init(seg, vox_dim, graph_path, seg_name, viz, rmloop_bool);
 
