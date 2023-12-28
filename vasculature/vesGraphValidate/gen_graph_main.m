@@ -59,12 +59,20 @@ segdir = 'gsigma_3-5-7_5-7-9_7-9-11';
 seg_name = 'seg_masked';
 
 %%% Assign subid based on job array counter
-% Retrieve SGE_TASK_ID from system (job array index)
-batch_idx = getenv('SGE_TASK_ID');
-% Convert from ASCII to double
-batch_idx = str2double(batch_idx);
-% Assign local subject ID
-sub = subid{batch_idx};
+if isunix
+    % Retrieve SGE_TASK_ID from system (job array index)
+    batch_idx = getenv('SGE_TASK_ID');
+    % Convert from ASCII to double
+    batch_idx = str2double(batch_idx);
+    % Assign local subject ID
+    sub = subid{batch_idx};
+    % Disable visualization of plots
+    viz = false;
+else
+    sub = subid{1};
+    % Enable visualization of plots
+    viz = false;
+end
 
 %% Iterate through subjects. Generate graph
 
@@ -92,7 +100,5 @@ else
 end
 %%% Initialize graph + remove loops + save output
 graph_path = fullfile(dpath, sub, subdir1, subdir2, segdir);
-% Visualization boolean
-viz = false;
 seg_graph_init(seg, vox_dim, graph_path, seg_name, viz);
 
