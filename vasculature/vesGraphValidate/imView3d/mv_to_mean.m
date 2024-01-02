@@ -52,7 +52,7 @@ for ii = 1:size(nodes,1)
         posN = pos0 + (posC-pos0) / max(norm(posC-pos0),1);
         % If the graph node is outside of segmentation, then pass
         if round(posN(1)) > x || round(posN(2)) > y || round(posN(3)) > z
-            return
+            continue
         % If new position is within vessel (>=vox. intensity threshold)
         % Then reassign node position to new position.
         elseif im.angio(round(posN(1)),round(posN(2)),round(posN(3)))>=v_min
