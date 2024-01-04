@@ -1,7 +1,7 @@
 function [masked] = apply_mask(orig, mask)
-%apply_mask apply stack of 2D masks to volume
+%apply_mask apply stack of 2D masks to stack of tissue slices
 % INPUTS:
-%   orig (double matrix): 3D matrix of image with background
+%   orig (double matrix): 3D matrix of image with background to mask out
 %   mask (double matrix): 3D matrix mask (1 = keep, 0 = remove).
 %                       of mask to remove background
 % OUTPUTS:

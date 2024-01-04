@@ -42,6 +42,20 @@ if ispc
 elseif isunix
     % Path to top-level directory
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+    % Set # threads = # cores for job
+    NSLOTS = str2num(getenv('NSLOTS'));
+    maxNumCompThreads(NSLOTS);
+
+    % Check to see if we already have a parpool, if not create one with
+    % our desired parameters
+    poolobj = gcp('nocreate');
+    if isempty(poolobj)
+	    myCluster=parcluster('local');
+	    % Ensure multiple parpool jobs don't overwrite other's temp files
+	    myCluster.JobStorageLocation = getenv('TMPDIR');
+	    poolobj = parpool(myCluster, NSLOTS);
+    end
+
 end
 
 % Subfolder containing data
@@ -57,62 +71,39 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'NC_6974', 'NC_7597',...
          'NC_8095', 'NC_8653',...
          'NC_21499','NC_301181'};
+subid = {'AD_10382'};
 
-%% Load raw volume (TIF) and convert to MAT
-% Define entire filepath 
-fullpath = fullfile(dpath, subid{1}, subdir);
-% Define file path
-fpath = fullfile(fullpath, fname);
-% Import the TIF stack
-d = TIFF2MAT(fpath);
-% Take slice
-s = d(:,:,1); figure; imshow(s); title('Original');
+for ii = 1:length(subid)
+    %% Load raw volume (TIF) and convert to MAT
+    % Define entire filepath 
+    fullpath = fullfile(dpath, subid{ii}, subdir);
+    % Define file path
+    fpath = fullfile(fullpath, fname);
+    % Import the tissue volume TIF stack
+    vol = TIFF2MAT(fpath);
+       
+    %% Create mask for each layer in volume
+    % Debug argument (true = display figures for each slice)
+    debug = false;
+    % Function to create mask for each slice in stack
+    [mask, t] = create_mask_v1(vol, debug, NSLOTS);
 
-%% Multithreshold
-% Create multithreshold
-lvl = multithresh(s,1);
-maskth = imquantize(s, lvl);
-figure; imshow(maskth, []); title('Multithresholded')
-% Fill the image
-mask_fill = imfill(maskth);
-figure; imshow(maskth, []); title('Multithresholded & Filled')
-%% Threshold
-% Find quartile of median
-imin = 0.25*median(s(:));
-% Remove voxels below cutoff
-sth = s;
-sth(s<imin) = 0; figure; imshow(sth); title('Thresholded');
-% Find edges
-bw = edge(sth, "canny"); figure; imshow(bw); title('Thresholded & Edges');
-
-%% Active contour
-% Create starting mask
-mask = zeros(size(s));
-mask(50:1642,10:2600) = 1;
-
-%%% Apply active contour
-niter = 1e4;
-bw = activecontour(sth, mask, niter);
-figure; imshow(bw); title('Active Contour, 1e4 Iterations');
-
-%%% Erode the border
-se = strel('disk',10);
-bwfill = imerode(bw, se);
-figure; imshow(bwfill); title('Active Contour, 1e4 Iterations, Eroded 5');
-
-%%% Remove islands of pixels
-
-
-%%% Overlay tissue with active contour mask
-% Binarize the mask ([0, 255] to [0, 1])
-mask_bin = uint16(bwfill);
-% Element-wise multiplication of mask and volume
-masked = uint16(s) .* mask_bin;
-% Convert masked from logical back to grayscale [0, 255]
-masked(masked==1) = 255;
-% Display masked tissue
-figure; imshow(masked); title('Masked Tissue Slice')
-
+    %% Overlay tissue volume with active contour mask
+    % Call function to apply mask
+    volm = apply_mask(vol, mask);
+    
+    %% Save mask and masked volume    
+    % Create output filenames
+    mask_out = fullfile(fullpath, strcat('mask'));
+    volm_out = fullfile(fullpath, strcat('ref_4ds_masked'));
+    % Save output as .TIF
+    segmat2tif(mask, strcat(mask_out, '.tif'));
+    segmat2tif(volm, strcat(volm_out, '.tif'));
+    % Save output as .MAT
+    save(mask_out, 'mask', '-v7.3');
+    save(volm_out, 'volm', '-v7.3');
+    
+end
 
 
 
