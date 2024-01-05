@@ -172,6 +172,9 @@ for ii = 1:length(subid)
         % convert segment end nodes to cartesian coordinate
         node1 = graph.nodes(endnodes(j,1), :);
         node2 = graph.nodes(endnodes(j,2), :);
+        % Convert cartesian coordinate to offset in microns
+        node1 = node1 .* vox_dim;
+        node2 = node2 .* vox_dim;
         % Calcualte euclidean distance of segment
         euc = sqrt((node1(1) - node2(1)).^2 +...
                     (node1(2) - node2(2)).^2 +...
@@ -181,6 +184,8 @@ for ii = 1:length(subid)
     end
     % Remove infinite tortuosity (loops)
     tort(tort==inf) = [];
+    % save the entire tortuosity array
+    met(ii).tort = tort;
     % Add to metrics structures
     met(ii).tortuosity = mean(tort);   
 end
@@ -190,7 +195,7 @@ save(nc_fout, 'met', '-v7.3');
 %}
 
 %% Generate Barcharts of metrics
-
+%{
 %%%% load metrics for AD & CTE
 met = load(ad_cte_fout);
 met = met.met;
@@ -304,6 +309,7 @@ mout = fullfile(mpath, 'total_vessels_bar_noAD20832');
 saveas(gca, mout, 'png')
 
 %%% tortuosity (unitless)
+%{
 ad_tort = vertcat(ad.tortuosity);
 cte_tort = vertcat(cte.tortuosity);
 nc_tort = vertcat(nc.tortuosity);
@@ -326,6 +332,7 @@ b.CData(end-5:end, :) =...
 % Save output
 mout = fullfile(mpath, 'tortuosity_bar_noAD20832');
 saveas(gca, mout, 'png')
+%}
 
 %%% Branch Density (branch / mm^3)
 % Create branch density arrays. Convert from branch/um^3 -> branch / mm^3
@@ -381,7 +388,7 @@ saveas(gca, mout, 'png')
 %}
 
 %% Calcuate average + std. dev of metrics
-
+%{
 %%%% load metrics for AD & CTE
 met = load(ad_cte_fout);
 met = met.met;
@@ -484,7 +491,6 @@ cte_idx = 5:8;
 % Separate CTE and AD
 ad = met(ad_idx);
 cte = met(cte_idx);
-
 % load metrics for NC ('NC_6839','NC_8095', 'NC_8653', 'NC_21499')
 met = load(nc_fout);
 nc = met.met;
@@ -499,6 +505,18 @@ n_nc = 6;
 g_ad_nc = [repmat("AD",n_ad,1); repmat("NC",n_nc,1)];
 g_cte_nc = [repmat("CTE",n_cte,1); repmat("NC",n_nc,1)];
 g_ad_cte = [repmat("AD",n_ad,1); repmat("CTE",n_cte,1)];
+
+% Tortuosity
+ad_tort = vertcat(ad.tort);
+nc_tort = vertcat(nc.tort);
+cte_tort = vertcat(cte.tort);
+ad_nc_tort = [ad_tort, nc_tort];
+cte_nc_tort = [cte_tort', nc_tort'];
+ad_cte_tort = [ad_tort',cte_tort'];
+% Group labels for unbalanced
+g_ad_nc_tort = [repmat("AD",length(ad_tort),1); repmat("NC",length(nc_tort),1)];
+g_cte_nc_tort = [repmat("CTE",length(cte_tort),1); repmat("NC",length(nc_tort),1)];
+g_ad_cte_tort = [repmat("AD",length(ad_tort),1); repmat("CTE",length(cte_tort),1)];
 
 % Length density arrays
 ad_nc_den = [ad_lenden', nc_lenden'];
@@ -515,11 +533,6 @@ ad_nc_nves = [ad_nves', nc_nves'];
 cte_nc_nves = [cte_nves', nc_nves'];
 ad_cte_nves = [ad_nves',cte_nves'];
 
-% Tortuosity
-ad_nc_tort = [ad_tort', nc_tort'];
-cte_nc_tort = [cte_tort', nc_tort'];
-ad_cte_tort = [ad_tort',cte_tort'];
-
 % Branch Density
 ad_nc_bden = [ad_bden', nc_bden'];
 cte_nc_bden = [cte_bden', nc_bden'];
@@ -531,6 +544,14 @@ cte_nc_fvol = [cte_fvol', nc_fvol'];
 ad_cte_fvol = [ad_fvol',cte_fvol'];
 
 %%% Perform one-way unbalanced ANOVA (AD vs. NC, CTE vs. NC)
+% Tortuosity
+aov.ad_nc_tort = anova1(ad_nc_tort, g_ad_nc_tort);
+title('AD vs NC Tortuosity')
+aov.cte_nc_tort = anova1(cte_nc_tort, g_cte_nc_tort);
+title('CTE vs NC Tortuosity')
+aov.ad_cte_tort = anova1(ad_cte_tort, g_ad_cte_tort);
+title('AD vs CTE Tortuosity')
+
 % Length density
 aov.ad_nc_lenden = anova1(ad_nc_den, g_ad_nc);
 title('AD vs NC Length Density')
@@ -555,14 +576,6 @@ title('CTE vs NC # Vessels')
 aov.ad_cte_nves = anova1(ad_cte_nves, g_ad_cte);
 title('AD vs CTE # Vessels')
 
-% Tortuosity
-aov.ad_nc_tort = anova1(ad_nc_tort, g_ad_nc);
-title('AD vs NC Tortuosity')
-aov.cte_nc_tort = anova1(cte_nc_tort, g_cte_nc);
-title('CTE vs NC Tortuosity')
-aov.ad_cte_tort = anova1(ad_cte_tort, g_ad_cte);
-title('AD vs CTE Tortuosity')
-
 % Branch Density
 aov.ad_nc_bden = anova1(ad_nc_bden, g_ad_nc);
 title('AD vs NC Branch Density')
@@ -581,11 +594,6 @@ title('AD vs CTE Fraction Volume')
 
 %%% Save the ANOVA
 save(anova_fout, 'aov', '-v7.3');
-
-
-
-
-
 
 
 %% Calculate average + std of age
