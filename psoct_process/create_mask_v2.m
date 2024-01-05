@@ -24,7 +24,7 @@ nactive = 500;
 % Define array for storing timer data to track perforamnce of activecont.
 t = zeros(1, size(vol, 3));
 % Set the range of min/max object size (connected pixels) to retain.
-min_size = 5e3;
+min_size = 100;
 max_size = size(vol,1) * size(vol,2);
 range = [min_size, max_size];
 
@@ -40,7 +40,7 @@ for ii = 1:size(vol, 3)
     % Variable for number of images per physical stack
     phy = 11;
     % Array for index within physical stack
-    stackidx = mod(ii,phy);
+    stackidx = mod(ii,phy+1);
     % If the stack index is 0 or between 4-10, then do not compute a mask.
     % This corresponds to an image index of 4-11.
     if (1 <= stackidx) && (stackidx <= 3)
@@ -61,17 +61,25 @@ for ii = 1:size(vol, 3)
         % The "edge" method tends to contract to meet the edge
         ac_meth = 'edge';
     else
-        %%% Initialize mask by registering mask from previous slice
-        % Register slices (fixed = current slice, moving = previous slice)
-        tform = imregcorr(vol(:,:,ii-1), s);
+        %%% Initialize mask by registering mask from third slice
+        % Select the third slice in the physical slice
+        idx = ii - (stackidx - 3);
+        %{
+        moving = vol(:,:,idx);
+        % Register slices (fixed = current slice, moving = third slice)
+        tform = imregcorr(moving, s);
         % Create image dimension reference from slice
-        rfixed = imref2d(size(vol(:,:,ii-1)));
-        % Apply registration to mask from previous slice
-        mask0 = imwarp(volm(:,:,ii-1), tform, "Outputview", rfixed);
+        rfixed = imref2d(size(moving));
+        % Apply registration to mask from third slice in sequence
+        mask0 = imwarp(volm(:,:,idx), tform, "Outputview", rfixed);
+        %}
+        % Use the third mask in physical slice series
+        mask0 = volm(:,:,idx);
+
         %%% Set the method for active contour
         % The Chan-Vese method can expand or contract the mask to meet the
         % edges, whereas the "edge" method can only contract.
-        ac_meth = 'Chan-Vese';
+        ac_meth = 'edge';
     end
 
     %% Iteratively find edge, erode border, remove islands
