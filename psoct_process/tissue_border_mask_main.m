@@ -5,16 +5,6 @@
 % applied to the segmentation to remove false positives along the border of
 % the tissue.
 
-% TODO:
-%{
-- Add code to remove islands from mask
-- make another create_mask function "create_mask_v0"
-    - include threshold, active contour, island removal
-- make this the main script, iterate over subjects, call:
-    - "create_mask" for all subjects
-    - "apply_mask" for all subjects
-%}
-
 clear; clc; close all;
 
 %% Add top-level directory of code repository to path
@@ -38,6 +28,7 @@ addpath(genpath(topdir));
 if ispc
     dpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures'...
             '\test_data\Ann_Mckee_samples_10T\'];
+    NSLOTS = 0;
 %%% Computing cluster (SCC)
 elseif isunix
     % Path to top-level directory
@@ -73,6 +64,7 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'NC_21499','NC_301181'};
 subid = {'AD_10382'};
 
+%% Iterate subjects
 for ii = 1:length(subid)
     %% Load raw volume (TIF) and convert to MAT
     % Define entire filepath 
@@ -84,9 +76,9 @@ for ii = 1:length(subid)
        
     %% Create mask for each layer in volume
     % Debug argument (true = display figures for each slice)
-    debug = false;
+    debug = true;
     % Function to create mask for each slice in stack
-    [mask, t] = create_mask_v1(vol, debug, NSLOTS);
+    [mask, t] = create_mask_v2(vol, debug, NSLOTS);
 
     %% Overlay tissue volume with active contour mask
     % Call function to apply mask
@@ -94,8 +86,8 @@ for ii = 1:length(subid)
     
     %% Save mask and masked volume    
     % Create output filenames
-    mask_out = fullfile(fullpath, strcat('mask'));
-    volm_out = fullfile(fullpath, strcat('ref_4ds_masked'));
+    mask_out = fullfile(fullpath, strcat('mask_v2'));
+    volm_out = fullfile(fullpath, strcat('ref_4ds_masked_v2'));
     % Save output as .TIF
     segmat2tif(mask, strcat(mask_out, '.tif'));
     segmat2tif(volm, strcat(volm_out, '.tif'));
@@ -104,6 +96,3 @@ for ii = 1:length(subid)
     save(volm_out, 'volm', '-v7.3');
     
 end
-
-
-

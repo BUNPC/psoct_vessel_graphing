@@ -1,4 +1,4 @@
-function [volm, t] = create_mask_v1(vol, debug, NSLOTS)
+function [volm, t] = create_mask_v1_0(vol, debug, NSLOTS)
 %CREATE_MASK create/apply mask for each slice
 % Create boundary mask, imerode (diamond), output the mask
 % INPUTS:
@@ -20,7 +20,7 @@ volm = uint16(zeros(size(vol)));
 % Create structuring element for eroding the mask
 se = strel('disk',25);
 % Number of iterations for active contour edge finding
-nactive = 1000;
+nactive = 500;
 % Define array for storing timer data to track perforamnce of activecont.
 t = zeros(1, size(vol, 3));
 
@@ -30,51 +30,39 @@ for ii = 1:size(vol, 3)
     fspec = 'Starting slice %i\n';
     fprintf(fspec, ii)
 
+    %% Counter for b-scan within physical stack
+    % Variable for number of images per physical stack
+    phy = 11;
+    % Array for index within physical stack
+    stackidx = mod(ii,phy);
+    % If the stack index is 0 or between 4-10, then do not compute a mask.
+    % This corresponds to an image index of 4-11.
+    if (stackidx == 0) || ( (4 <= stackidx) && (stackidx <= 10) )
+        continue
+    end
+
     %% Initialize Slice
     % Extract slice from volume and segmentation
     s = vol(:,:,ii);
     % Set the range of min/max object size (connected pixels) to retain.
-    min_size = 9e4;
+    min_size = 5e4;
     max_size = size(s,1) * size(s,2);
     range = [min_size, max_size];
       
     %% Create starting mask for active contour (intensity thresholding)
-    %%% Create histogram of voxel intensity
-    h = histogram(s);
-    v = h.Values;
-    e = h.BinEdges;
-    % Find second peak from zero intensity (this corresponds to agarose)
-    [pks,locs] = findpeaks(v);
-    pksod = sort(pks,'descend');
-    idx = pks == pksod(1);
-    p = locs(idx);
-    % Add to this to include more agarose background
-    p = p+10;
-    % Find corresponding voxel intensities from bin edges
-    agar = e(p);
-    % Remove voxels with intensity equal or less than this peak intensity
-    mask0 = s;
-    mask0(mask0 <= agar) = 0;
-    
-    %%% Fill mask
-    maskfill = imfill(mask0);
-    
-    %%% Remove islands (disjoint pixels)
-    mask = bwareafilt(logical(maskfill), range,4);
-
     %%% Multithreshold slice to find agarose pixels
-%     lvl = multithresh(s,20);
-%     % Discard the darkest portions of image (lowest threshold)
-%     lvl = lvl(2:end);
-%     % Quantize image with thresholds
-%     maskth = imquantize(s, lvl);
-%     % Set (quanta > 1) = 1 and (quanta == 1) = 0
-%     maskth(maskth==1) = 0;
-%     maskth(maskth>1) = 1;
-%     % Fill mask
-%     maskfill = imfill(maskth);
-%     % Remove islands
-%     mask = bwareafilt(logical(maskfill), range,4);
+    lvl = multithresh(s,5);
+    % Discard the darkest portions of image (lowest threshold)
+    lvl = lvl(2:end);
+    % Quantize image with thresholds
+    maskth = imquantize(s, lvl);
+    % Set (quanta > 1) = 1 and (quanta == 1) = 0
+    maskth(maskth==1) = 0;
+    maskth(maskth>1) = 1;
+    % Fill mask
+    maskfill = imfill(maskth);
+    % Remove islands
+    mask = bwareafilt(logical(maskfill), range,4);
     
     %% Active contour - find tissue border
     tic;

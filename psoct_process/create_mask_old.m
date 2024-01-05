@@ -1,4 +1,4 @@
-function [volm, segm] = create_mask(vol, seg, ref)
+function [volm, segm] = create_mask_v0(vol, seg, ref)
 %CREATE_MASK create/apply mask for each slice
 % Create boundary mask, imerode (diamond), output the mask
 % INPUTS:
@@ -53,7 +53,7 @@ for ii = 1:size(vol, 3)
     piamask = bwareafilt(piamask, range);
 
     %%% Combine background mask and pia mask --> make joint mask
-    mask = piamask .* bmask;
+    mask = piamask + bmask;
     % Dilate mask
     se = strel('square',5);
     mask = imerode(mask, se);
