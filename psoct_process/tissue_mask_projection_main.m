@@ -109,7 +109,7 @@ for ii = 1:length(subid)
         %%% Save the ref mask to the volume mask
         volmask(:,:,z:(z+size(refmask,3)-1)) = refmask;
         % Iterate the z-stack index
-        z = z + size(refmask,3) + 1;
+        z = z + size(refmask,3);
     end
 
     %% Overlay tissue volume with active contour mask
@@ -121,10 +121,10 @@ for ii = 1:length(subid)
     mask_out = fullfile(fullpath, strcat('mask_v4'));
     volm_out = fullfile(fullpath, strcat('ref_4ds_masked_v4'));
     % Save output as .TIF
-    segmat2tif(mask, strcat(mask_out, '.tif'));
+    segmat2tif(volmask, strcat(mask_out, '.tif'));
     segmat2tif(volm, strcat(volm_out, '.tif'));
     % Save output as .MAT
-    save(mask_out, 'mask', '-v7.3');
+    save(mask_out, 'volmask', '-v7.3');
     save(volm_out, 'volm', '-v7.3');
     
 end
