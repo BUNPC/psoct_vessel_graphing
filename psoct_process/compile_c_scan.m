@@ -3,6 +3,9 @@
 % b-scans in the format ref#.mat. It is necessary to remake the c-scans to
 % make a mask for removing the tissue boundary. This is necessary for
 % removing false positives along the border of the tissue volumes.
+% TODO: 
+% - add ref files to subfolder for each subject
+% - run this script with parallelization
 
 clear; clc; close all;
 
@@ -34,9 +37,9 @@ elseif isunix
 end
 
 % Subfolder containing data
-subdir = '/dist_corrected/volume/';
+subdir = '/dist_corrected/volume/ref';
 % Filename to parse (this will be the same for each subject)
-fname = 'ref';
+fbase = 'ref';
 %%% Complete subject ID list for Ann_Mckee_samples_10T
 subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'AD_21354', 'AD_21424',...
@@ -47,20 +50,63 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'NC_8095', 'NC_8653',...
          'NC_21499','NC_301181'};
 
-%% Load raw volume (TIF) and convert to MAT
-% Define entire filepath 
-fullpath = fullfile(dpath, subid, subdir);
+for ii = 1:length(subid)
+    %% Find all files with "ref#.mat" in the subfolder
+    % Define entire filepath 
+    fpath = fullfile(dpath, subid{ii}, subdir);
+    % Create struct from directory contents
+    list = dir(fpath);
+    % Extract names
+    names = {list.name};
+    % Create regular expression
+    exp = 'ref\d*+.mat';
+    % Find strings matching regexp
+    refnames = regexp(names, exp, 'match');
+    % Remove empty elements (did not match)
+    refnames = refnames(~cellfun('isempty',refnames));
+    
+    %% Combine the ref#.mat files into single matrix (c-scan)  
+    % Load first ref stack for initializing matrix
+    filename = fullfile(fpath, 'ref1.mat');
+    tmp = load(filename);    
+    ref = tmp.Ref;
+    % Get dimensions of first stack
+    [y,x,z] = size(ref);
+    % Extrapolate total number of images in stack
+    z = z .* length(refnames);
+    % Initialize matrix for storing volume
+    vol = zeros(y,x,z);
+    % Add first reference to volume
+    vol(:,:,1:size(ref,3)) = ref;
+    % Indices to track last element index in z stack
+    z0 = size(ref,3) + 1;
+    % Iterate through ref#.mat files and add to vol
+    for j=2:length(refnames)
+        % Filepath to jth ref.mat file
+        fname = strcat(fbase, num2str(j), '.mat');
+        filename = fullfile(fpath, fname);
+        % Load the ref stack
+        tmp = load(filename);
+        ref = tmp.Ref;
+        % Add to volume matrix
+        zf = z0+size(ref,3)-1;
+        vol(:,:,z0:zf) = ref;
+        z0 = zf + 1;
+    end
 
-% Find files with numbers
-fpath = fullpath{1};
-list = ls(fpath);
+    %% Save the output volume
+    fout = fullfile(fpath, 'ref.mat');
+    save(fout,'vol','-v7.3')
+    % Save as tif
+    segmat2tif(vol,fullfile(fpath, 'ref.tif'));
+end
 
-% Regular Expression to find mat files with numbers
-[~, reindex] = sort( str2double( regexp(list,'\d+', 'match', 'once' )));
-% [~, reindex] = sort( str2double( regexp( {A.name}, '\d+', 'match', 'once' )));
-A = A(reindex) ;
 
-%
-filename = strcat(fullpath, strcat(fname, ext));
 
-%% Find all files with "ref#.mat" in the subfolder
+
+
+
+
+
+
+
