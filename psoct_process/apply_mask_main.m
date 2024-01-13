@@ -71,7 +71,7 @@ elseif isunix
 end
 
 % Filename with PSOCT scattering tissue volume
-vol_name = 'ref_4ds_norm_inv'; 
+vol_name = 'ref'; 
 % Combined segmentations subfolder
 subdir2 = 'combined_segs';
 % Combined segmentation subfolder

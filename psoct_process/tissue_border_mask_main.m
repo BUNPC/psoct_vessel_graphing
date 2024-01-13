@@ -75,10 +75,15 @@ for ii = 1:length(subid)
     vol = TIFF2MAT(fpath);
        
     %% Create mask for each layer in volume
+    % TODO: include inner for-loop to iterate over each "ref#.mat" stack.
+    % Using the consolidated "ref.mat" stack is unpredictable since the
+    % number of images per physical slice varies.
+%     for j=1:nrefs      
+
     % Debug argument (true = display figures for each slice)
-    debug = true;
+    debug = false;
     % Function to create mask for each slice in stack
-    [mask, t] = create_mask_v2(vol, debug, NSLOTS);
+    [mask, t] = create_mask_v3(vol, debug, NSLOTS);
 
     %% Overlay tissue volume with active contour mask
     % Call function to apply mask
@@ -86,8 +91,8 @@ for ii = 1:length(subid)
     
     %% Save mask and masked volume    
     % Create output filenames
-    mask_out = fullfile(fullpath, strcat('mask_v2'));
-    volm_out = fullfile(fullpath, strcat('ref_4ds_masked_v2'));
+    mask_out = fullfile(fullpath, strcat('mask_v3'));
+    volm_out = fullfile(fullpath, strcat('ref_4ds_masked_v3'));
     % Save output as .TIF
     segmat2tif(mask, strcat(mask_out, '.tif'));
     segmat2tif(volm, strcat(volm_out, '.tif'));
