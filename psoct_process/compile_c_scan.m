@@ -3,9 +3,6 @@
 % b-scans in the format ref#.mat. It is necessary to remake the c-scans to
 % make a mask for removing the tissue boundary. This is necessary for
 % removing false positives along the border of the tissue volumes.
-% TODO: 
-% - add ref files to subfolder for each subject
-% - run this script with parallelization
 
 clear; clc; close all;
 
@@ -34,6 +31,19 @@ if ispc
 elseif isunix
     % Path to top-level directory
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+    % Set # threads = # cores for job
+    NSLOTS = str2num(getenv('NSLOTS'));
+    maxNumCompThreads(NSLOTS);
+
+    % Check to see if we already have a parpool, if not create one with
+    % our desired parameters
+    poolobj = gcp('nocreate');
+    if isempty(poolobj)
+	    myCluster=parcluster('local');
+	    % Ensure multiple parpool jobs don't overwrite other's temp files
+	    myCluster.JobStorageLocation = getenv('TMPDIR');
+	    poolobj = parpool(myCluster, NSLOTS);
+    end
 end
 
 % Subfolder containing data
@@ -41,7 +51,7 @@ subdir = '/dist_corrected/volume/ref';
 % Filename to parse (this will be the same for each subject)
 fbase = 'ref';
 %%% Complete subject ID list for Ann_Mckee_samples_10T
-subid = {'AD_10382', 'AD_20832', 'AD_20969',...
+subid = {'AD_20832', 'AD_20969',...
          'AD_21354', 'AD_21424',...
          'CTE_6489','CTE_6912',...
          'CTE_7019','CTE_8572','CTE_7126',...
@@ -50,7 +60,7 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'NC_8095', 'NC_8653',...
          'NC_21499','NC_301181'};
 
-for ii = 1:length(subid)
+parfor (ii = 1:length(subid), NSLOTS)
     %% Find all files with "ref#.mat" in the subfolder
     % Define entire filepath 
     fpath = fullfile(dpath, subid{ii}, subdir);
@@ -96,13 +106,22 @@ for ii = 1:length(subid)
 
     %% Save the output volume
     fout = fullfile(fpath, 'ref.mat');
-    save(fout,'vol','-v7.3')
+    save_ref(fout, vol)
     % Save as tif
     segmat2tif(vol,fullfile(fpath, 'ref.tif'));
 end
 
+%% Function to save during parallelization
+function save_ref(fout, vol)
+% Save the stacked ref matrix
+% INPUTS:
+%   fout (string): the filepath for the output file to save
+%   vol (double matrix): the stack of images to save
 
+% Save the output
+save(fout,'vol','-v7.3')
 
+end
 
 
 
