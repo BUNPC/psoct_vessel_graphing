@@ -1,10 +1,11 @@
-function [volm, t] = create_mask_v3(vol, debug, NSLOTS)
+function [refm, t] = create_mask_v4(ref, debug)
 %CREATE_MASK create/apply mask for each slice
 % Create boundary mask, imerode (diamond), output the mask
 % INPUTS:
-%   vol (double matrix): psoct c-scan of tissue volume
+%   ref (double matrix): substack of psoct c-scan of tissue volume
+%   debug (bool): true = show figures
 % OUTPUTS:
-%   volm (uint16): stack of mask for each slice
+%   refm (uint16): stack of mask for each slice
 %   t (double): array of times (seconds) to run each active contour
 % Mathworks References:
 %   Multithresholding: Otsu, N., "A Threshold Selection Method from Gray-
@@ -23,29 +24,29 @@ function [volm, t] = create_mask_v3(vol, debug, NSLOTS)
 
 %% Initialize Parameters and Variables
 % Initialize matrix for storing masked volume
-volm = uint16(zeros(size(vol)));
+refm = uint8(zeros(size(ref)));
 % Create structuring element for eroding the mask
 se = strel('disk',3);
 % Number of iterations for active contour edge finding
 nactive = 50;
 % Define array for storing timer data to track perforamnce of activecont.
-t = zeros(1, size(vol, 3));
+t = zeros(1, size(ref, 3));
 % Set the range of min/max object size (connected pixels) to retain.
 min_size = 200;
-max_size = size(vol,1) * size(vol,2);
+max_size = size(ref,1) * size(ref,2);
 range = [min_size, max_size];
 
 %% Iterate through volume stack and find boundary mask for each slice
-for ii = 1:size(vol, 3)
+for ii = 1:size(ref, 3)
     %% Initialize Slice from volume + Debugging info
-    s = vol(:,:,ii);
+    s = ref(:,:,ii);
     %%% Debugging information
     fspec = 'Starting slice %i\n';
     fprintf(fspec, ii)
     
     %% Counter for b-scan within physical stack
     % Array for index within physical stack
-    stackidx = mod(ii,size(vol, 3));
+    stackidx = mod(ii,size(ref, 3));
     % If the stack index is 0 or between 4-10, then do not compute a mask.
     % This corresponds to an image index of 4-11.
     if (1 <= stackidx) && (stackidx <= 3)
@@ -98,14 +99,14 @@ for ii = 1:size(vol, 3)
         
         %%% Erode the border + Remove islands of pixels (disjoint pixels)
         bw = imerode(ac, se);
-        volm(:,:,ii) = bwareafilt(bw, range);
+        refm(:,:,ii) = bwareafilt(bw, range);
 
     else
         %%% Project mask from third slice
         % In this case, the image is between the fourth and the last image
         % in the physical slice, so the mask from the third slice will be
         % projected onto this slice.
-        volm(:,:,ii) = volm(:,:,3);
+        refm(:,:,ii) = refm(:,:,3);
     end
 
     %% Debugging figures
@@ -128,7 +129,7 @@ for ii = 1:size(vol, 3)
         figure; imshow(bw, []);
         title({'Active contour, borders eroded',['Slice ', num2str(ii)]})
         % Active contour + borders eroded + islands removed
-        figure; imshow(volm(:,:,ii), []);
+        figure; imshow(refm(:,:,ii), []);
         title({'Active contour, border eroded, islands removed',...
             ['Slice ', num2str(ii)]})
     end

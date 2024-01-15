@@ -35,22 +35,22 @@ elseif isunix
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     % Set # threads = # cores for job
     NSLOTS = str2num(getenv('NSLOTS'));
-    maxNumCompThreads(NSLOTS);
-
-    % Check to see if we already have a parpool, if not create one with
-    % our desired parameters
-    poolobj = gcp('nocreate');
-    if isempty(poolobj)
-	    myCluster=parcluster('local');
-	    % Ensure multiple parpool jobs don't overwrite other's temp files
-	    myCluster.JobStorageLocation = getenv('TMPDIR');
-	    poolobj = parpool(myCluster, NSLOTS);
-    end
+%     maxNumCompThreads(NSLOTS);
+% 
+%     % Check to see if we already have a parpool, if not create one with
+%     % our desired parameters
+%     poolobj = gcp('nocreate');
+%     if isempty(poolobj)
+% 	    myCluster=parcluster('local');
+% 	    % Ensure multiple parpool jobs don't overwrite other's temp files
+% 	    myCluster.JobStorageLocation = getenv('TMPDIR');
+% 	    poolobj = parpool(myCluster, NSLOTS);
+%     end
 
 end
 
 % Subfolder containing data
-subdir = '/dist_corrected/volume/';
+subdir = '/dist_corrected/volume/ref/';
 % Filename to parse (this will be the same for each subject)
 fname = 'ref.tif';
 %%% Complete subject ID list for Ann_Mckee_samples_10T
@@ -62,28 +62,54 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'NC_6974', 'NC_7597',...
          'NC_8095', 'NC_8653',...
          'NC_21499','NC_301181'};
-subid = {'AD_10382'};
 
 %% Iterate subjects
 for ii = 1:length(subid)
-    %% Load raw volume (TIF) and convert to MAT
-    % Define entire filepath 
+    %% Determine number of ref#.mat files
+    % Define file path to ref#.mat files
     fullpath = fullfile(dpath, subid{ii}, subdir);
-    % Define file path
-    fpath = fullfile(fullpath, fname);
-    % Import the tissue volume TIF stack
-    vol = TIFF2MAT(fpath);
-       
-    %% Create mask for each layer in volume
-    % TODO: include inner for-loop to iterate over each "ref#.mat" stack.
-    % Using the consolidated "ref.mat" stack is unpredictable since the
-    % number of images per physical slice varies.
-%     for j=1:nrefs      
+    % Create struct from directory contents
+    list = dir(fullpath);
+    % Extract names
+    names = {list.name};
+    % Create regular expression TODO: update this to have 1-2 digits
+    exp = 'ref\d+.mat';
+    % Find strings matching regexp
+    refnames = regexp(names, exp, 'match');
+    % Remove empty elements (did not match)
+    refnames = refnames(~cellfun('isempty',refnames));
+    % Counter for number of ref files
+    nref = length(refnames);
+    
+    %% Initialize matrix to store mask for entire volume
+    % Load the volume "ref.mat"
+    fname = fullfile(fullpath, 'ref.mat');
+    vol = load(fname);
+    % Create uint8 matrix to store mask
+    mask = uint8(zeros(size(vol)));
+    
+    %% Iterate over ref#.mat files and create mask for each stack
+    % Initialize counter for location in stack
+    z0 = 1;
+    % Iterate through ref#.mat stacks and create mask for each
+    for j=1:nref
+        %%% Load z-stack (TIF) and convert to MAT
+        % Update fpath for next ref stack
+        fname = strcat('ref',num2str(j),'.mat');
+        fname = fullfile(fullpath, fname);
+        ref = load(fname);
+           
+        %%% Create mask for each volume
+        % Debug argument (true = display figures for each slice)
+        debug = false;
+        % Function to create mask for each slice in stack
+        [ref_mask, t] = create_mask_v4(ref, debug);
 
-    % Debug argument (true = display figures for each slice)
-    debug = false;
-    % Function to create mask for each slice in stack
-    [mask, t] = create_mask_v3(vol, debug, NSLOTS);
+        %%% Add stack mask to volume mask stack
+        zf = z0+size(ref,3)-1;
+        mask(:,:,z0:zf) = ref_mask;
+        z0 = zf + 1;
+    end
 
     %% Overlay tissue volume with active contour mask
     % Call function to apply mask
