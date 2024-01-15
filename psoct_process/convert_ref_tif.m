@@ -1,16 +1,13 @@
-%% Combine the b-scans (ref#.mat) to remake the c-scan
+%% Convert .TIF to .MAT, compile c-scan, and save as .MAT and .TIF
+% There were three subjects that were missing ref.mat files. The purpose of
+% this script is to conver the .BTF files into matrices, combine then into
+% a c-scan stack, and save the output as a .MAT.
 % Each subdirectory ".../[subjectID]/dist_corrected/volume/ contains the
-% b-scans in the format Ref_BASIC*#.btf. These need to be converted to .MAT
-% format so that they can be compiled into a c-scan and used to generate a
-% tissue and pia mask.
+% b-scans in the format Ref_BASIC*#.btf. 
 % Subjects and respective filenames that need to be converted:
 % Subject ID: NC_301181 -- Ref_BASIC_4ds#.btf
 % Subject ID: NC_7597 -- Ref_BASIC#.btf
 % Subject ID: NC_8095 -- Ref_BASIC#.btf
-
-% TODO:
-% - verify correct file paths
-% - ensure "ref.mat" and "ref.tif" not in output folders
 
 clear; clc; close all;
 

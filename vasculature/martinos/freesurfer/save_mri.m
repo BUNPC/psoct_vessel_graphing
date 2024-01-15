@@ -2,9 +2,13 @@ function save_mri(I, name, res, datatype, permuteflag)
 % SAVE_MRI convert matrix to NII
 % INPUTS:
 %   I (matrix): input volume
-%   name (string): 
+%   name (string): output filename. options include:
+%           1. MGH file. Eg, f.mgh or f.mgz
+%           2. BHDR file Eg, f.bhdr. Result will be written to a bfloat
+%                   volume, eg f_000.bfloat.
+%           3. NIFIT file, Eg, f.nii, f.nii.gz (uncompressed and compressed)
 %   res (double array, 1x3): resolution of each dimension [x,y,z]
-%   datatype (): uchar, short, int, float, double, ushort, uint
+%   datatype (string): uchar, short, int, float, double, ushort, uint
 %              Only applies to nifti. Setting datatype to '' implies float.
 %           
 %   permuteflag (0/1): 0 = retain order of [x,y,z,t]
