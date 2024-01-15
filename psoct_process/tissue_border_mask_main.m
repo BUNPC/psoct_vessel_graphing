@@ -58,13 +58,15 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'AD_21354', 'AD_21424',...
          'CTE_6489','CTE_6912',...
          'CTE_7019','CTE_8572','CTE_7126',...
-         'NC_6047', 'NC_6839',...
-         'NC_6974', 'NC_7597',...
-         'NC_8095', 'NC_8653',...
-         'NC_21499','NC_301181'};
+         'NC_6839','NC_6974',...
+         'NC_8653','NC_21499','NC_301181'};
 
 %% Iterate subjects
 parfor (ii = 1:length(subid), NSLOTS)
+    %%% Debugging information
+    fspec = 'Started subject %s\n';
+    fprintf(fspec, subid{ii})
+
     %% Determine number of ref#.mat files
     % Define file path to ref#.mat files
     fullpath = fullfile(dpath, subid{ii}, subdir);
@@ -132,6 +134,10 @@ parfor (ii = 1:length(subid), NSLOTS)
     % Save output as .MAT
     save_ref(mask_out, mask);
     save_ref(volm_out, volm);
+
+    %%% Debugging information
+    fspec = 'Finished subject %s\n';
+    fprintf(fspec, subid{ii})
 end
 
 
