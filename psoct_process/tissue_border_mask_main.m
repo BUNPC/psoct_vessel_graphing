@@ -35,17 +35,17 @@ elseif isunix
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     % Set # threads = # cores for job
     NSLOTS = str2num(getenv('NSLOTS'));
-%     maxNumCompThreads(NSLOTS);
-% 
-%     % Check to see if we already have a parpool, if not create one with
-%     % our desired parameters
-%     poolobj = gcp('nocreate');
-%     if isempty(poolobj)
-% 	    myCluster=parcluster('local');
-% 	    % Ensure multiple parpool jobs don't overwrite other's temp files
-% 	    myCluster.JobStorageLocation = getenv('TMPDIR');
-% 	    poolobj = parpool(myCluster, NSLOTS);
-%     end
+    maxNumCompThreads(NSLOTS);
+
+    % Check to see if we already have a parpool, if not create one with
+    % our desired parameters
+    poolobj = gcp('nocreate');
+    if isempty(poolobj)
+	    myCluster=parcluster('local');
+	    % Ensure multiple parpool jobs don't overwrite other's temp files
+	    myCluster.JobStorageLocation = getenv('TMPDIR');
+	    poolobj = parpool(myCluster, NSLOTS);
+    end
 
 end
 
@@ -64,7 +64,7 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'NC_21499','NC_301181'};
 
 %% Iterate subjects
-for ii = 1:length(subid)
+parfor (ii = 1:length(subid), NSLOTS)
     %% Determine number of ref#.mat files
     % Define file path to ref#.mat files
     fullpath = fullfile(dpath, subid{ii}, subdir);
@@ -83,8 +83,8 @@ for ii = 1:length(subid)
     
     %% Initialize matrix to store mask for entire volume
     % Load the volume "ref.mat"
-    fname = fullfile(fullpath, 'ref.mat');
-    vol = load(fname);
+    fname = fullfile(fullpath, 'ref.tif');
+    vol = TIFF2MAT(fname);
     % Create uint8 matrix to store mask
     mask = uint8(zeros(size(vol)));
     
@@ -98,6 +98,13 @@ for ii = 1:length(subid)
         fname = strcat('ref',num2str(j),'.mat');
         fname = fullfile(fullpath, fname);
         ref = load(fname);
+        if isfield(ref,'ref')
+            ref = ref.ref;
+        elseif isfield(ref, 'Ref')
+            ref = ref.Ref;
+        else
+            error('Unexpected structure.')
+        end
            
         %%% Create mask for each volume
         % Debug argument (true = display figures for each slice)
@@ -117,13 +124,25 @@ for ii = 1:length(subid)
     
     %% Save mask and masked volume    
     % Create output filenames
-    mask_out = fullfile(fullpath, strcat('mask_v3'));
-    volm_out = fullfile(fullpath, strcat('ref_4ds_masked_v3'));
+    mask_out = fullfile(fullpath, strcat('mask'));
+    volm_out = fullfile(fullpath, strcat('ref_masked'));
     % Save output as .TIF
     segmat2tif(mask, strcat(mask_out, '.tif'));
     segmat2tif(volm, strcat(volm_out, '.tif'));
     % Save output as .MAT
-    save(mask_out, 'mask', '-v7.3');
-    save(volm_out, 'volm', '-v7.3');
-    
+    save_ref(mask_out, mask);
+    save_ref(volm_out, volm);
+end
+
+
+%% Function to save during parallelization
+function save_ref(fout, vol)
+% Save the stacked ref matrix
+% INPUTS:
+%   fout (string): the filepath for the output file to save
+%   vol (double matrix): the stack of images to save
+
+% Save the output
+save(fout,'vol','-v7.3')
+
 end

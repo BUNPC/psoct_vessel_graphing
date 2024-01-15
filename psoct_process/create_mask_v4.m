@@ -28,7 +28,7 @@ refm = uint8(zeros(size(ref)));
 % Create structuring element for eroding the mask
 se = strel('disk',3);
 % Number of iterations for active contour edge finding
-nactive = 50;
+nactive = 500;
 % Define array for storing timer data to track perforamnce of activecont.
 t = zeros(1, size(ref, 3));
 % Set the range of min/max object size (connected pixels) to retain.
