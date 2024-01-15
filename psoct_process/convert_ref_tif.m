@@ -55,7 +55,7 @@ end
 % Subfolder containing data
 subdir = '/dist_corrected/volume/';
 % Subject IDs
-subid = {'NC_7597','NC_8095','NC_301181'};
+subid = {'NC_301181'};
 
 
 for ii = 1:length(subid)
@@ -83,10 +83,17 @@ for ii = 1:length(subid)
     refnames = refnames(~cellfun('isempty',refnames));
     
     %% Combine the ref#.mat files into single matrix (c-scan)  
-    % Load first ref stack for initializing matrix
+    %%% Load first ref stack for initializing matrix
     fname = strcat(fbase, '1.btf');
     filename = fullfile(fpath, fname);
-    ref = TIFF2MAT(filename);    
+    ref = TIFF2MAT(filename);
+    % Convert from single precision to UINT8
+    ref = uint8(mat2gray(ref) .* 255);
+    % Save the ref as a .MAT
+    fout = fullfile(fpath, 'ref1.mat');
+    save(fout,'ref','-v7.3');
+    
+    %%% Initialize matrix to store volume
     % Get dimensions of first stack
     [y,x,z] = size(ref);
     % Extrapolate total number of images in stack
@@ -97,18 +104,24 @@ for ii = 1:length(subid)
     vol(:,:,1:size(ref,3)) = ref;
     % Indices to track last element index in z stack
     z0 = size(ref,3) + 1;
-    % Iterate through ref#.mat files and add to vol
+    
+    %%% Iterate through ref#.mat files and add to vol
     for j=2:length(refnames)
         % Filepath to jth ref.mat file
         fname = strcat(fbase, num2str(j), '.btf');
         filename = fullfile(fpath, fname);
         % Load the ref stack
-        tmp = load(filename);
-        ref = tmp.Ref;
+        ref = TIFF2MAT(filename);
+        % Convert from single precision to UINT8
+        ref = uint8(mat2gray(ref) .* 255);
         % Add to volume matrix
         zf = z0+size(ref,3)-1;
         vol(:,:,z0:zf) = ref;
         z0 = zf + 1;
+        % Save the individual ref as a .MAT
+        fname = strcat('ref', num2str(j), '.mat');
+        fout = fullfile(fpath, fname);
+        save(fout,'ref','-v7.3');
     end
 
     %% Save the output volume
