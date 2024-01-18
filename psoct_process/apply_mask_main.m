@@ -66,17 +66,17 @@ maxNumCompThreads(NSLOTS);
 
 % Check to see if we already have a parpool, if not create one with
 % our desired parameters
-% poolobj = gcp('nocreate');
-% if isempty(poolobj)
-%     myCluster=parcluster('local');
-%     % Ensure multiple parpool jobs don't overwrite other's temp files
-%     myCluster.JobStorageLocation = getenv('TMPDIR');
-%     poolobj = parpool(myCluster, NSLOTS);
-% end
+poolobj = gcp('nocreate');
+if isempty(poolobj)
+    myCluster=parcluster('local');
+    % Ensure multiple parpool jobs don't overwrite other's temp files
+    myCluster.JobStorageLocation = getenv('TMPDIR');
+    poolobj = parpool(myCluster, NSLOTS);
+end
 
 %% Iterate through subjects. Create and apply mask.
-% parfor (ii = 1:length(subid), NSLOTS)
-for ii = 1:length(subid)
+parfor (ii = 1:length(subid), NSLOTS)
+% for ii = 1:length(subid)
     %%% Debugging information
     fprintf('Starting Subject %s\n',subid{ii})
 
