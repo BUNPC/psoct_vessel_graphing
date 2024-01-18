@@ -52,17 +52,30 @@ addpath(genpath(topdir));
 
 %% Data Directory on laptop
 
-% Path to top-level directory
-dpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
-    'test_data\Ann_Mckee_samples_10T\'];
+if ispc
+    % Path to top-level directory
+    dpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
+        'test_data\Ann_Mckee_samples_10T\'];
+    
+    % Metrics output path
+    mpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
+        'test_data\Ann_Mckee_samples_10T\metrics\spie_pho_west_2024\'];
 
-% Metrics output path
-mpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
-    'test_data\Ann_Mckee_samples_10T\metrics\spie_pho_west_2024\'];
+elseif isunix
+    % Path to top-level directory
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+    
+    % Metrics output path
+    mpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics';
+end
 
+%%% Common directories + filenames
 % Volume directory + volume filename (same for each subject)
+volname = 'ref_4ds_norm_inv_refined_mask.tif';
 voldir = '\dist_corrected\volume\';
-volname = 'ref_4ds_norm_inv.tif';
+%%% graph matlab struct
+graphname = 'seg_refined_masked_graph_data.mat';
+graphdir = '\combined_segs\gsigma_3-5-7_5-7-9_7-9-11\';
 
 % Output filenames for metrics structs
 ad_cte_fname = 'AD_CTE_metrics.mat';
@@ -72,10 +85,6 @@ nc_fout = fullfile(mpath, nc_fname);
 anova_fname = 'ANOVA_ad_cte_nc.mat';
 anova_fout = fullfile(mpath, anova_fname);
 
-%%% graph matlab struct
-graphname = 'seg_maskedgraph_data.mat';
-graphdir = '\combined_segs\gsigma_3-5-7_5-7-9_7-9-11\';
-
 % Voxel dimensions (microns) and volume (cubic micron)
 vox_dim = [12, 12, 15];
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
@@ -83,11 +92,11 @@ vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 %%% AD / CTE subject IDs and directories
 % AD/CTE subject ID list for Ann_Mckee_samples_10T
 subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
-         'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126'};
+         'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126', 'CTE_8572'};
 
 %%% NC subject IDs and directories
 % Normal Control subject ID list for Ann_Mckee_samples_10T
-% subid = {'NC_301181','NC_21499','NC_6839','NC_6974','NC_7597','NC_8653'};
+% subid = {'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
 
 
 %% Calculate metrics (total length, length density, mean length, tortuosity)
@@ -195,8 +204,8 @@ total_len = vertcat(ad_total_len, cte_total_len, nc_total_len);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
     {'AD 10382', 'AD 20832', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+        'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126', 'CTE_8572',...
+        'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, total_len);
 title('Total Vessel Length (\mum)')
 ylabel('Length (\mum)')
@@ -220,8 +229,8 @@ avg_len = vertcat(ad_avg_len, cte_avg_len, nc_avg_len);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
     {'AD 10382', 'AD 20832', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+        'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126', 'CTE_8572',...
+        'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, avg_len);
 title('Average Vessel Length (\mum)')
 ylabel('Length (\mum)')
@@ -245,8 +254,8 @@ lenden = vertcat(ad_lenden, cte_lenden, nc_lenden);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
     {'AD 10382', 'AD 20832', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+        'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126', 'CTE_8572',...
+        'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, lenden);
 title('Vessel Length Density (\mum / \mu^3)')
 ylabel('Length Density (\mum^2)')
@@ -269,8 +278,8 @@ nves = vertcat(ad_nves, cte_nves, nc_nves);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
     {'AD 10382', 'AD 20832', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+        'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126', 'CTE_8572',...
+        'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, nves);
 title('Total Vessels per Sample')
 ylabel('Number of Vessels')
@@ -293,8 +302,8 @@ tort = vertcat(ad_tort, cte_tort, nc_tort );
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
     {'AD 10382', 'AD 20832', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+        'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126', 'CTE_8572',...
+        'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, tort);
 title('Tortuosity (curve length / euclidean distance)')
 ylabel('Tortuosity (arc-chord ratio)')
@@ -385,7 +394,7 @@ met = load(ad_cte_fout);
 met = met.met;
 % Indices in matrix corresponding to AD and CTE
 ad_idx = 1:5;
-cte_idx = 6:9;
+cte_idx = 6:10;
 % Separate CTE and AD
 ad = met(ad_idx);
 cte = met(cte_idx);
@@ -396,8 +405,8 @@ nc = met.met;
 
 %%% Define sample size for each group
 n_ad = 5;
-n_cte = 4;
-n_nc = 6;
+n_cte = 5;
+n_nc = 5;
 
 %%% Define arrays for unbalanced ANOVA
 % Factor name arrays
