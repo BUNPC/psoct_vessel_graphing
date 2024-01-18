@@ -52,46 +52,58 @@ addpath(genpath(topdir));
 
 %% Data Directory on laptop
 
-% Path to top-level directory
-dpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
-    'test_data\Ann_Mckee_samples_10T\'];
+if ispc
+    % Path to top-level directory
+    dpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
+        'test_data\Ann_Mckee_samples_10T\'];
+    
+    % Metrics output path
+    mpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
+        'test_data\Ann_Mckee_samples_10T\metrics\spie_pho_west_2024\'];
+    
+    % Volume and graph directories
+    voldir = '\dist_corrected\volume\ref\';
+    graphdir = '\combined_segs\gsigma_3-5-7_5-7-9_7-9-11\';
 
-% Metrics output path
-mpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
-    'test_data\Ann_Mckee_samples_10T\metrics\spie_pho_west_2024\'];
+elseif isunix
+    % Path to top-level directory
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+    
+    % Metrics output path
+    mpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics';
+    
+    % Volume and graph directories
+    voldir = '/dist_corrected/volume/ref/';
+    graphdir = '/dist_corrected/volume/combined_segs/gsigma_3-5-7_5-7-9_7-9-11/';
+end
 
+%%% Common directories + filenames
 % Volume directory + volume filename (same for each subject)
-voldir = '\dist_corrected\volume\';
-volname = 'ref_4ds_norm_inv.tif';
+volname = 'ref_4ds_norm_inv_refined_masked.tif';
+% graph matlab struct
+graphname = 'seg_refined_masked_graph_data.mat';
 
 % Output filenames for metrics structs
-ad_cte_fname = 'AD_CTE_metrics_noAD20832.mat';
+ad_cte_fname = 'AD_CTE_metrics.mat';
 ad_cte_fout = fullfile(mpath, ad_cte_fname);
 nc_fname = 'NC_metrics.mat';
 nc_fout = fullfile(mpath, nc_fname);
-anova_fname = 'ANOVA_ad_cte_nc_noAD20832.mat';
+anova_fname = 'ANOVA_ad_cte_nc.mat';
 anova_fout = fullfile(mpath, anova_fname);
-
-%%% graph matlab struct
-graphname = 'seg_maskedgraph_data.mat';
-graphdir = '\combined_segs\gsigma_3-5-7_5-7-9_7-9-11\';
 
 % Voxel dimensions (microns) and volume (cubic micron)
 vox_dim = [12, 12, 15];
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
 %%% AD / CTE subject IDs and directories
+%%% AD / CTE subject IDs and directories
 % AD/CTE subject ID list for Ann_Mckee_samples_10T
 % subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
-%          'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126'};
-% subid = {'AD_10382', 'AD_20969', 'AD_21354', 'AD_21424',...
-%          'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126'};
+%          'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126', 'CTE_8572'};
 
 %%% NC subject IDs and directories
 % Normal Control subject ID list for Ann_Mckee_samples_10T
-subid = {'NC_301181','NC_21499','NC_6839','NC_6974','NC_7597','NC_8653'};
-
-
+subid = {'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
 %% Calculate metrics (total length, length density, mean length, tortuosity)
 %{
 %%% Initialize struct for storing metrics
@@ -120,7 +132,7 @@ for ii = 1:length(subid)
 
     %%% Load Graph and Segmentation
     % Define entire filepath 
-    fullpath = fullfile(dpath, subid{ii}, voldir, graphdir);
+    fullpath = fullfile(dpath, subid{ii}, graphdir);
     filename = strcat(fullpath, graphname);
     %%% Load Data struct
     Data = load(filename, 'Data');
@@ -195,13 +207,13 @@ save(nc_fout, 'met', '-v7.3');
 %}
 
 %% Generate Barcharts of metrics
-%{
+
 %%%% load metrics for AD & CTE
 met = load(ad_cte_fout);
 met = met.met;
 % Indices in matrix corresponding to AD and CTE
-ad_idx = 1:4;
-cte_idx = 5:8;
+ad_idx = 1:5;
+cte_idx = 5:9;
 % Separate CTE and AD
 ad = met(ad_idx);
 cte = met(cte_idx);
@@ -217,9 +229,9 @@ nc_total_len = vertcat(nc.total_length);
 total_len = vertcat(ad_total_len, cte_total_len, nc_total_len);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
-    {'AD 10382', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+    {'AD 10382', 'AD_20832', 'AD 20969', 'AD 21354','AD 21424',...
+    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126','CTE_8572'...
+    'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, total_len);
 title('Total Vessel Length (\mum)')
 ylabel('Length (\mum)')
@@ -231,7 +243,7 @@ b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-5:end, :) =...
     [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
 % Save output
-mout = fullfile(mpath, 'total_length_bar_noAD20832');
+mout = fullfile(mpath, 'total_length_bar');
 saveas(gca, mout, 'png')
 
 
@@ -242,9 +254,9 @@ nc_avg_len = vertcat(nc.avg_length);
 avg_len = vertcat(ad_avg_len, cte_avg_len, nc_avg_len);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
-    {'AD 10382', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+    {'AD 10382', 'AD_20832', 'AD 20969', 'AD 21354','AD 21424',...
+    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126','CTE_8572'...
+    'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, avg_len);
 title('Average Vessel Length (\mum)')
 ylabel('Length (\mum)')
@@ -256,7 +268,7 @@ b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-5:end, :) =...
     [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
 % Save output
-mout = fullfile(mpath, 'avg_length_bar_noAD20832');
+mout = fullfile(mpath, 'avg_length_bar');
 saveas(gca, mout, 'png')
 
 
@@ -267,9 +279,9 @@ nc_lenden =  vertcat(nc.length_density);
 lenden = vertcat(ad_lenden, cte_lenden, nc_lenden);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
-    {'AD 10382', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+    {'AD 10382', 'AD_20832', 'AD 20969', 'AD 21354','AD 21424',...
+    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126','CTE_8572'...
+    'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, lenden);
 title('Vessel Length Density (\mum / \mu^3)')
 ylabel('Length Density (\mum^2)')
@@ -281,7 +293,7 @@ b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-5:end, :) =...
     [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
 % Save output
-mout = fullfile(mpath, 'length_density_bar_noAD20832');
+mout = fullfile(mpath, 'length_density_bar');
 saveas(gca, mout, 'png')
 
 %%% total vessels
@@ -291,9 +303,9 @@ nc_nves = vertcat(nc.total_vessels);
 nves = vertcat(ad_nves, cte_nves, nc_nves);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
-    {'AD 10382', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+    {'AD 10382', 'AD_20832', 'AD 20969', 'AD 21354','AD 21424',...
+    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126','CTE_8572'...
+    'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, nves);
 title('Total Vessels per Sample')
 ylabel('Number of Vessels')
@@ -305,20 +317,20 @@ b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-5:end, :) =...
     [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
 % Save output
-mout = fullfile(mpath, 'total_vessels_bar_noAD20832');
+mout = fullfile(mpath, 'total_vessels_bar');
 saveas(gca, mout, 'png')
 
 %%% tortuosity (unitless)
-%{
+
 ad_tort = vertcat(ad.tortuosity);
 cte_tort = vertcat(cte.tortuosity);
 nc_tort = vertcat(nc.tortuosity);
 tort = vertcat(ad_tort, cte_tort, nc_tort );
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
-    {'AD 10382', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+    {'AD 10382', 'AD_20832', 'AD 20969', 'AD 21354','AD 21424',...
+    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126','CTE_8572'...
+    'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, tort);
 title('Tortuosity (curve length / euclidean distance)')
 ylabel('Tortuosity (arc-chord ratio)')
@@ -330,7 +342,7 @@ b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-5:end, :) =...
     [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
 % Save output
-mout = fullfile(mpath, 'tortuosity_bar_noAD20832');
+mout = fullfile(mpath, 'tortuosity_bar');
 saveas(gca, mout, 'png')
 %}
 
@@ -343,9 +355,9 @@ nc_bden = vertcat(nc.branchden) .* 1e9;
 bden = vertcat(ad_bden, cte_bden, nc_bden);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
-    {'AD 10382', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+    {'AD 10382', 'AD_20832', 'AD 20969', 'AD 21354','AD 21424',...
+    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126','CTE_8572'...
+    'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, bden);
 title('Branch Density (branches / mm^3)')
 ylabel('Branches / mm^3')
@@ -357,7 +369,7 @@ b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-5:end, :) =...
     [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
 % Save output
-mout = fullfile(mpath, 'branch_density_bar_noAD20832');
+mout = fullfile(mpath, 'branch_density_bar');
 saveas(gca, mout, 'png')
 
 %%% Fraction Volume (unitless)
@@ -369,9 +381,9 @@ nc_fvol = vertcat(nc.segvol) ./ vertcat(nc.volume);
 fvol = vertcat(ad_fvol, cte_fvol, nc_fvol);
 figure('units','normalized','outerposition',[0 0 1 1])
 x = categorical(...
-    {'AD 10382', 'AD 20969', 'AD 21354','AD 21424',...
-    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126',...
-    'NC 301181','NC 21499','NC 6839','NC 6974','NC 7597','NC 8653'});
+    {'AD 10382', 'AD_20832', 'AD 20969', 'AD 21354','AD 21424',...
+    'CTE 6489', 'CTE 6912', 'CTE 7019', 'CTE 7126','CTE_8572'...
+    'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'});
 b = bar(x, fvol);
 title('Vessel Fraction Volume')
 ylabel('um^3 / um^3')
@@ -383,7 +395,7 @@ b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
 b.CData(end-5:end, :) =...
     [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
 % Save output
-mout = fullfile(mpath, 'vessel_fraction_volume_bar_noAD20832');
+mout = fullfile(mpath, 'vessel_fraction_volume_bar');
 saveas(gca, mout, 'png')
 %}
 
@@ -486,8 +498,8 @@ set(b,'LineWidth',4)
 met = load(ad_cte_fout);
 met = met.met;
 % Indices in matrix corresponding to AD and CTE
-ad_idx = 1:4;
-cte_idx = 5:8;
+ad_idx = 1:5;
+cte_idx = 5:9;
 % Separate CTE and AD
 ad = met(ad_idx);
 cte = met(cte_idx);
@@ -496,9 +508,9 @@ met = load(nc_fout);
 nc = met.met;
 
 %%% Define sample size for each group
-n_ad = 4;
-n_cte = 4;
-n_nc = 6;
+n_ad = 5;
+n_cte = 5;
+n_nc = 5;
 
 %%% Define arrays for unbalanced ANOVA
 % Factor name arrays
@@ -510,7 +522,7 @@ g_ad_cte = [repmat("AD",n_ad,1); repmat("CTE",n_cte,1)];
 ad_tort = vertcat(ad.tort);
 nc_tort = vertcat(nc.tort);
 cte_tort = vertcat(cte.tort);
-ad_nc_tort = [ad_tort, nc_tort];
+ad_nc_tort = [ad_tort', nc_tort'];
 cte_nc_tort = [cte_tort', nc_tort'];
 ad_cte_tort = [ad_tort',cte_tort'];
 % Group labels for unbalanced

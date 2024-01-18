@@ -28,15 +28,17 @@ addpath(genpath(topdir));
 %          'NC_21499', 'NC_301181'};
 
 % Matrices that require truncating
-% subid = {'CTE_8572','CTE_7126',...
-%          'NC_6839',  'NC_6974', 'NC_8653',...
-%          'NC_21499', 'NC_301181'};
-
-% Matrices that don't require truncating
-subid = {'AD_10382', 'AD_20832', 'AD_20969',...
-         'AD_21354', 'AD_21424',...
-         'CTE_6489', 'CTE_6912',...
-         'CTE_7019'};
+subid = {'CTE_7126','CTE_8572',...
+         'NC_6839',  'NC_6974', 'NC_8653',...
+         'NC_21499', 'NC_301181'};
+subid = {'NC_301181'};
+trunc = {'CTE_7126','CTE_8572',...
+         'NC_6839',  'NC_6974', 'NC_8653',...
+         'NC_21499', 'NC_301181'};
+subid = {'AD_10382'};
+% Array of final image in stack
+zmins = [201, 198, 180, 198, 187, 178, 220];
+zcnt = 1;
 
 %% Initialize directories and filenames
 
@@ -60,23 +62,8 @@ vol_name = 'ref';
 % Normalized PSOCT tissue volume
 voln_name = 'ref_4ds_norm_inv';
 
-%% Parallel Processing
-NSLOTS = str2num(getenv('NSLOTS'));
-maxNumCompThreads(NSLOTS);
-
-% Check to see if we already have a parpool, if not create one with
-% our desired parameters
-poolobj = gcp('nocreate');
-if isempty(poolobj)
-    myCluster=parcluster('local');
-    % Ensure multiple parpool jobs don't overwrite other's temp files
-    myCluster.JobStorageLocation = getenv('TMPDIR');
-    poolobj = parpool(myCluster, NSLOTS);
-end
-
 %% Iterate through subjects. Create and apply mask.
-parfor (ii = 1:length(subid), NSLOTS)
-% for ii = 1:length(subid)
+for ii = 1:length(subid)
     %%% Debugging information
     fprintf('Starting Subject %s\n',subid{ii})
 
@@ -101,19 +88,36 @@ parfor (ii = 1:length(subid), NSLOTS)
     fpath = fullfile(dpath, subid{ii}, subdir, subdir2, segdir, 'seg.mat');
     seg = load(fpath,'seg');
     seg = seg.seg;
+    
+    %%% Set zmin if truncating finals slices
+    % Truncate the mask, and the others will be subsequently truncated.
+    sid = subid{ii};
+    if any(strcmp(trunc,sid))
+        % Retrieve the zmin from the array
+        zmin = zmins(ii);
+        % Truncate the mask
+        mask = mask(:,:,1:zmin);
+    end
 
     %%% Verify dimensions of mask and volumes
+    % The segmentation file was made using the normalized volume. Therefore
+    % the dimensions of the mask must be made equal to those of the seg.
     if any(size(mask) ~= size(vol)) || any(size(mask) ~= size(voln))
-        % Print debugging info
-        fprintf('Dimension mismatch for subject %s\n',subid{ii});
-        fprintf('Mask dimensions: [%i,%i,%i]\n',...
-            size(mask,1),size(mask,2),size(mask,3));
-        fprintf('Volume dimensions: [%i,%i,%i]\n',...
-            size(vol,1),size(vol,2),size(vol,3));
-        fprintf('Normalized volume dimensions: [%i,%i,%i]\n',...
-            size(voln,1),size(voln,2),size(voln,3));
-        % Skip this iteration
-        continue
+        %%% Truncate mask & vol (ref) to match dimensions of normalized
+        m = size(mask);
+        vn = size(voln);
+        % Find smallest dimensions
+        ymin = min(m(1), vn(1));
+        xmin = min(m(2), vn(2));
+        zmin = min(m(3), vn(3));
+        % Truncate all volumes
+        mask = mask(1:ymin, 1:xmin, 1:zmin);
+        vol = vol(1:ymin, 1:xmin, 1:zmin);
+        voln = voln(1:ymin, 1:xmin, 1:zmin);
+        seg = seg(1:ymin, 1:xmin, 1:zmin);
+        % Assert that the new matrices are all equivalent
+        assert(isequal(size(mask), size(voln)),'Mask and voln dimensions mismatch')
+        assert(isequal(size(mask), size(vol)),'Mask and voln dimensions mismatch')
     end
 
     %%% Apply mask
@@ -123,14 +127,10 @@ parfor (ii = 1:length(subid), NSLOTS)
     volnm = voln .* uint16(mask);
     % Mask the segmentation (segm)
     segm = seg .* uint8(mask);
+    % Clear variables to save memory
+    clear vol; clear voln; clear seg;    
     
-    %%% Overlays
-    % Overlay the segmentation and non-normalized masked volume
-    fout = fullfile(dpath, subid{ii}, subdir, subdir2, segdir,...
-                    strcat(seg_name, '_refined_mask_overlay.tif'));
-    overlay_vol_seg(volm, segm, 'green', fout);
-
-    % Overlay the segmentation and normalized masked volume
+    %%% Overlays the segmentation and normalized masked volume
     fout = fullfile(dpath, subid{ii}, subdir, subdir2, segdir,...
                     strcat(seg_name, '_refined_mask_overlay_norm.tif'));
     overlay_vol_seg(volnm, segm, 'green', fout);
@@ -139,12 +139,12 @@ parfor (ii = 1:length(subid), NSLOTS)
     % Export masked non-normalized volume (volm)
     volm_out = fullfile(dpath, subid{ii}, subdir1,...
         strcat(vol_name,'_refined_masked.tif'));
-    save_vol(volm_out, volm);
+    segmat2tif(volm, volm_out);
     
     % Export masked normalized volume (volnm)
     volnm_out = fullfile(dpath, subid{ii}, subdir1,...
         strcat(voln_name,'_refined_masked.tif'));
-    save_vol(volnm_out, volnm);
+    segmat2tif(volnm, volnm_out);
     
     % Export masked segmentation (segm)
     segm_out = fullfile(dpath, subid{ii}, subdir, subdir2, segdir,...

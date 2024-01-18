@@ -60,6 +60,10 @@ if ispc
     % Metrics output path
     mpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\' ...
         'test_data\Ann_Mckee_samples_10T\metrics\spie_pho_west_2024\'];
+    
+    % Volume and graph directories
+    voldir = '\dist_corrected\volume\ref\';
+    graphdir = '\combined_segs\gsigma_3-5-7_5-7-9_7-9-11\';
 
 elseif isunix
     % Path to top-level directory
@@ -67,15 +71,19 @@ elseif isunix
     
     % Metrics output path
     mpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics';
+    
+    % Volume and graph directories
+    voldir = '/dist_corrected/volume/ref/';
+    graphdir = '/dist_corrected/volume/combined_segs/gsigma_3-5-7_5-7-9_7-9-11/';
 end
 
 %%% Common directories + filenames
 % Volume directory + volume filename (same for each subject)
-volname = 'ref_4ds_norm_inv_refined_mask.tif';
-voldir = '\dist_corrected\volume\';
+volname = 'ref_4ds_norm_inv_refined_masked.tif';
+
 %%% graph matlab struct
 graphname = 'seg_refined_masked_graph_data.mat';
-graphdir = '\combined_segs\gsigma_3-5-7_5-7-9_7-9-11\';
+
 
 % Output filenames for metrics structs
 ad_cte_fname = 'AD_CTE_metrics.mat';
@@ -127,7 +135,7 @@ for ii = 1:length(subid)
 
     %%% Load Graph and Segmentation
     % Define entire filepath 
-    fullpath = fullfile(dpath, subid{ii}, voldir, graphdir);
+    fullpath = fullfile(dpath, subid{ii}, graphdir);
     filename = strcat(fullpath, graphname);
     %%% Load Data struct
     Data = load(filename, 'Data');
@@ -163,6 +171,9 @@ for ii = 1:length(subid)
         % convert segment end nodes to cartesian coordinate
         node1 = graph.nodes(endnodes(j,1), :);
         node2 = graph.nodes(endnodes(j,2), :);
+        % Convert cartesian coordinate to offset in microns
+        node1 = node1 .* vox_dim;
+        node2 = node2 .* vox_dim;
         % Calcualte euclidean distance of segment
         euc = sqrt((node1(1) - node2(1)).^2 +...
                     (node1(2) - node2(2)).^2 +...
@@ -172,6 +183,8 @@ for ii = 1:length(subid)
     end
     % Remove infinite tortuosity (loops)
     tort(tort==inf) = [];
+    % save the entire tortuosity array
+    met(ii).tort = tort;
     % Add to metrics structures
     met(ii).tortuosity = mean(tort);   
 end
