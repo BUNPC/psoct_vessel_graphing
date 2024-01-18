@@ -43,9 +43,9 @@ Data.angio = seg;
 
 %%% Create new filename for graph and add .MAT extension
 if rmloop_bool
-    fname_graph = strcat(fname_seg, 'rmloop_graph_data.mat');
+    fname_graph = strcat(fname_seg, '_rmloop_graph_data.mat');
 else
-    fname_graph = strcat(fname_seg, 'graph_data.mat');
+    fname_graph = strcat(fname_seg, '_graph_data.mat');
 end
 fout = fullfile(fullpath, fname_graph);
 save(fout,'Data', '-v7.3');
