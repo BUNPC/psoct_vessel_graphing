@@ -87,13 +87,20 @@ for ii = 1:length(gsigma)
     %       "Three-dimensional multi-scale line filter for segmentation..."
     % First condition
     idx = find((L3 < L2) & (L2 < L1) & (L1 <= 0));
-    Lambda123(idx) = abs(L3(idx)).*(L2(idx)./L3(idx)).^gamma23.*...
-                    (1+L1(idx)./abs(L2(idx))).^gamma12;
+    if (gamma12 == gamma23) && (gamma12 == 0.5)
+        Lambda123(idx) = sqrt( abs(L3(idx)) .* (abs(L2(idx) + L1(idx))));
+    else
+        Lambda123(idx) = abs(L3(idx)).*(L2(idx)./L3(idx)).^gamma23.*...
+                        (1+L1(idx)./abs(L2(idx))).^gamma12;
+    end
     % Second condition
     idx = find((L3 < L2) & (L2 < 0) & (0 < L1) & (L1 < abs(L2)./alpha));
-    Lambda123(idx) = abs(L3(idx)).*(L2(idx)./L3(idx)).^gamma23.*...
-                    (1-alpha*L1(idx)./abs(L2(idx))).^gamma12;
-    
+    if (gamma12 == gamma23) && (gamma12 == 0.5)
+        Lambda123(idx) = sqrt( abs(L3(idx)) .* (abs(L2(idx) - alpha.*L1(idx))));
+    else
+        Lambda123(idx) = abs(L3(idx)).*(L2(idx)./L3(idx)).^gamma23.*...
+                        (1-alpha*L1(idx)./abs(L2(idx))).^gamma12;
+    end
     %%% Take maximum likelihood values for each vesselness measure (w)
     % If there is only one sigma value, then set w equal to the first
     % output of Lamba123
@@ -113,9 +120,8 @@ w = (w-min(w(:))) / (max(w(:))-min(w(:)));
 % The threshold (pmin) determines the cutoff for this likelihood.
 % (w < pmin) = 0 (non-vessel)
 % (w < pmin) = 1 (vessel)
-w_thresh = w;
-w_thresh(w<pmin) = 0;
-w_thresh(w>=pmin) = 1;
+w(w<pmin) = 0;
+w(w>=pmin) = 1;
 
 %% Remove small disconnected segments via connectivity analysis
 % Remove segments that are composed of fewer than 30 voxels.
