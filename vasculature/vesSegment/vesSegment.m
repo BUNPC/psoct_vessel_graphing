@@ -88,15 +88,15 @@ for ii = 1:length(gsigma)
     % First condition
     idx = find((L3 < L2) & (L2 < L1) & (L1 <= 0));
     if (gamma12 == gamma23) && (gamma12 == 0.5)
-        Lambda123(idx) = sqrt( abs(L3(idx)) .* (abs(L2(idx) + L1(idx))));
+        Lambda123(idx) = sqrt( abs(L3(idx)) .* ( abs(L2(idx)) + L1(idx)) );
     else
-        Lambda123(idx) = abs(L3(idx)).*(L2(idx)./L3(idx)).^gamma23.*...
-                        (1+L1(idx)./abs(L2(idx))).^gamma12;
+        Lambda123(idx) = abs(L3(idx)).*((L2(idx)./L3(idx)).^gamma23).*...
+                        ((1+L1(idx)./abs(L2(idx))).^gamma12);
     end
     % Second condition
     idx = find((L3 < L2) & (L2 < 0) & (0 < L1) & (L1 < abs(L2)./alpha));
     if (gamma12 == gamma23) && (gamma12 == 0.5)
-        Lambda123(idx) = sqrt( abs(L3(idx)) .* (abs(L2(idx) - alpha.*L1(idx))));
+        Lambda123(idx) = sqrt( abs(L3(idx)) .* (abs(L2(idx)) - alpha.*L1(idx)) );
     else
         Lambda123(idx) = abs(L3(idx)).*(L2(idx)./L3(idx)).^gamma23.*...
                         (1-alpha*L1(idx)./abs(L2(idx))).^gamma12;
