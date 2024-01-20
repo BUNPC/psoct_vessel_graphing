@@ -40,11 +40,11 @@ if ispc
     subid = 'NC_6047';
     subdir = '\dist_corrected\volume\';
     % Filename to parse (this is test data)
-    fname = 'ref_4ds_norm_inv';
+    fname = 'ref_4ds_norm_inv_crop';
     % filename extension
     ext = '.tif';
     % sigma for Gaussian smoothing
-    gsigma = [3, 5, 7, 9];
+    gsigma = [2,3,4];
 
 %%% Computing cluster (SCC)
 elseif isunix
@@ -66,15 +66,13 @@ elseif isunix
              'NC_6974', 'NC_7597',...
              'NC_8095', 'NC_8653',...
              'NC_21499','NC_301181'};
-
-    subid = {'CTE_6489','NC_7597'};
-
     
     %%% Gaussian sigma arrays:
     % Small vessel sigma array = [1, 3, 5]
     % Medium vessel sigma array = [5, 7, 9]
     % Large vessel sigma array = [7, 9, 11]
     sigmas = [3,5,7; 5,7,9; 7,9,11];
+    sigmas = [2,3,4];    
     
     %%% Create cell array of subject ID and sigma for job array on the SCC 
     nrow = length(subid)*size(sigmas,1);
@@ -134,19 +132,14 @@ end
 gsize = 2.*ceil(2.*gsigma)+1;
 
 %%% Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.22:0.01:0.24;
+min_prob = 0.18:0.04:0.26;
+min_prob = 0.23;
 
 %%% A segment with < "min_conn" voxels will be removed
-min_conn = 30;
-
-%%% Array (or single value) of radii for eroding the mask
-radii = 40;
+min_conn = 5;
 
 %%% Boolean for converting segment to graph (0 = do not convert. 1 = convert)
 graph_boolean = 0;
-
-%%% Boolean for applying mask
-mask_boolean = 1;
 
 %%% Boolean for visualizing the graph debugging plots
 viz = false;
@@ -206,7 +199,9 @@ for j = 1:length(min_prob)
     % Convert binary matrix to unsigned 8-bit to save memory
     I_seg = uint8(I_seg);
     % Remove segments with fewer than voxmin connected voxels
-    I_seg = rm_short_vessels(I_seg, min_conn);
+    if min_conn > 0
+        I_seg = rm_short_vessels(I_seg, min_conn);
+    end
 
     %%% Save unmasked & thresholded segmentation to TIF
     % Create filename for probability
@@ -214,7 +209,7 @@ for j = 1:length(min_prob)
     fout = strcat(fullfile(fullpath, fname_seg), '.tif');
     segmat2tif(I_seg, fout);
 
-    %%% Overlay mask volume (grayscale) and unmasked segmentation (green)
+    %%% Overlay volume (grayscale) and unmasked segmentation (green)
     % Create output filename
     overlay_name = strcat(fname_seg, '_overlay.tif');
     overlay_fout = fullfile(fullpath, overlay_name);
@@ -224,78 +219,5 @@ for j = 1:length(min_prob)
     %%% Create a graph of the segmentation
     if graph_boolean
         seg_graph_init(I_seg, vox_dim, fullpath, fname_seg, viz);
-    end
-
-    %% Mask segmented volume (remove erroneous vessels) & Convert to Graph
-    % The function for creating the mask requires a radius. This for-loop will
-    % iterate over an array of radii. For each radius, it will create a mask,
-    % apply the mask to the segmentation volume, and save the output.
-    % If the graph_boolean is true (1), then the masked segmentation will be
-    % converted to a graph.
-
-    % Create 3D mask from original volume
-    mask = logical(vol);
-    for k = 1:length(radii)
-        %%% Apply mask and save .MAT and .TIF
-        [I_seg_masked] = mask_segments(I_seg, mask, radii(k),...
-                                        fullpath, fname_seg);
-        
-        %%% Overlay mask volume (grayscale) and segmentation (green)
-        % Create output filename
-        overlay_name = strcat(fname_seg,'_mask',num2str(radii(k)),'_overlay.tif');
-        overlay_fout = fullfile(fullpath, overlay_name);
-        % Call function to overlay mask and segmentation
-        overlay_vol_seg(vol_uint16, I_seg_masked, 'green', overlay_fout);
-
-        %%% Convert masked segmentation to graph
-        if graph_boolean
-            fname_masked = strcat(fname_seg, '_mask_', num2str(radii(k)));
-            seg_graph_init(I_seg_masked, vox_dim, fullpath, fname_masked, viz);
-        end
-    end
-    
-    
-end
-
-%% Apply Mask
-function [I_seg_masked] = mask_segments(I_seg, mask, radius, fullpath, fname)
-% Remove the edges labeled as vessels.
-%   INPUTS:
-%       I_seg (matrix) - output of segmentation function
-%       mask (matrix) - unsegmented volume converted to logicals
-%       radius (double array) - radius of disk for eroding the mask
-%       fullpath (string) - absolute directory for saving processed data
-%       fname (string) - filename prior to applying mask
-%   OUTPUTS:
-%       I_seg_masked (matrix) - I_seg with boundaries eroded to remove
-%           erroneously labeled vessels.
-
-%%% Erode mask to remove small pixels on border that are not part of volume
-se = strel('disk', radius);
-mask = imerode(mask, se);
-
-%%% Remove islands of pixels from mask
-% Range of object size to keep
-range = [1e4, 1e8];
-mask = remove_mask_islands(mask, range);
-
-%%% Apply mask to segmentation volume
-% Convert from logical back to uint8 for matrix multiplication
-mask = uint8(mask);
-% Element-wise multiply mask and volume
-I_seg_masked = apply_mask(I_seg, mask);
-% Convert segmentation output to uint8
-I_seg_masked = uint8(I_seg_masked);
-
-%%% Save segmented/masked volume as .MAT and .TIF
-% Convert masked image back to tif
-tmp_fname = strcat(fname,'_mask', num2str(radius));
-fout = fullfile(fullpath, tmp_fname);
-fout = strcat(fout, '.tif');
-segmat2tif(I_seg_masked, fout);
-% Save vessel segment stack as .MAT for the next step (graph recon)
-fout = fullfile(fullpath, tmp_fname);
-fout = strcat(fout, '.mat');
-save(fout, 'I_seg_masked', '-v7.3');
-
+    end    
 end
