@@ -110,9 +110,9 @@ while ~isempty(cnodes)
         % Create struct of graph to be compatible with move to mean
         im_mv.nodes = nodes;
         im_mv.edges = edges;
-        % Perform move to mean to collapse nodes.
         for j=1:mv_iter
-            im_mv = mv_to_mean(im_mv, v_min);
+            % Move the loop nodes to the mean
+            im_mv = mv_to_mean(im_mv, v_min, n_idcs);
         end
         % Extract node positions + edges from struct (edges are unchanged)
         nodes_mv = im_mv.nodes;    

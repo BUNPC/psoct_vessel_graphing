@@ -1,4 +1,4 @@
-function im = mv_to_mean(im, v_min)
+function im = mv_to_mean(im, v_min, varargin)
 %mv_to_mean Move nodes towards mean of neighboring nodes (collapse loops)
 % Outline:
 %   - iterate over every node index in the graph structure.
@@ -16,6 +16,7 @@ function im = mv_to_mean(im, v_min)
 %       v_min (double): minimum voxel intensity threshold. The new voxel
 %               position will only be reassigned if the voxel intensity of
 %               the new node position is >= v_min.
+%       varargin: node indices belonging to cycle, specified as [1, N]
 %   OUTPUTS:
 %       n ([n,3] array): node locations
 %       e ([m,2] array): edges connecting each node
@@ -24,11 +25,17 @@ function im = mv_to_mean(im, v_min)
 %% Assign local variables
 [x,y,z] = size(im.angio);
 nodes = im.nodes;
-nLst = 1:size(nodes,1);
+
+%%% Check if using subset of nodes or all nodes
+if ~isempty(varargin)
+    nLst = varargin{1};
+else
+    nLst = 1:size(nodes,1);
+end
 hwait = waitbar(0,'Moving nodes towards mean of neighboring nodes');
 dbstop if error
 %% Iterate over nodes
-for ii = 1:size(nodes,1)
+for ii = 1:length(nLst)
     % Retrieve node index
     nidx = nLst(ii);
     waitbar(ii/length(nLst),hwait)

@@ -112,9 +112,9 @@ elseif isunix
     %}
 
     %%% Output Data filenames
-    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
+    skel_out = strcat(gdata(1:end-4),'_loops_rm_v2.tif');
     skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
-    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
+    gdata_out = strcat(gdata(1:end-4),'_loops_rm_v2.mat');
 end
 %% Load PSOCT graph, volume, segmentation
 
