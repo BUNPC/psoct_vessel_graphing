@@ -48,20 +48,18 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
              'AD_21354', 'AD_21424',...
              'CTE_6489','CTE_6912',...
              'CTE_7019','CTE_8572','CTE_7126',...
-             'NC_6047', 'NC_6839',...
-             'NC_6974', 'NC_7597',...
-             'NC_8095', 'NC_8653',...
+             'NC_6839','NC_6974','NC_8653',...
              'NC_21499','NC_301181'};
 
 % Volume filename
 volname = 'ref_4ds_norm_inv.tif';
 
 % Sigma subdirectories ctontaining segmentation TIF files
-sigma = {'gsigma_3-5-7_gsize_13-21-29','gsigma_5-7-9_gsize_21-29-37',...
-        'gsigma_7--9-11_gsize_29-37-45'};
+sigma = {'gsigma_2-3-4_gsize_9-13-17','gsigma_3-5-7_gsize_13-21-29',...
+        'gsigma_5-7-9_gsize_21-29-37','gsigma_7--9-11_gsize_29-37-45'};
 
 % Combined segmentation output folder name
-dirout = 'gsigma_3-5-7_5-7-9_7-9-11';
+dirout = 'gsigma_2-3-4_3-5-7_5-7-9_7-9-11';
 
 %% Initialize struct for storing filepaths
 ov = struct();
@@ -72,10 +70,12 @@ for ii = 1:length(subid)
     ov(ii).s(1).sigma = sigma{1};
     ov(ii).s(2).sigma = sigma{2};
     ov(ii).s(3).sigma = sigma{3};
+    ov(ii).s(4).sigma = sigma{4};
     % Filename of segmentation
     ov(ii).f(1).fname = 'ref_4ds_norm_inv_segment_pmin_0.23.tif';
     ov(ii).f(2).fname = 'ref_4ds_norm_inv_segment_pmin_0.23.tif';
     ov(ii).f(3).fname = 'ref_4ds_norm_inv_segment_pmin_0.23.tif';
+    ov(ii).f(4).fname = 'ref_4ds_norm_inv_segment_pmin_0.23.tif';
 end
 
 %%% Call function to create full file paths

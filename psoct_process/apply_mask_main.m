@@ -19,26 +19,24 @@ end
 topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
-%% Lookup table of pia pixel intensity reference values
-% subid = {'AD_10382', 'AD_20832', 'AD_20969',...
-%          'AD_21354', 'AD_21424',...
-%          'CTE_6489', 'CTE_6912',...
-%          'CTE_7019', 'CTE_8572','CTE_7126',...
-%          'NC_6839',  'NC_6974', 'NC_8653',...
-%          'NC_21499', 'NC_301181'};
-
-% Matrices that require truncating
-subid = {'CTE_7126','CTE_8572',...
+%% Initialize subject ID lists
+%%% All subjects to analyze
+subid = {'AD_10382', 'AD_20832', 'AD_20969',...
+         'AD_21354', 'AD_21424',...
+         'CTE_6489', 'CTE_6912',...
+         'CTE_7019', 'CTE_8572','CTE_7126',...
          'NC_6839',  'NC_6974', 'NC_8653',...
          'NC_21499', 'NC_301181'};
 subid = {'NC_301181'};
-trunc = {'CTE_7126','CTE_8572',...
+
+%%% stacks that require truncating
+trunc = {'AD_20832','CTE_7126','CTE_8572',...
          'NC_6839',  'NC_6974', 'NC_8653',...
          'NC_21499', 'NC_301181'};
-subid = {'AD_10382'};
 % Array of final image in stack
-zmins = [201, 198, 180, 198, 187, 178, 220];
-zcnt = 1;
+zmins = [229, 201, 198, 181, 198, 187, 178, 220];
+% Create dictionary to store last image in stack
+d = dictionary(trunc, zmins);
 
 %% Initialize directories and filenames
 
@@ -52,7 +50,7 @@ subdir1 = '/dist_corrected/volume/ref';
 % Combined segmentations subfolder
 subdir2 = 'combined_segs';
 % Combined segmentation subfolder
-segdir = 'gsigma_3-5-7_5-7-9_7-9-11';
+segdir = 'gsigma_2-3-4_3-5-7_5-7-9_7-9-11';
 
 %%% Filenames
 % Combined segmentations (.MAT)
@@ -65,19 +63,22 @@ voln_name = 'ref_4ds_norm_inv';
 %% Iterate through subjects. Create and apply mask.
 for ii = 1:length(subid)
     %%% Debugging information
-    fprintf('Starting Subject %s\n',subid{ii})
+    fprintf('---------Starting Subject %s---------\n',subid{ii})
 
     %%% Import volumes, mask, and segmentation
     % Import normalized volume
+    fprintf('importing normalized volume\n')
     fpath = fullfile(dpath, subid{ii}, subdir, strcat(voln_name,'.tif'));
     voln = TIFF2MAT(fpath);   
     
     % Import non-normalized volume
+    fprintf('importing non-normalized volume\n')
     fpath = fullfile(dpath, subid{ii}, subdir1, strcat(vol_name,'.mat'));
     vol = load(fpath); 
     vol = vol.vol;
     
     % Import mask matrix
+    fprintf('importing mask\n')
     fpath = fullfile(dpath, subid{ii}, subdir1, 'maskec.mat');
     mask = load(fpath);
     mask = mask.mask;
@@ -85,6 +86,7 @@ for ii = 1:length(subid)
     mask = imbinarize(mask);
 
     % Import combined segmentation file
+    fprintf('importing segmentation\n')
     fpath = fullfile(dpath, subid{ii}, subdir, subdir2, segdir, 'seg.mat');
     seg = load(fpath,'seg');
     seg = seg.seg;
@@ -92,9 +94,9 @@ for ii = 1:length(subid)
     %%% Set zmin if truncating finals slices
     % Truncate the mask, and the others will be subsequently truncated.
     sid = subid{ii};
-    if any(strcmp(trunc,sid))
+    if isKey(d, {sid})
         % Retrieve the zmin from the array
-        zmin = zmins(ii);
+        zmin = d({sid});
         % Truncate the mask
         mask = mask(:,:,1:zmin);
     end
@@ -121,21 +123,30 @@ for ii = 1:length(subid)
     end
 
     %%% Apply mask
-    % Mask the non-normalized volume (volm)
-    volm = vol .* mask;
-    % Mask the normalized volume (volnm)
-    volnm = voln .* uint16(mask);
-    % Mask the segmentation (segm)
-    segm = seg .* uint8(mask);
-    % Clear variables to save memory
-    clear vol; clear voln; clear seg;    
+    fprintf('apply mask\n')
+    try
+        % Mask the non-normalized volume (volm)
+        volm = vol .* uint8(mask);
+        % Mask the normalized volume (volnm)
+        volnm = voln .* uint16(mask);
+        % Mask the segmentation (segm)
+        segm = seg .* uint8(mask);
+        % Clear variables to save memory
+        clear vol; clear voln; clear seg;    
+    catch
+        %%% catch where mask if different data type
+        fprintf('failed to apply mask on subject %s\n',sid)
+        continue
+    end
     
     %%% Overlays the segmentation and normalized masked volume
+    fprintf('overlaying segmentation and masked normalized volume\n')
     fout = fullfile(dpath, subid{ii}, subdir, subdir2, segdir,...
                     strcat(seg_name, '_refined_mask_overlay_norm.tif'));
     overlay_vol_seg(volnm, segm, 'green', fout);
     
     %%% Save masked volumes
+    fprintf('saving masked volume\n')
     % Export masked non-normalized volume (volm)
     volm_out = fullfile(dpath, subid{ii}, subdir1,...
         strcat(vol_name,'_refined_masked.tif'));
@@ -150,6 +161,7 @@ for ii = 1:length(subid)
     segm_out = fullfile(dpath, subid{ii}, subdir, subdir2, segdir,...
         strcat(seg_name,'_refined_masked.mat'));
     save_seg(segm_out, segm);
+    segmat2tif(segm_out, segm);
     
     %%% Convert to graph
     fprintf('Generating graph data for sub %s\n',subid{ii})
@@ -161,7 +173,7 @@ for ii = 1:length(subid)
     seg_graph_init(segm, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
 
     %%% Debugging Info
-    fprintf('Finished Subject %s\n',subid{ii})
+    fprintf('---------Finished Subject %s---------\n',subid{ii})
 end
 
 
