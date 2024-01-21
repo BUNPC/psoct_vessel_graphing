@@ -194,10 +194,6 @@ end
 % Move to mean minimum voxel intensity
 v_min = 0.99;
 
-% Loop flag. true = down sample loops with "downsample_loops"
-% false = down sample entire graph
-loop_flag = 'true';
-
 % Down sample search radius
 delta = 6;
 
