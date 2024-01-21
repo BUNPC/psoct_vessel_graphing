@@ -63,7 +63,7 @@ if ispc
     
     % Volume and graph directories
     voldir = '\dist_corrected\volume\ref\';
-    graphdir = '\combined_segs\gsigma_3-5-7_5-7-9_7-9-11\';
+    graphdir = '\combined_segs\gsigma_2-3-4_3-5-7_5-7-9_7-9-11\';
 
 elseif isunix
     % Path to top-level directory
@@ -74,7 +74,7 @@ elseif isunix
     
     % Volume and graph directories
     voldir = '/dist_corrected/volume/ref/';
-    graphdir = '/dist_corrected/volume/combined_segs/gsigma_3-5-7_5-7-9_7-9-11/';
+    graphdir = '/dist_corrected/volume/combined_segs/gsigma_2-3-4_3-5-7_5-7-9_7-9-11/';
 end
 
 %%% Common directories + filenames
@@ -103,7 +103,7 @@ vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
 %%% NC subject IDs and directories
 % Normal Control subject ID list for Ann_Mckee_samples_10T
-subid = {'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
+% subid = {'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
 %% Calculate metrics (total length, length density, mean length, tortuosity)
 %{
 %%% Initialize struct for storing metrics

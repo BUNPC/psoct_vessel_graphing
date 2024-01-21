@@ -27,14 +27,14 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'CTE_7019', 'CTE_8572','CTE_7126',...
          'NC_6839',  'NC_6974', 'NC_8653',...
          'NC_21499', 'NC_301181'};
-subid = {'NC_301181'};
+subid = {'AD_10382'};
 
 %%% stacks that require truncating
-trunc = {'AD_20832','CTE_7126','CTE_8572',...
+trunc = {'AD_10382','AD_20832','CTE_7126','CTE_8572',...
          'NC_6839',  'NC_6974', 'NC_8653',...
          'NC_21499', 'NC_301181'};
 % Array of final image in stack
-zmins = [229, 201, 198, 181, 198, 187, 178, 220];
+zmins = [199,229, 201, 198, 181, 198, 187, 178, 220];
 % Create dictionary to store last image in stack
 d = dictionary(trunc, zmins);
 
@@ -126,7 +126,7 @@ for ii = 1:length(subid)
     fprintf('apply mask\n')
     try
         % Mask the non-normalized volume (volm)
-        volm = vol .* uint8(mask);
+        volm = vol .* mask;
         % Mask the normalized volume (volnm)
         volnm = voln .* uint16(mask);
         % Mask the segmentation (segm)
@@ -160,8 +160,10 @@ for ii = 1:length(subid)
     % Export masked segmentation (segm)
     segm_out = fullfile(dpath, subid{ii}, subdir, subdir2, segdir,...
         strcat(seg_name,'_refined_masked.mat'));
-    save_seg(segm_out, segm);
-    segmat2tif(segm_out, segm);
+    save(segm_out,'segm','-v7.3')
+    segm_out = fullfile(dpath, subid{ii}, subdir, subdir2, segdir,...
+        strcat(seg_name,'_refined_masked.tif'));
+    segmat2tif(segm, segm_out);
     
     %%% Convert to graph
     fprintf('Generating graph data for sub %s\n',subid{ii})
@@ -175,30 +177,3 @@ for ii = 1:length(subid)
     %%% Debugging Info
     fprintf('---------Finished Subject %s---------\n',subid{ii})
 end
-
-
-
-%% Function to save during parallelization
-function save_vol(fout, vol)
-% Save the stacked ref matrix
-% INPUTS:
-%   fout (string): the filepath for the output file to save
-%   vol (double matrix): the stack of images to save
-
-% Save the output
-save(fout,'vol','-v7.3')
-
-end
-
-%% Function to save during parallelization
-function save_seg(fout, seg)
-% Save the stacked ref matrix
-% INPUTS:
-%   fout (string): the filepath for the output file to save
-%   vol (double matrix): the stack of images to save
-
-% Save the output
-save(fout,'seg','-v7.3')
-
-end
-
