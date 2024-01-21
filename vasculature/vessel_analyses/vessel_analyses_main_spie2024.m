@@ -74,7 +74,8 @@ elseif isunix
     
     % Volume and graph directories
     voldir = '/dist_corrected/volume/ref/';
-    graphdir = '/dist_corrected/volume/combined_segs/gsigma_2-3-4_3-5-7_5-7-9_7-9-11/';
+    graphdir = ['/dist_corrected/volume/combined_segs/' ...
+                'gsigma_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
 end
 
 %%% Common directories + filenames
@@ -103,7 +104,7 @@ vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
 %%% NC subject IDs and directories
 % Normal Control subject ID list for Ann_Mckee_samples_10T
-% subid = {'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
+subid = {'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
 %% Calculate metrics (total length, length density, mean length, tortuosity)
 %{
 %%% Initialize struct for storing metrics
@@ -239,9 +240,9 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
-b.CData(end-5:end, :) =...
-    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(end-4:end, :) =...
+    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'total_length_bar');
 saveas(gca, mout, 'png')
@@ -264,9 +265,9 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
-b.CData(end-5:end, :) =...
-    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(end-4:end, :) =...
+    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'avg_length_bar');
 saveas(gca, mout, 'png')
@@ -289,9 +290,9 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
-b.CData(end-5:end, :) =...
-    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(end-4:end, :) =...
+    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'length_density_bar');
 saveas(gca, mout, 'png')
@@ -313,9 +314,9 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
-b.CData(end-5:end, :) =...
-    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(end-4:end, :) =...
+    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'total_vessels_bar');
 saveas(gca, mout, 'png')
@@ -338,13 +339,12 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
-b.CData(end-5:end, :) =...
-    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(end-4:end, :) =...
+    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'tortuosity_bar');
 saveas(gca, mout, 'png')
-%}
 
 %%% Branch Density (branch / mm^3)
 % Create branch density arrays. Convert from branch/um^3 -> branch / mm^3
@@ -365,9 +365,9 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
-b.CData(end-5:end, :) =...
-    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(end-4:end, :) =...
+    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'branch_density_bar');
 saveas(gca, mout, 'png')
@@ -391,9 +391,9 @@ xlabel('Subject ID')
 set(gca, 'FontSize', 30)
 % Set color of bars
 b.FaceColor = 'flat';
-b.CData(1:4,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
-b.CData(end-5:end, :) =...
-    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0;];
+b.CData(1:5,:) = [.5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5; .5, 0, .5];
+b.CData(end-4:end, :) =...
+    [0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0; 0, 0.5, 0];
 % Save output
 mout = fullfile(mpath, 'vessel_fraction_volume_bar');
 saveas(gca, mout, 'png')
@@ -571,22 +571,6 @@ aov.cte_nc_lenden = anova1(cte_nc_den, g_cte_nc);
 title('CTE vs NC Length Density')
 aov.ad_cte_lenden = anova1(ad_cte_den, g_ad_cte);
 title('AD vs CTE Length Density')
-
-% Total length
-aov.ad_nc_lentot = anova1(ad_nc_len, g_ad_nc);
-title('AD vs NC Length Total')
-aov.cte_nc_lentot = anova1(cte_nc_len, g_cte_nc);
-title('CTE vs NC Length Total')
-aov.ad_cte_lentot = anova1(ad_cte_len, g_ad_cte);
-title('AD vs CTE Length Total')
-
-% Total number vessels
-aov.ad_nc_nves = anova1(ad_nc_nves, g_ad_nc);
-title('AD vs NC # Vessels')
-aov.cte_nc_nves = anova1(cte_nc_nves, g_cte_nc);
-title('CTE vs NC # Vessels')
-aov.ad_cte_nves = anova1(ad_cte_nves, g_ad_cte);
-title('AD vs CTE # Vessels')
 
 % Branch Density
 aov.ad_nc_bden = anova1(ad_nc_bden, g_ad_nc);
