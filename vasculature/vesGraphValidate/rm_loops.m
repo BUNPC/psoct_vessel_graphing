@@ -1,4 +1,4 @@
-function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, lim)
+function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, viz)
 %rm_loops Remove loops in graph.
 %   Outline:
 %       - Use graph function "allcycles" to find loops
