@@ -21,9 +21,8 @@ function [I_nodes] = sk3D(sz,Graph,name,res,downsampled_flag,save_flag)
 %  name   =  filename to save as
 %  res    =  resolution of the nifti image. 
 %            i.e. [0.01, 0.01, 0.01] 0.01cm (10um) isotropics
-%  downsampled_flag:    1 = graph was downsampled
-%                       0 = graph wasn't downsampled
-%  save_flag: 1 = save the skeleton as a NIFTI
+%  downsampled_flag = 1=downsampled; 0=no-downsampled
+%  save_flag = to save the skeleton or not
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% other function needed %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -82,7 +81,7 @@ function I_nodes = get_sk(sz, list)
     
     
     list(list==0)=1;                                % if coordinate is 0, change it to 1
-    if any((list./sz)>1,"all")
+    if any([list./sz]>1,"all")
         sprintf('max pos exceed vol size\n');
         list(list(:,1)>sz(1),1)=sz(1);
         list(list(:,2)>sz(2),2)=sz(2);

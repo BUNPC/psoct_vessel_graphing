@@ -23,8 +23,8 @@
 
 # Declare array job (create new job for each)
 # Iterate over all subjects and use smallest sigma (1-51:3)
-# Iterate over all subjects and use all sigmas (1-51)
-#$ -t 1-6
+# Iterate over all subjects and use all sigma (1-51)
+#$ -t 19-21
 
 # Keep track of information related to the current job
 echo "=========================================================="

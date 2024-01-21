@@ -82,9 +82,6 @@ for ii = 1:length(gsigma)
     L3 = reshape(SortL(3,:),size(L3));
     
     %%% Find eigenvalues that match conditions for frangi vessel
-    % NOTE: the conditions for Lambda123 can be reduced when gamma12 = gamma23 = 0.5;
-    %       refer to page 4 of the 1998 Sato et al. paper
-    %       "Three-dimensional multi-scale line filter for segmentation..."
     % First condition
     idx = find((L3 < L2) & (L2 < L1) & (L1 <= 0));
     Lambda123(idx) = abs(L3(idx)).*(L2(idx)./L3(idx)).^gamma23.*...
@@ -111,8 +108,8 @@ w = (w-min(w(:))) / (max(w(:))-min(w(:)));
 %% Apply threshold to probability matrix.
 % The matrix w represents the likelihood each voxel belongs to a vessel.
 % The threshold (pmin) determines the cutoff for this likelihood.
-% (w < pmin) = 0 (non-vessel)
-% (w < pmin) = 1 (vessel)
+% w < pmin = 0 (non-vessel)
+% w < pmin = 0 (vessel vessel)
 w_thresh = w;
 w_thresh(w<pmin) = 0;
 w_thresh(w>=pmin) = 1;

@@ -12,9 +12,7 @@ function [graph] = seg_to_graph(angio, vox_dim)
 %       angio (matrix): segmented volume
 %       vox_dim (array): voxel dimensions (x, y, z) (micron)
 %%% OUTPUTS:
-%       graph (struct): nodes and edges for graph of segmentation
-%           graph.nodes (array): node locations (y,x,z)
-%           graph.edges (array): [start node, end node]
+%       Graph (struct): nodes and edges for graph of segmentation
 
 
 %% Create the local vessel_mask variable

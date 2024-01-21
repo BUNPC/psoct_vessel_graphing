@@ -1,4 +1,4 @@
-function [edges_rm] = rm_loop_edge(nodes, edges, sp, nsp, viz)
+function [edges_rm] = rm_loop_edge(nodes, edges, sp, nsp, lim)
 %rm_loop_edge Remove longest edge of loop.
 % -------------------------------------------------------------------------
 % PURPOSE:
@@ -13,7 +13,6 @@ function [edges_rm] = rm_loop_edge(nodes, edges, sp, nsp, viz)
 %   edges (array): [M, 2] matrix of edges connecting node indices
 %   nsp (cell array): Sparse loop nodes. Each row contains node indices in
 %                       a sparse loop.
-%	viz (bool): 1 = visualize graph at intermediate steps
 %
 % OUTPUTS
 %   edges_rm (matrix): edge matrix without longest edge for each loop
@@ -90,9 +89,7 @@ while any(sp)
     
     %% Plot updated graph    
     tstr = strcat('Iteration ', num2str(cnt));
-	if viz
-		visualize_graph(nodes, edges, {'Longest Edge Removed',tstr},[]);
-	end
+    visualize_graph(nodes, edges, {'Longest Edge Removed',tstr},[]);
     % Set limits in graphical display
     xlim(lim.x); ylim(lim.y); zlim(lim.z);
     cnt = cnt+1;
