@@ -22,5 +22,5 @@
 #$ -j y
 
 module load matlab/2022b
-matlab -nodisplay -singleCompThread -r "rm_loops_main; exit"
+matlab -nodisplay -r "rm_loops_main; exit"
 
