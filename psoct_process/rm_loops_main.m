@@ -29,7 +29,7 @@ elseif isunix
 end
 % Remove the two sub folders to reach parent
 % (psoct_human_brain\vasculature\vesSegment)
-topdir = mydir(1:idcs(end-1));
+topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
 %% Initialize subject ID lists
@@ -83,9 +83,13 @@ parfor (ii = 1:length(subid), NSLOTS)
     mv_iter = 1;
     % Variable for displaying debugging windows
     viz = false;
-    [node_rm, edges_rm] =...
-        rm_loops(nodes, edges, vol, delta, v_min, mv_iter, viz);
-    
+    try
+        [node_rm, edges_rm] =...
+            rm_loops(nodes, edges, vol, delta, v_min, mv_iter, viz);
+    catch
+        fprintf('Failed to remove loops for subject %s',subid{ii})
+        continue
+    end
     %%% Reinitialize graph data after loop removal
     fprintf('reinitializing graph\n')
     g.nodes = node_rm;
