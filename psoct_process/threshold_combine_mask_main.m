@@ -60,10 +60,11 @@ subdir = '/dist_corrected/volume';
 % Subfolder containing ref files
 subdir1 = '/dist_corrected/volume/ref';
 % Subfolders for sigma arrays
-sigmas = {'gsigma_2-3-4_gsize_9-13-17', 'gsigma_3-5-7_gsize_13-21-29',...
-    'gsigma_5-7-9_gsize_21-29-37', 'gsigma_7--9-11_gsize_29-37-45'};
-sigma_field = {'sigma234','sigma357','sigma579','sigma7911'};
-sigout = 'gsigma_2-3-4_3-5-7_5-7-9_7-9-11';
+sigmas = {'gsigma_1-3-5_gsize_5-13-21','gsigma_2-3-4_gsize_9-13-17',...
+        'gsigma_3-5-7_gsize_13-21-29','gsigma_5-7-9_gsize_21-29-37',...
+        'gsigma_7--9-11_gsize_29-37-45'};
+sigma_field = {'sigma135','sigma234','sigma357','sigma579','sigma7911'};
+sigout = 'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11';
 
 %%% Filenames
 % Probability matrix (.MAT)
@@ -76,7 +77,6 @@ th = [0.18, 0.20, 0.22, 0.24];
 pfield = {'p18','p20','p22','p24'};
 
 %% Iterate subjects, threhsold prob, combine segs, apply mask.
-% for ii = 1:length(subid)
 parfor (ii = 1:length(subid), NSLOTS)
     %%% Initialize variables for parfor
     segs = struct();
