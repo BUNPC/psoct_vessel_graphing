@@ -4,6 +4,8 @@
 %
 % after estimating diameter I should consider including more z-slices to
 %    make sure that diameter does not change
+%
+% This currently only takes a single 
 
 function reEstimated = imView3d_GetDiam_v2( Ithresh )
 global im
@@ -77,6 +79,7 @@ for ii=1:size(im.nodePos,1)
         pos=round(im.nodePos(ii,:));
         pos(pos == 0) = 1; %- Added by Allen Alfadhel on 30-April-2020
         
+        %% What does this section do?
         if (pos(pIdx(1))-nx)>=1
             dx1 = 1;
             sx1 = pos(pIdx(1))-nx;
@@ -117,11 +120,11 @@ for ii=1:size(im.nodePos,1)
         end
         Id(find(Id<Ithresh))=0;
         
-        
-        I1 = Id(lineMap)<Ithresh;
+        %% What does this section do?
+        I1 = Id(lineMap) < Ithresh;
         I2 = [];
-        for ii2=1:nTheta
-            I2(:,ii2) = imfill(I1(:,ii2), round(nRho/2), [0 1 0;0 1 0;0 1 0]) - I1(:,ii2);
+        for j=1:nTheta
+            I2(:,j) = imfill(I1(:,j), round(nRho/2), [0 1 0;0 1 0;0 1 0]) - I1(:,j);
         end
         
         [diam,iTheta] = min(sum(I2,1));
@@ -129,8 +132,8 @@ for ii=1:size(im.nodePos,1)
         % vessel
         if diam == 0
             for iOff = 1:3  % this will only extrapolate +/- 3 voxels
-                for ii2=1:nTheta
-                    I2(:,ii2) = imfill(I1(:,ii2), round(nRho/2)+iOff, [0 1 0;0 1 0;0 1 0]) - I1(:,ii2);
+                for j=1:nTheta
+                    I2(:,j) = imfill(I1(:,j), round(nRho/2)+iOff, [0 1 0;0 1 0;0 1 0]) - I1(:,j);
                 end
                 lstGT0 = find(sum(I2,1)>0);
                 if ~isempty(lstGT0)
@@ -138,8 +141,8 @@ for ii=1:size(im.nodePos,1)
                     iTheta = lstGT0(iThetaTmp);
                     break
                 end
-                for ii2=1:nTheta
-                    I2(:,ii2) = imfill(I1(:,ii2), round(nRho/2)-iOff, [0 1 0;0 1 0;0 1 0]) - I1(:,ii2);
+                for j=1:nTheta
+                    I2(:,j) = imfill(I1(:,j), round(nRho/2)-iOff, [0 1 0;0 1 0;0 1 0]) - I1(:,j);
                 end
                 lstGT0 = find(sum(I2,1)>0);
                 if ~isempty(lstGT0)
@@ -150,7 +153,7 @@ for ii=1:size(im.nodePos,1)
             end
         end
         
-        %make sure we respect threshold
+        %%% If the measured diameter exceeds limits then set to limits
         if diam<minDiam
             diam=minDiam;
         elseif diam>maxDiam
@@ -163,15 +166,15 @@ for ii=1:size(im.nodePos,1)
         
     end
 end
-if length(im.nodeDiamEst)>nNodes,
-    im.nodeDiamEst(nNodes+1:end) = [];
-end;
 
+if length(im.nodeDiamEst)>nNodes
+    im.nodeDiamEst(nNodes+1:end) = [];
+end
+
+%%% Calculate median diameter for each segment
 for sg = 1:length(im.segDiam) %- added by Allen 12-May-20
-im.segDiam(sg) = median(im.nodeDiam(im.nodeSegN == sg));
+    im.segDiam(sg) = median(im.nodeDiam(im.nodeSegN == sg));
 end
 
 
 close(hwait)
-
-
