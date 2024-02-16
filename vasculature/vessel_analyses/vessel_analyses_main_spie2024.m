@@ -357,6 +357,7 @@ set(b,'LineWidth',4)
 
 
 %%% tortuosity (unitless)
+% AD, CTE, HC
 figure;
 x1 = ad_tort;
 x2 = cte_tort;
@@ -367,6 +368,29 @@ b = boxplot(x, g,'Labels',{'AD', 'CTE', 'NC'});
 title('Tortuosity (\mum)')
 set(gca, 'FontSize', 30)
 set(b,'LineWidth',4)
+
+% AD and CTE
+figure;
+x1 = ad_tort;
+x2 = cte_tort;
+x = [x1; x2];
+g = [zeros(length(x1), 1); ones(length(x2), 1)];
+b = boxplot(x, g,'Labels',{'AD', 'CTE'});
+title('Tortuosity (\mum)')
+set(gca, 'FontSize', 30)
+set(b,'LineWidth',4)
+
+% AD and HC
+figure;
+x1 = ad_tort;
+x3 = nc_tort;
+x = [x1; x3];
+g = [zeros(length(x1), 1); ones(length(x3), 1)];
+b = boxplot(x, g,'Labels',{'AD', 'HC'});
+title('Tortuosity (\mum)')
+set(gca, 'FontSize', 30)
+set(b,'LineWidth',4)
+
 
 %%% Branch Density (branches / mm^3)
 figure;
