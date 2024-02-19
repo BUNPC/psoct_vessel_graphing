@@ -97,6 +97,10 @@ anova_fout = fullfile(mpath, anova_fname);
 vox_dim = [12, 12, 15];
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
+% indices of AD and CTE within the AD,CTE array
+ad_idx = 1:5;
+cte_idx = 6:10;
+
 %% Calculate metrics (total length, length density, mean length, tortuosity)
 %{
 %%% AD / CTE subject IDs and directories
@@ -542,18 +546,34 @@ title('AD vs CTE Fraction Volume')
 %%% Save the ANOVA
 save(anova_fout, 'aov', '-v7.3');
 
+%% Perform one-way ANCOVA (age as a covariate)
+% TODO: add "age" as an input to the "stats" function. Assign age to each
+% entry for AD, CTE, NC for tortuosity
+
+% Define ages (covariate)
+age_ad = [84; 87; 83; 76; 86];
+age_cte = [75; 78; 86; 81; 89];
+age_nc = [71; 80; 88; 59];
+
+% Define age arrays
+age_ad_nc = vertcat(age_ad, age_nc);
+age_cte_nc = vertcat(age_cte, age_nc);
+age_ad_cte = vertcat(age_ad, age_cte);
+
+% Length Density ANCOVA (age, metric, group)
+[~,~,~,acov.ad_nc_lenden] = aoctool(age_ad_nc, ad_nc_den, g_ad_nc);
+title('AD vs NC Length Density')
+[~,~,~,acov.cte_nc_lenden] = aoctool(age_cte_nc, cte_nc_den, g_cte_nc);
+title('CTE vs NC Length Density')
+[~,~,~,acov.ad_cte_lenden] = aoctool(age_ad_cte, ad_cte_den, g_ad_cte);
+title('AD vs CTE Length Density')
 
 %% Calculate average + std of age
 
-%{
-AD subjects = AD_10382, AD_20969, AD_21354, AD_21424
-CTE subjects = CTE_6489, CTE_6912, CTE_7019, CTE_7126
-NC subjects = NC_301181, NC_21499, NC_6839, NC_6974, NC_7597, NC_8653
-%}
-
-age_ad = [84;76;86;83];
-age_cte = [81; 78; 75; 86];
-age_nc = [59;88;71;69;80];
+% Define ages (covariate)
+age_ad = [84;87;83;76;86];
+age_cte = [75; 78; 86; 81; 89];
+age_nc = [71; 80; 88; 59];
 age_all_groups = [age_ad; age_cte; age_nc];
 
 % AD
@@ -574,16 +594,6 @@ age.std = std(age_all_groups);
 age.min = min(age_all_groups);
 age.max = max(age_all_groups);
 %}
-
-
-
-
-
-
-
-
-
-
 
 %% Function to calculate metrics
 function [met] = stats(dpath, subid, voldir, graphdir, graphname,...
