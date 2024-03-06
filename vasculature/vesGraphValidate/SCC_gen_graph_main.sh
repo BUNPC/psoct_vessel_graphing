@@ -13,10 +13,10 @@
 #$ -m ea
 
 # Time limit for job
-#$ -l h_rt=48:00:00
+#$ -l h_rt=24:00:00
 
 # Name of job
-#$ -N segment
+#$ -N gen_graph
 
 # Combine output/error files into single file
 #$ -j y
@@ -24,8 +24,7 @@
 # Declare array job (create new job for each)
 # Iterate over all subjects and use smallest sigma (1-51:3)
 # Iterate over all subjects and use all sigmas (1-51)
-# Iterate over all subjects and use single sigma array (1-18)
-#$ -t 1-18
+#$ -t 1-15
 
 # Keep track of information related to the current job
 echo "=========================================================="
@@ -34,6 +33,6 @@ echo "Job name : $JOB_NAME"
 echo "Job ID : $JOB_ID  $SGE_TASK_ID"
 echo "=========================================================="
 
-echo "Starting task number $SGE_TASK_ID"
 module load matlab/2022b
-matlab -nodisplay -batch  psoct_vessel_segmentation_main $SGE_TASK_ID
+matlab -nodisplay -singleCompThread -r "gen_graph_main; exit"
+

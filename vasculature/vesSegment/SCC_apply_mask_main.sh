@@ -5,9 +5,9 @@
 
 # Request a whole node with 28 cores and at least 384 GB of RAM.
 # Specify number of cores
-#$ -pe omp 28
+#$ -pe omp 16
 # Specify memory per core
-#$ -l mem_per_core=18G
+#$ -l mem_per_core=16G
 
 # Send email upon completion
 #$ -m ea
@@ -16,11 +16,11 @@
 #$ -l h_rt=24:00:00
 
 # Name of job
-#$ -N segment
+#$ -N mask_segs
 
 # Combine output/error files into single file
 #$ -j y
 
 module load matlab/2022b
-matlab -nodisplay -singleCompThread -r "psoct_vessel_segmentation_main; exit"
+matlab -nodisplay -singleCompThread -r "apply_mask_main; exit"
 
