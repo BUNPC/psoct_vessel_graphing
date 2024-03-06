@@ -8,6 +8,14 @@ This script performs the following:
 - segment the original volume
 - apply a mask to the segmentation
 - convert segmentation to graph
+To Do:
+- find optimal range for remove_mask_islands
+- prune graph (remove loops and unterminated segments)
+    - remove loops ()
+    - remove segments ()
+- segment the original volume
+- apply a mask to the segmentation
+- convert segmentation to graph
 - Remove loops from graph
 
 To Do:
