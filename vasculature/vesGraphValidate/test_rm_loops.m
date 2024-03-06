@@ -204,8 +204,11 @@ delta = 6;
 % # iterations for mv2mean function in for-loop iteration in rm_loops
 mv_iter = 1;
 
+% boolean for whether or not to visualize debugging graph figures
+viz = true;
+
 [node_rm, edges_rm] =...
-    rm_loops(nodes, edges, vol, delta, v_min, mv_iter);
+    rm_loops(nodes, edges, vol, delta, v_min, mv_iter, viz);
 
 %% Visualize Results and Save
 

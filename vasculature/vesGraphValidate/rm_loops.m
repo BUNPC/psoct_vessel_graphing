@@ -46,7 +46,7 @@ if viz
 end
 
 %% Remove longest edge of sparse loops
-[~, cnodes, ~, edges] = open_sparse_loops(nodes, edges);
+[~, cnodes, ~, edges] = open_sparse_loops(nodes, edges, viz);
 
 %% Perform move to mean, down sample, and remove longest edge
 while ~isempty(cnodes)
@@ -120,7 +120,7 @@ while ~isempty(cnodes)
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
         %% Check for sparse loops. If exist, remove longest edge
-        [npost, cnodes, ~, edges_ds] = open_sparse_loops(nodes_ds, edges_ds);
+        [npost, cnodes, ~, edges_ds] = open_sparse_loops(nodes_ds, edges_ds, viz);
         
         % Reassign edges, nodes for next iteration of while-loop
         edges = edges_ds;
@@ -184,11 +184,12 @@ nloops = length(cnodes);
 end
 
 %% Function to open a sparse loop edge
-function [nloops, cnodes, cedges, edges] = open_sparse_loops(nodes, edges)
+function [nloops, cnodes, cedges, edges] = open_sparse_loops(nodes,edges,viz)
 %open_sparse_loops: remove longest edge of sparse loop
 %   INPUTS:
 %       nodes ([n,3] array): nodes of graph
 %       edges ([n,2] array): edges of graph
+%       viz (bool): true = display debugging graph figures
 %
 %   OUTPUTS:
 %       nloops (int): number of loops
@@ -212,7 +213,7 @@ if any(sp)
     % Keep node indices from sparse cycles
     cnodes(~sp) = [];
     % Remove the longest edge from each sparse loop
-    edges = rm_loop_edge(nodes, edges, sp, cnodes);
+    edges = rm_loop_edge(nodes, edges, sp, cnodes, viz);
 end
 
 %%% Recalculate loops
