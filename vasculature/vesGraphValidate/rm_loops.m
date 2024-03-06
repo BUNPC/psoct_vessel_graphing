@@ -1,4 +1,4 @@
-function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, lim)
+function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, viz)
 %rm_loops Remove loops in graph.
 %   Outline:
 %       - Use graph function "allcycles" to find loops
@@ -18,38 +18,16 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, l
 %               reassigned if the voxel intensity of the new node position
 %               is >= v_min.
 %       mv_iter (int): number of iterations in move to mean.
-%       lim (struct): structure with graph limits for visualization
+%       viz (boolean): true = display figures of graph
 %   OUTPUTS:
 %       n ([n,3] array): node locations
 %       e ([m,2] array): edges connecting each node
 
 %% TODO
-% 1) In the outer while-loop, I select a subset of nodes to downsample.
-% This subset is the first row in the cell array "cnodes". However, in the
-% case that there are nested/connected loops, these nodes will be contained
-% within multiple cell array rows. Therefore, the code is currently unable
-% to process nested/connected loops because the variable "n_idcs" does not
-% contain all the nodes within the nested structure. This is raising an
-% error later in the code when trying to graph because nodes are being
-% excluded.
-% Solution:
-%   - For each iteration, find the cell array rows with shared nodes.
-%   - Combine these rows into a single array
-%   - This also should be updated at the end of the inner while-loop:
-%       "n_idcs = cnodes{1,:};"
-%
 % 2) Compare the function rm_reindex and my code to see if they are the same
-%
-% 3) Move to mean operates on all nodes of the graph, rather than just the
-% nodes in the loops. Code will run faster if performed on just the loops.
 
 %% Initialize variables
-% Count number of loops in graph
-[n_pre, cnodes, cedges] = count_loops(edges);
-% Initialize maximum number of loops to first count of loops
-n_max = n_pre;
-
-% Flag to protect 
+% Flag to protect the nodes connected to the loops
 protect = true;
 
 % Struct to store nodes, edges for move to mean function
@@ -63,10 +41,12 @@ cnt_outer = 1;
 delta0 = delta;
 
 % Graph prior to preprocessing
-% visualize_graph(nodes, edges, 'Before Loop Removal', []);
+if viz
+    visualize_graph(nodes, edges, 'Before Loop Removal', []);
+end
 
 %% Remove longest edge of sparse loops
-[n_pre, cnodes, cedges, edges] = open_sparse_loops(nodes, edges);
+[~, cnodes, ~, edges] = open_sparse_loops(nodes, edges);
 
 %% Perform move to mean, down sample, and remove longest edge
 while ~isempty(cnodes)
@@ -89,7 +69,9 @@ while ~isempty(cnodes)
     % Visualize Graph
     iter_str = strcat('Iteration ',num2str(cnt_outer));
     tstr = {'Before Mv2Mean & Downsampling Graph',iter_str};
-    visualize_graph(nodes, edges, tstr, []);
+    if viz
+        visualize_graph(nodes, edges, tstr, []);
+    end
     
     %%% Set graph limits based upon current cycle under investigation
     % Coordinates of all nodes
@@ -119,7 +101,9 @@ while ~isempty(cnodes)
         edges_mv = im_mv.edges;
         % Visualize Graph
         tstr = {'After Mv2Mean',iter_str};
-        visualize_graph(nodes_mv, edges_mv, tstr, []);
+        if viz
+            visualize_graph(nodes_mv, edges_mv, tstr, []);
+        end
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
         %%% Recalculate loops
         [~, cnodes, ~] = count_loops(edges_mv);
@@ -130,7 +114,9 @@ while ~isempty(cnodes)
             downsample_loops(n_idcs, nodes_mv, edges_mv, delta, protect);
         % Visualize after downsample
         tstr = {'After Mv2Mean + Downsample',iter_str};
-        visualize_graph(nodes_ds, edges_ds, tstr, []);
+        if viz
+            visualize_graph(nodes_ds, edges_ds, tstr, []);
+        end
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
         %% Check for sparse loops. If exist, remove longest edge
@@ -161,115 +147,16 @@ while ~isempty(cnodes)
     end
 end
 
-%% Initial loop-removal logic
-%{
-while ~isempty(cnodes)
-    %%% Print iteration
-    fprintf('\nLoop Removal Iteration = %i\n', cnt_outer)
-    
-    % Visualize Graph
-    iter_str = strcat('Iteration ',num2str(cnt_outer));
-    tstr = {'Before Mv2Mean & Downsampling Graph',iter_str};
-    visualize_graph(nodes, edges, tstr, []);
-    xlim(lim.x); ylim(lim.y); zlim(lim.z);
-
-    %% Move to mean (collapse loops)
-    % Create struct of graph to be compatible with move to mean
-    im_mv.nodes = nodes;
-    im_mv.edges = edges;
-    % Perform move to mean to collapse nodes.
-    for j=1:mv_iter
-        im_mv = mv_to_mean(im_mv, v_min);
-    end
-    % Extract node positions + edges from struct (edges are unchanged)
-    nodes_mv = im_mv.nodes;    
-    edges_mv = im_mv.edges;
-    % Visualize Graph
-    tstr = {'After Mv2Mean',iter_str};
-    visualize_graph(nodes_mv, edges_mv, tstr, []);
-    xlim(lim.x); ylim(lim.y); zlim(lim.z);
-
-    %% Regraph (downsample) to remove collapsed loops
-    [nodes_ds, edges_ds] =...
-        downsample_loops(cnodes, nodes_mv, edges_mv, delta, protect);
-    % Visualize after downsample
-    tstr = {'After Mv2Mean + Downsample',iter_str};
-    visualize_graph(nodes_ds, edges_ds, tstr, []);
-    xlim(lim.x); ylim(lim.y); zlim(lim.z);
-
-    %%% Number of loops after down sampling
-    [n_post, cnodes] = count_loops(edges_ds);
-    % If no loops remain, then leave while loop
-    if isempty(cnodes)
-        break
-    else
-        fprintf('Number of loops after Mv2Mean & downsample = %d\n', n_post)
-    end
-
-    %% Determine if fully down-sampled loops remain
-    % The function "downsample_loops" preserves the end nodes. This will
-    % preserve Loops with three or more connecting segments, once the loops
-    % have just one node per edge.  
-    % TODO:
-    % 1) add logic to determine when the loop has been fully downsampled
-    % 2) should only remove the longest edge once the number of edges
-    % equals the number of nodes in the loop. Once this condition is met,
-    % all the edges will have been fully down sampled, so removing the
-    % longest edge will open the loop. Otherwise, the loop may open along a
-    % segment and then be closed on the next down sample iteration.
-
-    % Set the value of maximum number of loops across this process
-    n_max = max(n_max, n_post);
-    
-    %%% Check if (nloops == nedges) for all loops
-    % Remove longest edge
-
-    %%% If the number of loops remained constant
-    if (n_post == n_pre) && (dcnt < 3)
-        % Unprotect the end point nodes.
-        protect = false;
-        % Increase search radius to try to collapse all loops
-        delta = delta + 50;
-        % Counter for number of delta increases
-        dcnt = dcnt + 1;
-    %%% If the delta has incremented 3 times & loops remain
-    elseif dcnt >= 3
-        % Remove longest edge of loop
-        edges = rm_loop_edge(nodes_ds, edges_ds);
-        % Count the number of loops
-        [n_post, cnodes] = count_loops(edges);
-        % Display number of loops
-        fprintf('Number of loops after removing longest edge = %d\n',...
-            n_post)
-    %%% If number of loops increased after down sampling
-    elseif (n_post > n_pre) || (n_post > n_max)
-        % TODO: determine better logic here.
-        %{
-        % Use the graph after mv2mean and before down sample.
-        % Remove longest edge.
-        edges = rm_loop_edge(nodes_mv, edges_mv);
-        % Verify number of loops decreased
-        [nloops_rm, ~] = count_loops(edges);
-        assert( (nloops_rm < n_post) ,...
-            'Removing longest edge did not reduce the number of loops');
-        % If condition met, then reassign n_post and continue
-        n_post = nloops_rm;
-        %}
-    end
-
-    % Iterate the loop counter
-    cnt_outer = cnt_outer + 1;
-
-    % Update the number of loops before next iteration
-    n_pre = n_post;
-
-    % Close figures from iteration
-%     close all;
-end
-%}
-
 %%% Visualize graph after removing loops
-visualize_graph(nodes, edges, 'After Loop Removal', []);
+if viz
+    visualize_graph(nodes, edges, 'After Loop Removal', []);
+end
+
+% Close all figures if there are more than 10 open
+h =  findobj('type','figure');
+if length(h) >= 10
+    close all;
+end
 
 end
 
@@ -404,25 +291,3 @@ while 1
 end
 
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
