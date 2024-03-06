@@ -112,9 +112,9 @@ elseif isunix
     %}
 
     %%% Output Data filenames
-    skel_out = strcat(gdata(1:end-4),'_loops_rm_v2.tif');
+    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
     skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
-    gdata_out = strcat(gdata(1:end-4),'_loops_rm_v2.mat');
+    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
 end
 %% Load PSOCT graph, volume, segmentation
 
@@ -194,14 +194,21 @@ end
 % Move to mean minimum voxel intensity
 v_min = 0.99;
 
+% Loop flag. true = down sample loops with "downsample_loops"
+% false = down sample entire graph
+loop_flag = 'true';
+
 % Down sample search radius
 delta = 6;
 
 % # iterations for mv2mean function in for-loop iteration in rm_loops
 mv_iter = 1;
 
+% boolean for whether or not to visualize debugging graph figures
+viz = true;
+
 [node_rm, edges_rm] =...
-    rm_loops(nodes, edges, vol, delta, v_min, mv_iter);
+    rm_loops(nodes, edges, vol, delta, v_min, mv_iter, viz);
 
 %% Visualize Results and Save
 
