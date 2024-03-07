@@ -46,6 +46,6 @@ end
 view(3);
 % Labels, title, fontsize, grid
 title(title_str); xlabel('x'); ylabel('y'); zlabel('z')
-set(gca, 'FontSize', 25);
+set(gca, 'FontSize', 20);
 grid on;
 end

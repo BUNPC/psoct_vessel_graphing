@@ -198,7 +198,7 @@ nkeep = find(nkeep == 1);
 
 %%% Visualize graph
 if visual
-    visualize_graph(nodes, edges, 'Graph Before Loop Removal',nkeep)
+    visualize_graph(nodes, edges, 'Graph Before Loop Removal',nkeep) %#ok<*UNRCH> 
 end
 %% Call Remove Loops function (move2mean and down sample loops)
 
@@ -211,8 +211,11 @@ delta = 6;
 % # iterations for mv2mean function in for-loop iteration in rm_loops
 mv_iter = 1;
 
+% Boolean for visualizing debugging graphs
+viz = true;
+
 [node_rm, edges_rm] =...
-    rm_loops(nodes, edges, vol, delta, v_min, mv_iter);
+    rm_loops_parallel(nodes, edges, vol, delta, v_min, mv_iter, viz);
 
 %% Visualize Results and Save
 
