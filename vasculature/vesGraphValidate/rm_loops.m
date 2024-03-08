@@ -200,7 +200,7 @@ function [nloops, cnodes, cedges, edges] = open_sparse_loops(nodes,edges,viz)
 %%% Identify sparse loops
 sp = graph_sparsity(edges);
 % Convert sparsity array to boolean
-sp = boolean(sp);
+sp = logical(sp);
 % Count number of loops before removing
 [npre, ~, ~] = count_loops(edges);
 

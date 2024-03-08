@@ -84,7 +84,7 @@ while any(sp)
     % Find cycles in graph
     [nsp, ~] = allcycles(g);
     % Convert sparsity array to boolean
-    sp = boolean(sp);
+    sp = logical(sp);
     % Keep node indices from sparse cycles
     nsp(~sp) = [];
     
