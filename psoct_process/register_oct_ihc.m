@@ -70,6 +70,7 @@ fullpath = fullfile(dpath, subid, subdir);
 
 % Load graph
 gmet = load(char(fullfile(fullpath, graph_name)));
+angio = gmet.Data.angio;
 gmet = gmet.Data.Graph;
 nodes = gmet.nodes;
 edges = gmet.edges;
@@ -82,17 +83,35 @@ d = degree(g);
 branch_node = nodes(d>2,:);
 % TODO: calculate regional branch density w/ coordinates of branch nodes
 
-%%% Fraction Volume
-
-
 %%% Length Density
 
 
 %%% Tortuosity
 
+%% Fraction Volume
+
+%%% Perform 3D convolution
+% Define convolution filter kernel
+n = 5;
+kernel = (n.^-3).*ones(n,n,n);
+
+% Convolve 3D angio volume
+vol = logical(angio);
+vol_conv = convn(vol,kernel,'same');
+
+% Stain (slice 8) starts at frame 78 in z stack. Take slice +/- 10 frames.
+ptau_vasc = vol_conv (:,:,68:88);
+ptau_vasc = mean(ptau_vasc,3);
+
+% Rescale intensity
+ptau_vasc = ptau_vasc ./ max(ptau_vasc(:));
+
+% Plot 
+figure; imagesc(ptau_vasc); colorbar;
+title('Fraction Volume - Heat Map - Slice 8')
 
 
-%% Load the IHC staining (AT8 for p-tau)
+%% Load the IHC staining images of AT8 (for p-tau)
 % Different slices were stained for either AB or p-tau. In each case, the
 % brightfield image (with all color channels) shows the edges of the
 % tissue. These should be used to register the staining to the OCT images.
@@ -101,7 +120,15 @@ branch_node = nodes(d>2,:);
 bfield = char(fullfile(ptau_path,'/CTE 6489 AT8/CTE_6489_brightfield_20ds.tif'));
 bfield = Tiff(bfield, 'r');
 bfield = read(bfield);
-figure; imshow(bfield);
+figure; imshow(bfield); title('Brightfield of p-tau')
+% Convert to grayscale (for image registration)
+bfield = rgb2gray(bfield);
+% Remove background from brightfield
+bfield((170 < bfield) & (bfield < 255)) = 0;
+figure; imshow(bfield); title('Grayscale brightfield of p-tau')
+% Rotate the OCT image
+bfield = imrotate(bfield,20,'bilinear');
+figure; imshow(bfield); title('Rotated Brightfield (p-tau)')
 
 %%% Load p-tau
 ptau = char(fullfile(ptau_path,'/CTE 6489 AT8/CTE_6489_AT8_20ds.tif'));
@@ -121,15 +148,41 @@ refname = strcat('Ref_BASIC',num2str(slicen),'.tif');
 oct = fullfile(dpath, subid{1}, refdir, refname);
 oct = Tiff(oct, 'r');
 oct = read(oct);
+figure; imshow(oct); title('OCT Image')
 
-% Register brightfield and OCT
-
-
+%% Register (imregcorr) brightfield (moving) and OCT (fixed)
+tform = imregcorr(bfield, oct);
+Rfixed = imref2d(size(oct));
 % Apply registration coordinates to p-tau and OCT
+movingReg = imwarp(bfield, tform, "Outputview", Rfixed);
+figure; imshowpair(oct, movingReg, "montage");
+title('Bfield Registered to OCT')
+figure; imshow(movingReg); title('Registered brightfield);')
+
+%% Register (imregcorr) brightfield (moving) and OCT (fixed)
+% Initialize optimizer and metric
+[optimizer, metric] = imregconfig("multimodal");
+optimizer.MaximumIterations = 1000;
+metric.NumberOfSpatialSamples = 1000;
+
+% Initialize spatial references
+bfield_pix = 4.39e-6;
+oct_pix = 12e-6;
+r_bfield = imref2d(size(bfield),bfield_pix,bfield_pix);
+r_oct = imref2d(size(oct), oct_pix, oct_pix);
+
+% Run registration
+tform = imregtform(bfield, r_bfield, oct, r_oct, "affine",...
+    optimizer, metric,'DisplayOptimization',true);
+
+% Apply transform to moving
+bfield_reg = imwarp(bfield, tform, "OutputView",imref2d(size(oct)));
+figure; imshow(bfield_reg); title('registered bfield')
 
 
-%% Load the IHC staining (Amyloid Beta)
-%%% AB Stain
+
+%% Load the IHC staining images for Amyloid Beta
+
 % Load brightfield image of tissue
 
 % Load AB stain channel
