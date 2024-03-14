@@ -19,6 +19,7 @@ clear; close all; clc;
 
 %% Flag for visualization while debugging
 visual = false;
+dbstop if error
 
 %% Add top-level directory of code repository to path
 % Start in current directory
@@ -70,20 +71,7 @@ if ispc
     skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
     gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
     
-elseif isunix
-    %%% AD 20832
-    %{
-    % Top-level directories
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
-    subid = 'AD_20832';
-    subdir = '/dist_corrected/volume/';
-    sigdir = 'gsigma_1-3-5_gsize_5-13-21/';
-    vdata = 'ref_4ds_norm_inv_crop_small.tif';
-    % Segment and graph data
-    seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
-    gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
-    %}
-    
+elseif isunix    
     %%% NC_6839
     %{
     % Top-level directories
@@ -98,6 +86,7 @@ elseif isunix
     %}
 
     %%% CTE_6489
+    %{
     % Top-level directories
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
     subid = 'CTE_6912';
@@ -107,6 +96,18 @@ elseif isunix
     % Data with many nested loops (probability threshold = 0.21)
     seg_name = 'ref_4ds_norm_inv_segment_pmin_0.26_mask40.tif';
     gdata = 'ref_4ds_norm_inv_segment_pmin_0.26_mask_40_graph_data.mat';
+    %}
+
+    %%% AD_10382
+    % Top-level directories
+    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+    subid = 'CTE_7019';
+    subdir = '/dist_corrected/volume/';
+    sigdir = '/combined_segs/gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/';
+    vdata = 'ref_4ds_norm_inv_refined_masked.tif';
+    % Data with many nested loops (probability threshold = 0.21)
+    seg_name = 'seg_refined_masked.tif';
+    gdata = 'seg_refined_masked_graph_data.mat';
     %}
     
 
@@ -123,9 +124,9 @@ elseif isunix
     %}
 
     %%% Output Data filenames
-    skel_out = strcat(gdata(1:end-4),'_loops_rm_v2.tif');
+    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
     skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
-    gdata_out = strcat(gdata(1:end-4),'_loops_rm_v2.mat');
+    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
 end
 %% Load PSOCT graph, volume, segmentation
 
@@ -138,81 +139,104 @@ edges = Data.Graph.edges;
 %%% Load volumetric information and set threshold
 % Import volume
 vol = TIFF2MAT(fullfile(dpath, subid, subdir, vdata));
+
 % Imaging voxel intensity threshold (normalized [0,1])
 im_thresh = 0.75;
 % Check for data type
-if strcmp(class(vol),'uint16')
+if isa(vol,'uint16')
     r = 65535;
     im_thresh = im_thresh .* r;
-elseif strcmp(class(vol),'uint8')
+elseif isa(vol,'uint8')
     r = 255;
     im_thresh = im_thresh .* r;
 end
 
-%%% Load segmentation stack
-% Import volume
-seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
-if visual == true
-    volshow(seg);
-end
-
-%%% Parameters to convert graph to 3D skeleton
-%  sz =  the size of output volume. The order is [ y x z ]
-sz = size(seg);
-%  res = resolution of the nifti image [y,x,z] centimeters
-res = [0.0012, 0.0012, 0.0015];
-%  ds_flag = 1 or 0. (1=downsampled. 0=no-downsampled)
-ds_flag = 1;
-%  save_flag = to save the skeleton or not
-save_flag = 0;
-
-%%% Overlay graph and segmentation
-% Convert graph to skeleton
-[skel_pre] = sk3D(sz, Data.Graph, 'foo', res, ds_flag, save_flag);
-t_str = 'Unprocessed Volume';
-% Overlay the graph skeleton and the segmentation
+%% Overlay graph and segmentation
 if visual
+    %%% Load segmentation stack
+    seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
+
+    %%% Parameters to convert graph to 3D skeleton
+    %  sz =  the size of output volume. The order is [ y x z ]
+    sz = size(seg);
+    %  res = resolution of the nifti image [y,x,z] centimeters
+    res = [0.0012, 0.0012, 0.0015];
+    %  ds_flag = 1 or 0. (1=downsampled. 0=no-downsampled)
+    ds_flag = 1;
+    %  save_flag = to save the skeleton or not
+    save_flag = 0;
+    % Convert graph to skeleton
+    [skel_pre] = sk3D(sz, Data.Graph, 'foo', res, ds_flag, save_flag);
+    t_str = 'Unprocessed Volume';
+    % Overlay the graph skeleton and the segmentation
     graph_seg_overlay(t_str, skel_pre, seg);
 end
 
-%%% Create list of nodes/edges in loops to down sample
-% Copy edges into standard format
-s = edges(:,1); % source node
-t = edges(:,2); % target node
-% Create standard Matlab g
-g_mat = graph(s, t);
-% Find the nodes and edges belonging to loops
-[cnodes, cedges] = allcycles(g_mat);
-cnodes = unique(horzcat(cnodes{:}));
-cnodes = cnodes';
-
-%%% Create list of nodes to NOT down sample
-% Create array of node indices 
-nkeep = 1:1:size(nodes,1);
-nkeep = nkeep';
-% Find nodes not in loops
-nkeep = ~ismember(nkeep, cnodes);
-% Find array indices equal to 1. These are the node indices of non-loop
-% segments, which should be preserved during down sampling.
-nkeep = find(nkeep == 1);
-
-%%% Visualize graph
+%% Plot graph and highlight nodes in loops
 if visual
+    % Copy edges into standard format
+    s = edges(:,1); % source node
+    t = edges(:,2); % target node
+    % Create standard Matlab g
+    g_mat = graph(s, t);
+    % Find the nodes and edges belonging to loops
+    [cnodes, cedges] = allcycles(g_mat);
+    cnodes = unique(horzcat(cnodes{:}));
+    cnodes = cnodes';
+    
+    %%% Create list of nodes to NOT down sample
+    % Create array of node indices 
+    nkeep = 1:1:size(nodes,1);
+    nkeep = nkeep';
+    % Find nodes not in loops
+    nkeep = ~ismember(nkeep, cnodes);
+    % Find array indices equal to 1. These are the node indices of non-loop
+    % segments, which should be preserved during down sampling.
+    nkeep = find(nkeep == 1);
+
+    %%% Visualize graph
     visualize_graph(nodes, edges, 'Graph Before Loop Removal',nkeep) %#ok<*UNRCH> 
 end
-%% Call Remove Loops function (move2mean and down sample loops)
 
+%% Debug rm_loops
+%{
+% Import subgraphs with loops
+load(fullfile(dpath, subid, subdir, sigdir, 'subg_rm.mat'));
 % Move to mean minimum voxel intensity
 v_min = 0.99;
-
 % Down sample search radius
 delta = 6;
-
 % # iterations for mv2mean function in for-loop iteration in rm_loops
 mv_iter = 1;
-
 % Boolean for visualizing debugging graphs
 viz = true;
+
+% Extract subgraph nodes/edges
+sub_nodes = subg_rm(8).nodes;
+sub_edges = subg_rm(8).edges;
+if visual
+    visualize_graph(sub_nodes, sub_edges, 'Before Loop Removal',[]);
+end
+% Remove loops in subgraph
+[nodes_sub_rm, edges_sub_rm] = ...
+    rm_loops(sub_nodes, sub_edges, vol, delta, v_min, mv_iter, viz);
+
+% Verify that subgraph is loop free
+g = graph(edges_sub_rm(:,1),edges_sub_rm(:,2));
+assert(~hascycles(g),'\nNot all loops were removed.')
+
+% Overlay skeleton with segmentation
+visualize_graph(nodes_sub_rm, edges_sub_rm, 'After Loop Removal',[]);
+%}
+%% Remove Loops Parallel function (this calls the rm_loops for each loop)
+% Move to mean minimum voxel intensity
+v_min = 0.99;
+% Down sample search radius
+delta = 4;
+% # iterations for mv2mean function in for-loop iteration in rm_loops
+mv_iter = 1;
+% Boolean for visualizing debugging graphs
+viz = false;
 
 [node_rm, edges_rm] =...
     rm_loops_parallel(nodes, edges, vol, delta, v_min, mv_iter, viz);
@@ -223,6 +247,18 @@ viz = true;
 % Assign nodes/edges to graph for creating skeleton
 g.nodes = node_rm;
 g.edges = edges_rm;
+
+%%% Parameters to convert graph to 3D skeleton
+% Load segmentation stack
+seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
+%  sz =  the size of output volume. The order is [ y x z ]
+sz = size(seg);
+%  res = resolution of the nifti image [y,x,z] centimeters
+res = [0.0012, 0.0012, 0.0015];
+%  ds_flag = 1 or 0. (1=downsampled. 0=no-downsampled)
+ds_flag = 1;
+%  save_flag = to save the skeleton or not
+save_flag = 0;
 % Create skeleton of graph
 [skel] = sk3D(sz, g, 'foo', res, ds_flag, save_flag);
 % Save output skeleton

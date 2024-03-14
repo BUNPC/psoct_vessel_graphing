@@ -1,4 +1,4 @@
-function [edges_rm] = rm_loop_edge(nodes, edges, sp, nsp, viz)
+function [edges_rm] = rm_loop_edge(nodes, edges, sp, cnodes, viz)
 %rm_loop_edge Remove longest edge of loop.
 % -------------------------------------------------------------------------
 % PURPOSE:
@@ -32,7 +32,7 @@ while any(sp)
 
     %% Extract the first sparse loop nodes and edges from cell array
     % Node indices
-    cnodes = nsp{1,:};
+    cnodes = cnodes{1,:};
     
     % Find the edge indices where both start/end node belong to loops
     tf = ismember(edges, cnodes);
@@ -78,15 +78,11 @@ while any(sp)
     edges(e_idx,:) = [];
 
     %% Recalculate graph sparsity for while-loop
-    sp = graph_sparsity(edges);
-    % Generate graph
-    g = graph(edges(:,1), edges(:,2));
-    % Find cycles in graph
-    [nsp, ~] = allcycles(g);
+    [sp,cnodes] = graph_sparsity(edges);
     % Convert sparsity array to boolean
     sp = logical(sp);
     % Keep node indices from sparse cycles
-    nsp(~sp) = [];
+    cnodes(~sp) = [];
     
     %% Plot updated graph    
     tstr = strcat('Iteration ', num2str(cnt));

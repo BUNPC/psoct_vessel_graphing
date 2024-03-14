@@ -58,12 +58,9 @@ end
 sprintf('Finished Removing Loops')
 
 
-function [nodes, edges] = subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter, viz, g)
+function [nodes, edges] =...
+        subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter, viz, g)
     %SUBGRAPH_RM create subgraphs, remove loops, recombine into graph
-    
-    % Debugging variables
-    tmp = []; tmp2 = [];
-
     %%% Find connected components (subgraphs)
     % This will classify nodes into the same "bin" index if they are
     % connected in the graph. The "weak" type ensures that connected
@@ -75,7 +72,7 @@ function [nodes, edges] = subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter
     %%% Separate graph into subgraphs (re-index nodes/edges)
     subgraphs = struct();
     % Create subgraph for each bin index
-    for ii = 1:length(subgraph_idcs)
+    parfor ii = 1:length(subgraph_idcs)
         % Find node indices with bin value of ii. In "nodeidx" the nodes
         % with a bin value equal to ii will be set to 1 and the others will
         % be set to 0.
@@ -88,8 +85,8 @@ function [nodes, edges] = subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter
         
         % Reindex nodes/edges for subgraph
         [nodes_sub, edges_sub] = remove_reindex_nodes(rm_idcs, nodes, edges);
-        n_nodes = length(nodes_sub);
-        n_edges = length(edges_sub);
+        n_nodes = size(nodes_sub,1);
+        n_edges = size(edges_sub,1);
 
         % Check if subgraph contains loops
         subg = graph(edges_sub(:,1), edges_sub(:,2));
@@ -137,6 +134,9 @@ function [nodes, edges] = subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter
         subg_rm(j).loop_tf = loop_tf;
         subg_rm(j).n_nodes = n_nodes;
         subg_rm(j).n_edges = n_edges;
+
+        % Print to console that loop was removed
+        fprintf('\n\nSubgraph %i removed\n', j);
     end
     
     %% Recombine subgraphs (after loop removal) and subgraphs (w/o loops)
@@ -163,6 +163,12 @@ function [nodes, edges] = subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter
         % Extract nodes/edges from subgraph ii
         nodes_sub = subgraphs(ii).nodes;
         edges_sub = subgraphs(ii).edges;
+
+        % Check if the subgraph was completely removed (due to being a self
+        % loop without any non-loop nodes)
+        if isempty(nodes_sub)
+            continue
+        end
         
         % Calculate end node indices
         n_idxf = n_idx0 + size(nodes_sub, 1) - 1;
@@ -181,10 +187,10 @@ function [nodes, edges] = subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter
         e_offset = e_offset + size(nodes_sub,1);
     end
 
-    % Visualize graph    
-    visualize_graph(nodes, edges, 'Graph after loop removal',[])
-    
-
+    % Visualize graph
+    if viz
+        visualize_graph(nodes, edges, 'Graph after loop removal',[])
+    end
 end
 
 end

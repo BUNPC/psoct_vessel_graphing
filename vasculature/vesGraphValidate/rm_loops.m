@@ -25,7 +25,7 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, v
 
 %% TODO
 % 2) Compare the function rm_reindex and my code to see if they are the same
-
+dbstop if error
 %% Initialize variables
 % Flag to protect the nodes connected to the loops
 protect = true;
@@ -35,7 +35,7 @@ im_mv = struct();
 im_mv.angio = angio;
 
 % Counter to track number of iterations
-cnt_outer = 1;
+cnt_outer = 0;
 
 % Original delta size
 delta0 = delta;
@@ -52,16 +52,18 @@ end
 while ~isempty(cnodes)
     %%% Initialize variables for inner while-loop
     % Find indices of first loop and any connected loop
-    [n_idcs] = find_multiloop_nodes(cnodes);    
-    % Restore delta if it was incremented
+    [n_idcs, n_loops] = find_multiloop_nodes(cnodes);    
+    % Reset delta to original increment
     delta = delta0;
-    % Number of loops before inner while-loop
+    % Number of loops in graph
     n_pre = length(cnodes);
-    % npost = # loops after down sample, move to mean, remove longest edge.
-    % Initialize equal to n_pre before entering inner while-loop.
-    npost = n_pre;
+    % Initialize number of loops after loop removal
+    n_post = n_pre;
 
     %%% Debugging information + Visualization
+    close all;
+    % Iterate outer-while loop
+    cnt_outer = cnt_outer + 1;
     % Initialize inner while-loop counter
     cnt_inner = 1;
     % Outer while-loop iteration
@@ -83,8 +85,7 @@ while ~isempty(cnodes)
     % Set limits in graphical display
     xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
-
-    while npost >= n_pre        
+    while (n_pre - n_loops) < n_post
         %% Debugging information
         fprintf('\nInner while-loop iteration = %i', cnt_inner)
         fprintf('\nNumber of nodes before mv2mean & DS = %i', length(nodes))
@@ -120,30 +121,29 @@ while ~isempty(cnodes)
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
         %% Check for sparse loops. If exist, remove longest edge
-        [npost, cnodes, ~, edges_ds] = open_sparse_loops(nodes_ds, edges_ds, viz);
+        % n_post is the number of loops after the inner while loop
+        [n_post, cnodes, ~, edges_ds] = open_sparse_loops(nodes_ds, edges_ds, viz);
         
         % Reassign edges, nodes for next iteration of while-loop
         edges = edges_ds;
         nodes = nodes_ds;
 
-        %% Determine if number of loops decreased
-        
-        %%% If the number of loops decreased
-        if npost < n_pre           
-            % Iterate the outer while-loop counter
-            cnt_outer = cnt_outer + 1;
-            % Leave inner while-loop
-            break
-        else
-            % Iterate the inner while-loop counter
-            cnt_inner = cnt_inner + 1;
-            % Increase delta
-            delta = delta + 10;
-            % Reassign loop node indices for next iteration. The indices of
-            % the nodes in the loop may change during downsampling.
-            % Therefore, this must be updated after each iteration.
+        %% Update counters for next iteration
+        % Iterate the inner while-loop counter
+        cnt_inner = cnt_inner + 1;
+        % Increase delta
+        delta = delta + 4;
+        % Reassign loop node indices for next iteration. The indices of
+        % the nodes in the loop may change during downsampling.
+        % Therefore, this must be updated after each iteration.
+        if ~isempty(cnodes)
             n_idcs = cnodes{1,:};
         end
+    end
+    % Graph After Loop Removed
+    tstr = {'Loop Removed',iter_str};
+    if viz
+        visualize_graph(nodes, edges, tstr, []);
     end
 end
 
@@ -151,12 +151,8 @@ end
 if viz
     visualize_graph(nodes, edges, 'After Loop Removal', []);
 end
-
-% Close all figures if there are more than 10 open
-h =  findobj('type','figure');
-if length(h) >= 10
-    close all;
-end
+%%% Close all figures prior to next iteration
+close all;
 
 end
 
@@ -176,7 +172,7 @@ function [nloops, cnodes, cedges] = count_loops(edges)
 g = graph(edges(:,1), edges(:,2));
 
 % Generate index of loops
-[cnodes, cedges] = allcycles(g);
+[cnodes, cedges] = allcycles(g,"MaxNumCycles",500);
 
 % Count number of loops
 nloops = length(cnodes);
@@ -198,18 +194,12 @@ function [nloops, cnodes, cedges, edges] = open_sparse_loops(nodes,edges,viz)
 %       cedges (cell array): each cell contains the respective edge indices
 
 %%% Identify sparse loops
-sp = graph_sparsity(edges);
+[sp, cnodes] = graph_sparsity(edges);
 % Convert sparsity array to boolean
 sp = logical(sp);
-% Count number of loops before removing
-[npre, ~, ~] = count_loops(edges);
 
 %%% Remove longest edge of sparse loops
 if any(sp)
-    % Generate graph
-    g = graph(edges(:,1), edges(:,2));
-    % Find cycles in graph
-    [cnodes, ~] = allcycles(g);
     % Keep node indices from sparse cycles
     cnodes(~sp) = [];
     % Remove the longest edge from each sparse loop
@@ -218,14 +208,11 @@ end
 
 %%% Recalculate loops
 [nloops, cnodes, cedges] = count_loops(edges);
-%%% Debugging information
-nrm = nloops - npre;
-fprintf('\nSparse Loops Removed Before Down Sampling = %i\n', nrm)
 
 end
 
 %% Function to return all nodes in nested loop structure
-function [idcs] = find_multiloop_nodes(cnodes)
+function [idcs, n_loops] = find_multiloop_nodes(cnodes)
 %find_multiloop_nodes
 % The cell array "cnodes" contains a row containing the node indices for
 % a graph cycle. However, in the case that there are nested/connected
@@ -250,9 +237,11 @@ idcs = cnodes{1,:};
 
 %%% Initialize variable for comparing 
 cellidx_past = zeros(length(cnodes),1);
+cellidx_past(1) = 1;
+combine_flag = 1;
 
-% Find cell arrays with the same node indices
-while 1
+%%% Find cell arrays with the same node indices
+while combine_flag
     %%% Find all cell arrays containing nodes from the first row (idcs)
     % This will output an [X, Y] logical matrix for each cell array row,
     % where X is the length of idcs and Y is the number of elements in row.
@@ -285,10 +274,11 @@ while 1
 
     % No additional cell array rows contain the nodes.
     else      
+        % Calculate total number of loops
+        n_loops = sum(cellidx(:));
         % Exit the while loop and return "idcs" to outer function
-        break
+        combine_flag = 0;
     end
-
 end
 
 end

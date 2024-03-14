@@ -25,7 +25,7 @@ p.MarkerSize = 3;
 
 %%% Highlight Loops
 % Determine if the graph contains cycles
-[~, edgecycles] = allcycles(g);
+[~, edgecycles] = allcycles(g,'MaxNumCycles',500);
 
 % If so, then highlight them
 if ~isempty(edgecycles)
