@@ -43,14 +43,14 @@ else
 end
 
 %%% Iterate over all nodes and find edges connected to loops
-edges_ds = find_connected_edges(nidx_ds, edges);
+edges_ds_idx = find_connected_edges(nidx_ds, edges);
 
 %%% Create new matrix of edges (containing nodes to down sample)
 % The values in edges_ds are the indices of all edges that contain at least
 % one of the nodes in nidx_ds. The matrix "edges" contains all edges in
 % the entire graph. This line of code will use the edge indices in edges_ds
 % to create a new matrix of edges [node_start, node_end].
-edges_ds = edges(edges_ds,:);
+edges_ds = edges(edges_ds_idx,:);
 
 %%% Verify that all nodes in loop_node_idcs are contained in edges_ds
 % Note that there will likely be nodes in edges_ds that are not contained
@@ -69,6 +69,21 @@ assert(isempty(node_diff),...
 
 %%% Find the end node of the non-loop segment connected to the loop.
 seg_end_nodes = setdiff(unique(edges_ds(:)), unique(nidx_ds(:)));
+
+%%% Determine whether loop is connected to any non-loop segments
+% If so, then this would indicate that this particular loop is a standalone
+% self-loop, and it must be destroyed and sent into the abyss.
+if isempty(seg_end_nodes)
+    %%% Remove this loop's nodes/edges from the main arrays "nodes, edges"
+    % Remove nodes
+    nodes_keep_re = nodes;
+    nodes_keep_re(loop_node_idcs,:) = [];
+    % Remove edges
+    edges_mapped_re = edges;
+    edges_mapped_re(edges_ds_idx,:) = [];
+    % Leave this function. Return to parent call.
+    return
+end
 
 %%% Find node(s) in loop(s) connected to the segment end-node
 % There could be multiple loops connected to the same segment end point.
@@ -156,7 +171,7 @@ nidx_keep = nidx_keep';
 if protect
     % Remove end node indices from array of node indices to down sample
     nidx_ds = setdiff(nidx_ds, end_nodes);
-    % Verify that end nodes were removed
+    % Debugging assertion
     assert(~all(ismember(end_nodes, nidx_ds)),...
         'Not all end nodes removed from down sample list.');
 end
@@ -169,10 +184,6 @@ nidx_keep = setdiff(nidx_keep, nidx_ds);
 node_map = zeros(size(nodes,1), 1);
 % Set nidx_keep indices equal to 1
 node_map(nidx_keep) = nidx_keep;
-
-%%% Visualize the graph with protected nodes
-% visualize_graph(nodes, edges,'Protected Nodes (green)', nidx_keep);
-% xlim([270, 300]); ylim([140, 170]); zlim([0,5]); view(3);
 
 %%% "nodes_keep" tracks the index positions of unique nodes.
 % The current node position in the for loop (pos_tmp) is compared to all
@@ -187,12 +198,12 @@ nodes_keep = nodes(nidx_keep,:);
 %% Down Sample Loops
 %%% Iterate over all nodes & perform down sampling
 for ii=1:size(nidx_ds,1)
-% for ii=2:size(nodes,1)
     % Position of node under comparison
     pos_tmp = nodes(nidx_ds(ii),:);
-    % If the node is protected, then skip this for-loop iteration
-    if ~all(ismember(pos_tmp, nodes_keep))
-        pause(0.1);
+    % If node is protected, map node to itself & skip this iteration
+    if ismember(pos_tmp, nodes_keep,'rows')
+        node_map(nidx_ds(ii)) = nidx_ds(ii);
+        continue
     end
     % Find nodes within the search radius of pos_tmp
     nkeep_close = find(...
@@ -225,19 +236,11 @@ for ii=1:size(nidx_ds,1)
         else
             closest_node = 1;
         end
-        %%% Replace current node with closest loop node (prior version)
-        % The array node_map is for mapping all nodes in the graph.
-        % The array nidx_ds contains the indices of all loop nodes (and
-        % end nodes if protect is false), in the context of the entire
-        % graph. Therefore, an index of X in nidx_ds corresponds to node
-        % index X in the graph.
-        % The following line converts the index within nkeep_close to
-        % the index within the entire graph.
-%         node_map(nidx_ds(ii)) = nidx_ds(nkeep_close(closest_node));
         
         %%% Replace current node with closest loop node (newer version)
         % The index in nkeep_close(closest_node) corresponds to the
-        % index in "nidx_keep", which is set by the line: nodes_keep = nodes(nidx_keep,:)
+        % index in "nidx_keep", which is set by the line:
+        % nodes_keep = nodes(nidx_keep,:)
         % Therefore, the index "nidx_keep" must be remapped back to the
         % original index in "nodes".
         %
@@ -260,7 +263,7 @@ edges_mapped = edges_mapped(edges_mapped(:,1)~=edges_mapped(:,2),:);
 
 % Find unique edges
 sE = cell(size(edges_mapped,1),1);
-for ii=1:length(edges_mapped)
+for ii=1:size(edges_mapped,1)
     if edges_mapped(ii,1)<edges_mapped(ii,2)
         sE{ii} = sprintf('%05d%05d',edges_mapped(ii,1),edges_mapped(ii,2));
     else

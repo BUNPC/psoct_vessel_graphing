@@ -1,4 +1,4 @@
-function [sparsity] = graph_sparsity(edges)
+function [sparsity, cnodes] = graph_sparsity(edges)
 %GRAPH_SPARSITY determine sparsity of cycles (loops) in graph
 % The purpose is to determine if the cycles have been fully down sampled.
 % In this case, # nodes in the cycle == # edges in cycle. This is to
@@ -27,7 +27,7 @@ function [sparsity] = graph_sparsity(edges)
 g = graph(edges(:,1), edges(:,2));
 
 % Generate arrays of node and edge indices (cnodes, cedges) for each cycle
-[cnodes, ~] = allcycles(g);
+[cnodes, ~] = allcycles(g,"MaxNumCycles",500);
 
 % Generate bool matrix for sparsity
 sparsity = zeros(length(cnodes),1);
