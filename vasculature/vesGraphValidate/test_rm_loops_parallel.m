@@ -1,25 +1,14 @@
-%% Test regraphNodes with list of nodes
+%% Test rm_loops_parallel function
 %{
 Purpose: The function "rm_loops" operates on each loop in series. This
 results in significant processing time when datasets contain large amounts
 of loops. This test script is for developing and testing a function to
 remove loops in parallel.
-
-To Do:
-- add "MaxNumCycles" to the "allcycles" function call. This will limit the
-number of cycles to load into memory. Previously, excluding this argument
-led to memory overloads.
-    - print the total number of loops
-- For each loop, identify all segments it is connected to. Separate these
-connected segments into subgraphs.
-- use "parfor" and run "rm_loop" on each subgraph
-- repeat this process until all loops are removed.
 %}
 clear; close all; clc;
 
 %% Flag for visualization while debugging
 visual = false;
-dbstop if error
 
 %% Add top-level directory of code repository to path
 % Start in current directory
@@ -101,7 +90,7 @@ elseif isunix
     %%% AD_10382
     % Top-level directories
     dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
-    subid = 'CTE_7019';
+    subid = 'NC_21499';
     subdir = '/dist_corrected/volume/';
     sigdir = '/combined_segs/gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/';
     vdata = 'ref_4ds_norm_inv_refined_masked.tif';
@@ -139,17 +128,6 @@ edges = Data.Graph.edges;
 %%% Load volumetric information and set threshold
 % Import volume
 vol = TIFF2MAT(fullfile(dpath, subid, subdir, vdata));
-
-% Imaging voxel intensity threshold (normalized [0,1])
-im_thresh = 0.75;
-% Check for data type
-if isa(vol,'uint16')
-    r = 65535;
-    im_thresh = im_thresh .* r;
-elseif isa(vol,'uint8')
-    r = 255;
-    im_thresh = im_thresh .* r;
-end
 
 %% Overlay graph and segmentation
 if visual
@@ -212,8 +190,8 @@ mv_iter = 1;
 viz = true;
 
 % Extract subgraph nodes/edges
-sub_nodes = subg_rm(8).nodes;
-sub_edges = subg_rm(8).edges;
+sub_nodes = subg_rm(63).nodes;
+sub_edges = subg_rm(63).edges;
 if visual
     visualize_graph(sub_nodes, sub_edges, 'Before Loop Removal',[]);
 end
@@ -226,7 +204,7 @@ g = graph(edges_sub_rm(:,1),edges_sub_rm(:,2));
 assert(~hascycles(g),'\nNot all loops were removed.')
 
 % Overlay skeleton with segmentation
-visualize_graph(nodes_sub_rm, edges_sub_rm, 'After Loop Removal',[]);
+% visualize_graph(nodes_sub_rm, edges_sub_rm, 'After Loop Removal',[]);
 %}
 %% Remove Loops Parallel function (this calls the rm_loops for each loop)
 % Move to mean minimum voxel intensity
