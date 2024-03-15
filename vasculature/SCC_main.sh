@@ -5,9 +5,9 @@
 
 # Request a whole node with 28 cores and at least 384 GB of RAM.
 # Specify number of cores
-#$ -pe omp 16
+#$ -pe omp 28
 # Specify memory per core
-#$ -l mem_per_core=16G
+#$ -l mem_per_core=18G
 
 # Send email upon completion
 #$ -m ea

@@ -23,7 +23,7 @@ mv_iter = 1;
 
 if rmloop_bool
     % Call function to remove loops
-    [nodes_rm, edges_rm] = rm_loops(graph.nodes, graph.edges, seg, delta, ...
+    [nodes_rm, edges_rm] = rm_loops_parallel(graph.nodes, graph.edges, seg, delta, ...
                                     v_min, mv_iter, viz);
     % Update graph with nodes and edges
     graph.nodes = nodes_rm;

@@ -80,7 +80,6 @@ idx_end = cell(4,1);  A_idx_end = cell(4,1);
 iall = 1; i3 = 1; i5 = 1; i10 = 1;
 A_iall = 1; A_i3 = 1; A_i5 = 1; A_i10 = 1;
 for u = 1:nSeg
-    waitbar(u/nSeg);
     temp_idx = find(Data.Graph.segInfo.nodeSegN == u);
     endnodes = Data.Graph.segInfo.segEndNodes(u,:);
     %        nc1 = length(find(Data.Graph.edges(:,1) == endnodes(1) |Data.Graph.edges(:,2) == endnodes(1)));
@@ -197,26 +196,3 @@ end
 
 
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

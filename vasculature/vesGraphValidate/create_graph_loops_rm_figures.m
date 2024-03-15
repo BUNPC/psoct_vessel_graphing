@@ -7,7 +7,7 @@ Purpose:
 clear; close all; clc;
 
 %% Flag for visualization while debugging
-visual = false;
+visual = true;
 
 %% Add top-level directory of code repository to path
 % Start in current directory
@@ -23,106 +23,29 @@ topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
 %% Initialize data paths for dataset with loops
-if ispc
-    %%% AD 20832
-    % Top-level directories
-    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
-    subid = 'AD_20832';
-    subdir = '\dist_corrected\volume\';
-    sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
-    vdata = 'ref_4ds_norm_inv_crop_small.tif';
-    % Segment and graph data
-    seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
-    gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
+%%% AD 20832
+% Top-level directories
+dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
+subid = 'AD_20832';
+subdir = '\dist_corrected\volume\';
+sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
+vdata = 'ref_4ds_norm_inv_crop_small.tif';
+% Segment and graph data
+seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
+gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data_loops_rm.mat';
+
+%%% Output Data filenames
+skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
+skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
+gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
     
-    %%% NC_6839
-    %{
-    % Top-level directories
-    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\test_data\Ann_Mckee_samples_10T\';
-    subid = 'NC_6839';
-    subdir = '\dist_corrected\volume\';
-    sigdir = 'gsigma_1-3-5_gsize_5-13-21\';
-    vdata = 'ref_4ds_norm_inv_crop2.tif';
-    % Data with many nested loops (probability threshold = 0.21)
-    seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
-    gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
-    %}
-
-    %%% Test Data from Etienne
-    %{
-    % Top-level directories
-    dpath = 'C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures\Martinos_Datasets\data_stats\version_8\post_processed';
-    %}
-
-    %%% Output Data filenames
-    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
-    skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
-    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
-    
-elseif isunix
-    %%% AD 20832
-    %{
-    % Top-level directories
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
-    subid = 'AD_20832';
-    subdir = '/dist_corrected/volume/';
-    sigdir = 'gsigma_1-3-5_gsize_5-13-21/';
-    vdata = 'ref_4ds_norm_inv_crop_small.tif';
-    % Segment and graph data
-    seg_name = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26.tif';
-    gdata = 'ref_4ds_norm_inv_crop_small_segment_pmin_0.26_graph_data.mat';
-    %}
-    
-    %%% NC_6839
-    %{
-    % Top-level directories
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
-    subid = 'NC_6839';
-    subdir = '/dist_corrected/volume/';
-    sigdir = 'gsigma_1-3-5_gsize_5-13-21/';
-    vdata = 'ref_4ds_norm_inv_crop2.tif';
-    % Data with many nested loops (probability threshold = 0.21)
-    seg_name = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21.tif';
-    gdata = 'ref_4ds_norm_inv_crop2_segment_pmin_0.21_mask_40_graph_data.mat';
-    %}
-
-    %%% CTE_6489
-    % Top-level directories
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
-    subid = 'CTE_6912';
-    subdir = '/dist_corrected/volume/';
-    sigdir = 'gsigma_1-2-3-4-5_gsize_5--9-13-17-21/';
-    vdata = 'ref_4ds_norm_inv.tif';
-    % Data with many nested loops (probability threshold = 0.21)
-    seg_name = 'ref_4ds_norm_inv_segment_pmin_0.26_mask40.tif';
-    gdata = 'ref_4ds_norm_inv_segment_pmin_0.26_mask_40_graph_data.mat';
-    %}
-    
-
-    %%% Test Data from Etienne
-    %{
-    % Top-level directories
-    dpath = '/projectnb/npbssmic/ns/martinos_etienne_test_data/data_stats/version_8/post_processed/';
-    % TODO:
-    %   - read in the NIFTI file
-    %   - verify same skel_out filepaths
-    mri = MRIread(strcat(dpath, fname));
-    fprintf('mri loaded.\n')
-    mri.vol = single(mri.vol);
-    %}
-
-    %%% Output Data filenames
-    skel_out = strcat(gdata(1:end-4),'_loops_rm.tif');
-    skel_out = char(fullfile(dpath, subid, subdir, sigdir, skel_out));
-    gdata_out = strcat(gdata(1:end-4),'_loops_rm.mat');
-end
 %% Load PSOCT graph, volume, segmentation
 
-%%% Load Graph
-Data = load(fullfile(dpath, subid, subdir, sigdir, gdata), 'Data');
-Data = Data.Data;
-nodes = Data.Graph.nodes;
-edges = Data.Graph.edges;
+%%% Load Graph (loops removed)
+Data = load(fullfile(dpath, subid, subdir, sigdir, gdata),'g');
+Data = Data.g;
+nodes = Data.nodes;
+edges = Data.edges;
 
 %%% Load volumetric information and set threshold
 % Import volume
@@ -157,11 +80,11 @@ save_flag = 0;
 
 %%% Overlay graph and segmentation
 % Convert graph to skeleton
-[skel_pre] = sk3D(sz, Data.Graph, 'foo', res, ds_flag, save_flag);
+[skel] = sk3D(sz, Data, 'foo', res, ds_flag, save_flag);
 t_str = 'Unprocessed Volume';
 % Overlay the graph skeleton and the segmentation
 if visual
-    graph_seg_overlay(t_str, skel_pre, seg);
+    graph_seg_overlay(t_str, skel, seg);
 end
 
 %%% Create list of nodes/edges in loops to down sample
@@ -194,17 +117,18 @@ end
 % Move to mean minimum voxel intensity
 v_min = 0.99;
 
+% Loop flag. true = down sample loops with "downsample_loops"
+% false = down sample entire graph
+loop_flag = 'true';
+
 % Down sample search radius
 delta = 6;
 
 % # iterations for mv2mean function in for-loop iteration in rm_loops
 mv_iter = 1;
 
-% boolean for whether or not to visualize debugging graph figures
-viz = true;
-
 [node_rm, edges_rm] =...
-    rm_loops(nodes, edges, vol, delta, v_min, mv_iter, viz);
+    rm_loops(nodes, edges, vol, delta, v_min, mv_iter);
 
 %% Visualize Results and Save
 

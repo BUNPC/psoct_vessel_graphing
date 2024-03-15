@@ -17,14 +17,14 @@ topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
 %% Lookup table of pia pixel intensity reference values
-subid = {'AD_10382', 'AD_20832', 'AD_20969',...
-             'AD_21354', 'AD_21424',...
-             'CTE_6489','CTE_6912',...
-             'CTE_7019','CTE_8572','CTE_7126',...
-             'NC_6047', 'NC_6839',...
-             'NC_6974', 'NC_7597',...
-             'NC_8095', 'NC_8653',...
-             'NC_21499','NC_301181'};
+% subid = {'AD_10382', 'AD_20832', 'AD_20969',...
+%              'AD_21354', 'AD_21424',...
+%              'CTE_6489','CTE_6912',...
+%              'CTE_7019','CTE_8572','CTE_7126',...
+%              'NC_6047', 'NC_6839',...
+%              'NC_6974', 'NC_7597',...
+%              'NC_8095', 'NC_8653',...
+%              'NC_21499','NC_301181'};
 
 % Subset of subjects with good segmentation
 subid =     {'AD_10382', 'AD_20832', 'AD_20969',...
@@ -54,22 +54,22 @@ vol_name = 'ref_4ds_norm_inv';
 % Combined segmentations subfolder
 subdir2 = 'combined_segs';
 % Combined segmentation subfolder
-segdir = 'gsigma_3-5-7_5-7-9_7-9-11';
+segdir = 'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/';
 % Filename with combined segmentations
-seg_name = 'seg_masked';
+seg_name = 'seg_refined_masked';
 
 %%% Assign subid based on job array counter
 if isunix
-    % Retrieve SGE_TASK_ID from system (job array index)
-    batch_idx = getenv('SGE_TASK_ID');
-    % Convert from ASCII to double
-    batch_idx = str2double(batch_idx);
-    % Assign local subject ID
-    sub = subid{batch_idx};
+%     % Retrieve SGE_TASK_ID from system (job array index)
+%     batch_idx = getenv('SGE_TASK_ID');
+%     % Convert from ASCII to double
+%     batch_idx = str2double(batch_idx);
+%     % Assign local subject ID
+%     sub = subid{batch_idx};
     % Disable visualization of plots
-    viz = false;
+    viz = true;
     % Set the remove loop boolean to zero
-    rmloop_bool = 0;
+    rmloop_bool = 1;
 else
     sub = subid{1};
     % Enable visualization of plots
@@ -81,28 +81,29 @@ end
 %% Iterate through subjects. Generate graph
 
 %%% Import combined segmentation file
-fpath = fullfile(dpath, sub, subdir1, subdir2, segdir, strcat(seg_name,'.mat'));
-tmp = load(fpath,'segm');
-seg = tmp.segm;
-
-%%% Pre-process combined segmentation prior to graphing
-% Remove small segments (fewer than voxmin)
-voxmin = 30;
-seg = rm_short_vessels(seg, voxmin);
-% Remove large islands (likley pia boundary false positives)
-% Some of the segmentations contain large blobs in the pia. I need to
-% write a function to identify + remove these.
-
-%%% Convert to graph
-% Set the voxel size
-if regexp(vol_name, '4ds')
-    vox_dim = [12, 12, 15];
-elseif regexp(vol_name, '10ds')
-    vox_dim = [30, 30, 35];
-else
-    vox_dim = [30, 30, 35];
+for ii = 2:length(subid)
+    sub = subid{ii};
+    fpath = fullfile(dpath, sub, subdir1, subdir2, segdir, strcat(seg_name,'.mat'));
+    tmp = load(fpath);
+    seg = tmp.vol;
+    
+    %%% Pre-process combined segmentation prior to graphing
+    % Remove small segments (fewer than voxmin)
+%     voxmin = 10;
+%     seg = rm_short_vessels(seg, voxmin);
+    
+    %%% Convert to graph
+    % Set the voxel size
+    if regexp(vol_name, '4ds')
+        vox_dim = [12, 12, 15];
+    elseif regexp(vol_name, '10ds')
+        vox_dim = [30, 30, 35];
+    else
+        vox_dim = [30, 30, 35];
+    end
+    %%% Initialize graph + remove loops + save output
+    graph_path = fullfile(dpath, sub, subdir1, subdir2, segdir);
+    seg_graph_init(seg, vox_dim, graph_path, seg_name, viz, rmloop_bool);
+    % Print subject ID to console
+    sprintf('Completed subject %s\n.',sub);
 end
-%%% Initialize graph + remove loops + save output
-graph_path = fullfile(dpath, sub, subdir1, subdir2, segdir);
-seg_graph_init(seg, vox_dim, graph_path, seg_name, viz, rmloop_bool);
-
