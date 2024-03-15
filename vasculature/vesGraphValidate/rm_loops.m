@@ -25,7 +25,7 @@ function [nodes, edges] = rm_loops(nodes, edges, angio, delta, v_min, mv_iter, v
 
 %% TODO
 % 2) Compare the function rm_reindex and my code to see if they are the same
-dbstop if error
+
 %% Initialize variables
 % Flag to protect the nodes connected to the loops
 protect = true;
