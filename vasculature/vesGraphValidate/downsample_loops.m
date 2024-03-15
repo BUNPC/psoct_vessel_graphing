@@ -200,8 +200,9 @@ nodes_keep = nodes(nidx_keep,:);
 for ii=1:size(nidx_ds,1)
     % Position of node under comparison
     pos_tmp = nodes(nidx_ds(ii),:);
-    % If the node is protected, then skip this for-loop iteration
+    % If node is protected, map node to itself & skip this iteration
     if ismember(pos_tmp, nodes_keep,'rows')
+        node_map(nidx_ds(ii)) = nidx_ds(ii);
         continue
     end
     % Find nodes within the search radius of pos_tmp
@@ -235,15 +236,6 @@ for ii=1:size(nidx_ds,1)
         else
             closest_node = 1;
         end
-        %%% Replace current node with closest loop node (prior version)
-        % The array node_map is for mapping all nodes in the graph.
-        % The array nidx_ds contains the indices of all loop nodes (and
-        % end nodes if protect is false), in the context of the entire
-        % graph. Therefore, an index of X in nidx_ds corresponds to node
-        % index X in the graph.
-        % The following line converts the index within nkeep_close to
-        % the index within the entire graph.
-%         node_map(nidx_ds(ii)) = nidx_ds(nkeep_close(closest_node));
         
         %%% Replace current node with closest loop node (newer version)
         % The index in nkeep_close(closest_node) corresponds to the
@@ -271,7 +263,7 @@ edges_mapped = edges_mapped(edges_mapped(:,1)~=edges_mapped(:,2),:);
 
 % Find unique edges
 sE = cell(size(edges_mapped,1),1);
-for ii=1:length(edges_mapped)
+for ii=1:size(edges_mapped,1)
     if edges_mapped(ii,1)<edges_mapped(ii,2)
         sE{ii} = sprintf('%05d%05d',edges_mapped(ii,1),edges_mapped(ii,2));
     else
