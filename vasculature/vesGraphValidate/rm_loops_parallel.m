@@ -119,7 +119,6 @@ function [nodes, edges] =...
         % Remove loops in subgraph
         [nodes_sub_rm, edges_sub_rm] = ...
             rm_loops(sub_nodes, sub_edges, angio, delta, v_min, mv_iter, viz);
-        
         % Find number of nodes and edges
         n_nodes = size(nodes_sub_rm, 1);
         n_edges = size(edges_sub_rm, 1);
@@ -136,7 +135,7 @@ function [nodes, edges] =...
         subg_rm(j).n_edges = n_edges;
 
         % Print to console that loop was removed
-        fprintf('\n\nSubgraph %i removed\n', j);
+        fprintf('\n\nSubgraph %i had all loopsremoved\n', j);
     end
     
     %% Recombine subgraphs (after loop removal) and subgraphs (w/o loops)
@@ -192,24 +191,4 @@ function [nodes, edges] =...
         visualize_graph(nodes, edges, 'Graph after loop removal',[])
     end
 end
-
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
