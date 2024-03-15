@@ -1,4 +1,5 @@
-function [nodes, edges] = rm_loops_parallel(nodes, edges, angio, delta, v_min, mv_iter, viz)
+function [nodes, edges] = rm_loops_parallel(nodes, edges, angio, delta,...
+                            v_min, mv_iter, viz)
 %RM_LOOPS_PARALLEL Separate graph into subgraphs, create parallel thread
 %for each subgraph, and remove loops from subgraph in each thread.
 %   The "rm_loops" function removes loops in series. This is time consuming
@@ -23,18 +24,23 @@ function [nodes, edges] = rm_loops_parallel(nodes, edges, angio, delta, v_min, m
 %       n ([n,3] array): node locations
 %       e ([m,2] array): edges connecting each node
 %
-%{
-% TODO:
-- determine order of operations for removing nodes in loops:
-    option 1:
-        - find loop nodes in entire graph:
-            [cnodes, cedges] = allcycles(g,'MaxNumCycles',500);
-        - run remove_reindex_nodes with both cnodes, nodes, and edges
-    option 2:
-        - separate graph into subgraphs
-        - check each subgraph for loops "hascycles"
-        - flag these to remove loops
-%}
+
+%% Initialize parallel pool
+% Retrieve the number of available cores
+n_cores = str2num(getenv('NSLOTS'));
+% Set the maximum number of threads equal to the number of cores
+maxNumCompThreads(n_cores);
+
+% Check whether parallel pool exists
+poolobj = gcp('nocreate');
+if isempty(poolobj)
+    % No parallel pool exists. Initialize a parallel pool.
+    pc = parcluster('local');
+    % Setup directory for logging
+    pc.JobStorageLocation = getenv('TMPDIR');
+    % Start running the parallel pool
+    parpool(pc, n_cores);
+end
 
 %% Initialize graph
 g = graph(edges(:,1), edges(:,2));
@@ -45,21 +51,20 @@ tf = hascycles(g);
 while tf
     % Separate into subgraphs, remove loops, recombine subgraphs
     [nodes, edges] = ...
-        subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter, viz, g);
+        subgraph_rm(nodes, edges, angio, delta, v_min,...
+                    mv_iter, viz, g, n_cores);
 
     % Determine whether updated graph contains cycles (hascycles)
-    g = graph(edges(:,1), edges(:,2));
-    tf = hascycles(g);
-    
     % If tf is false, then there are no loops remaining in the graph, and
     % this function will return to parent call.
+    g = graph(edges(:,1), edges(:,2));
+    tf = hascycles(g);
 end
 
 sprintf('Finished Removing Loops')
 
-
 function [nodes, edges] =...
-        subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter, viz, g)
+    subgraph_rm(nodes, edges, angio, delta, v_min, mv_iter, viz, g, n_cores)
     %SUBGRAPH_RM create subgraphs, remove loops, recombine into graph
     %%% Find connected components (subgraphs)
     % This will classify nodes into the same "bin" index if they are
@@ -72,7 +77,7 @@ function [nodes, edges] =...
     %%% Separate graph into subgraphs (re-index nodes/edges)
     subgraphs = struct();
     % Create subgraph for each bin index
-    parfor ii = 1:length(subgraph_idcs)
+    parfor (ii = 1:length(subgraph_idcs), n_cores)
         % Find node indices with bin value of ii. In "nodeidx" the nodes
         % with a bin value equal to ii will be set to 1 and the others will
         % be set to 0.
@@ -111,7 +116,7 @@ function [nodes, edges] =...
     % Initialize new struct for storing subgraphs after loop removal
     subg_rm = subgraphs(sub_idx);
 
-    parfor j = 1:L
+    parfor (j = 1:L, n_cores)
         % Extract subgraph nodes/edges
         sub_nodes = subg_rm(j).nodes;
         sub_edges = subg_rm(j).edges;

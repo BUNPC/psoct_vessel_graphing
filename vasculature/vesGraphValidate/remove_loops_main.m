@@ -28,13 +28,13 @@ dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
 subdir = '/dist_corrected/volume/';
 vdata = 'ref_4ds_norm_inv_refined_masked.tif';
 % Sub-subfolder with OCT volume segmentation and graph
-sigdir = '/combined_segs/gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/';
+sigdir = '/combined_segs/gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p20/';
 seg_name = 'seg_refined_masked.tif';
 gdata = 'seg_refined_masked_graph_data.mat';
 
 %% Iterate through subjects. Generate graph
 %%% Import combined segmentation file
-for ii = 13:length(subid)
+for ii = 8:length(subid)
     %%% Load Graph
     % Subject ID in loop
     sub = subid{ii};
@@ -60,7 +60,8 @@ for ii = 13:length(subid)
     
     %%% Call function to remove loops
     [nodes_rm, edges_rm] =...
-        rm_loops_parallel(nodes, edges, vol, delta, v_min, mv_iter, viz);
+        rm_loops_parallel(nodes, edges, vol, delta,...
+        v_min, mv_iter, viz);
     % Update the graph
     Data.Graph.nodes = nodes_rm;
     Data.Graph.edges = edges_rm;
