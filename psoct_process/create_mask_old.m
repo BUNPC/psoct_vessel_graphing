@@ -7,6 +7,12 @@ function [volm, segm] = create_mask_v0(vol, seg, ref)
 % OUTPUTS:
 %   volm (uint16): masked volume
 %   segm (uint8): masked segmentation
+% INPUTS:
+%   vol (double matrix): psoct b-scan of tissue volume
+%   seg (uint8): segmentation volume
+% OUTPUTS:
+%   volm (uint16): masked volume
+%   segm (uint8): masked segmentation
 
 %% Initialize
 % Initialize matrix for storing masked volume
