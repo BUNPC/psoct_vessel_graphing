@@ -26,8 +26,6 @@ clear; clc; close all;
 
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
-
-% Start in current directory
 mydir  = pwd;
 % Find indices of slashes separating directories
 if ispc
