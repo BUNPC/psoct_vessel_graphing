@@ -1,7 +1,5 @@
 %% Create a mask for the white matter
 % Use the scattering map to segment just the white matter
-%{
-%}
 clear; clc; close all;
 
 %% Add top-level directory of code repository to path
@@ -158,7 +156,7 @@ for ii = 1:length(subid)
     regstruct.(sid).mus_reg = mus_mat;
     % Save the struct
     fout = fullfile(dpath, sid, scatdir, 'registered','regstruct.mat');
-    save(fout,'regstruct');
+    save(fout,'regstruct','-v7.3');
 
     %%% Debugging Info
     fprintf('\n---------Finished Subject %s---------\n',subid{ii})
