@@ -47,7 +47,7 @@ elseif isunix
 end
 
 % Subfolder containing data
-subdir = '/dist_corrected/volume/ref';
+subdir = '/dist_corrected/volume/ref/';
 % Filename to parse (this will be the same for each subject)
 fbase = 'ref';
 %%% Complete subject ID list for Ann_Mckee_samples_10T
@@ -60,8 +60,9 @@ fbase = 'ref';
 %          'NC_8095', 'NC_8653',...
 %          'NC_21499','NC_301181'};
 
-subid = {'NC_7597','NC_8095','NC_301181'};
+subid = {'NC_7597'};
 
+% for ii = 1:length(subid)
 parfor (ii = 1:length(subid), NSLOTS)
     %% Find all files with "ref#.mat" in the subfolder
     % Define entire filepath 
@@ -72,6 +73,7 @@ parfor (ii = 1:length(subid), NSLOTS)
     names = {list.name};
     % Create regular expression
     exp = 'ref\d*+.mat';
+%     exp = 'Ref_BASIC\d*+.tif';
     % Find strings matching regexp
     refnames = regexp(names, exp, 'match');
     % Remove empty elements (did not match)
@@ -79,9 +81,13 @@ parfor (ii = 1:length(subid), NSLOTS)
     
     %% Combine the ref#.mat files into single matrix (c-scan)  
     % Load first ref stack for initializing matrix
-    filename = fullfile(fpath, 'ref1.mat');
-    tmp = load(filename);    
-    ref = tmp.Ref;
+    filename = fullfile(fpath, refnames{1});
+    if contains(filename, '.tif')
+        ref = TIFF2MAT(filename{:});
+    else
+        tmp = load(filename);    
+        ref = tmp.Ref;
+    end
     % Get dimensions of first stack
     [y,x,z] = size(ref);
     % Extrapolate total number of images in stack

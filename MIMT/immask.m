@@ -889,7 +889,7 @@ function exportimage(~,~)
 	if isempty(wsvariablename); return; end
 	
 	outmask = imcast(maskA,'logical'); % just in case
-	assignin('base',wsvariablename,outmask);
+	assignin('caller',wsvariablename,outmask);
 end	
 	
 %% SET WORKING IMAGE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

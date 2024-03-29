@@ -47,6 +47,7 @@ elseif isunix
     end
 end
 
+%% Initialize folders and file names
 % Subfolder containing data
 subdir = '/dist_corrected/volume/ref';
 % Filename to parse (this will be the same for each subject)
@@ -59,20 +60,33 @@ subid = {'AD_20832', 'AD_20969',...
          'NC_6839','NC_6974','NC_8653',...
          'NC_21499','NC_301181'};
 
+% Filenames
+refname = 'ref.mat';
+maskname = 'mask.mat';
+% Specifics for NC_6047
+%{
+subid = {'NC_6047'};
+refname = 'refc.tif';
+%}
+
 % for ii = 1:length(subid)
 parfor (ii = 1:length(subid), NSLOTS)
     %% Load "ref.mat" and "mask.mat" from the subfolder
-    % Filenames
-    refname = 'ref.mat';
-    maskname = 'mask.mat';
     % Define entire filepath 
     refpath = fullfile(dpath, subid{ii}, subdir, refname);
     maskpath = fullfile(dpath, subid{ii}, subdir, maskname);
     % Load ref and mask
-    ref = load(refpath);
-    mask = load(maskpath);
-    ref = ref.vol;
-    mask = mask.vol;
+    if contains(refname, 'ref.mat')
+        ref = load(refpath);
+        mask = load(maskpath);
+        ref = ref.vol;
+        mask = mask.vol;
+    else
+        % Import ref
+        ref = TIFF2MAT(refpath);
+        mask = load(maskpath);
+        mask = mask.tiss_mat;
+    end
 
     %% Initialize filename and header information
     % Names of output files

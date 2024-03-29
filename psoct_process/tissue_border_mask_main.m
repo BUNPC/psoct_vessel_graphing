@@ -5,7 +5,11 @@
 % applied to the segmentation to remove false positives along the border of
 % the tissue.
 
+%% Initialize environment
 clear; clc; close all;
+
+% Debug argument (true = display figures for each slice)
+debug = true;
 
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
@@ -39,20 +43,20 @@ elseif isunix
 
     % Check to see if we already have a parpool, if not create one with
     % our desired parameters
-    poolobj = gcp('nocreate');
-    if isempty(poolobj)
-	    myCluster=parcluster('local');
-	    % Ensure multiple parpool jobs don't overwrite other's temp files
-	    myCluster.JobStorageLocation = getenv('TMPDIR');
-	    poolobj = parpool(myCluster, NSLOTS);
-    end
+%     poolobj = gcp('nocreate');
+%     if isempty(poolobj)
+% 	    myCluster=parcluster('local');
+% 	    % Ensure multiple parpool jobs don't overwrite other's temp files
+% 	    myCluster.JobStorageLocation = getenv('TMPDIR');
+% 	    poolobj = parpool(myCluster, NSLOTS);
+%     end
 
 end
 
 % Subfolder containing data
 subdir = '/dist_corrected/volume/ref/';
 % Filename to parse (this will be the same for each subject)
-fname = 'ref.tif';
+fname = 'refc.tif';
 %%% Complete subject ID list for Ann_Mckee_samples_10T
 subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'AD_21354', 'AD_21424',...
@@ -60,9 +64,11 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'CTE_7019','CTE_8572','CTE_7126',...
          'NC_6839','NC_6974',...
          'NC_8653','NC_21499','NC_301181'};
+subid = {'NC_6047'};
 
 %% Iterate subjects
-parfor (ii = 1:length(subid), NSLOTS)
+for ii = 1:length(subid)
+% parfor (ii = 1:length(subid), NSLOTS)
     %%% Debugging information
     fspec = 'Started subject %s\n';
     fprintf(fspec, subid{ii})
@@ -109,8 +115,6 @@ parfor (ii = 1:length(subid), NSLOTS)
         end
            
         %%% Create mask for each volume
-        % Debug argument (true = display figures for each slice)
-        debug = false;
         % Function to create mask for each slice in stack
         [ref_mask, t] = create_mask_v4(ref, debug);
 

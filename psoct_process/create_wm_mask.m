@@ -60,6 +60,9 @@ gm_mask = bwareaopen(gm_mask, nmin);
 figure; imshow(gm_mask); title('GM Mask - Islands removed')
 
 % Manually modify the mask
-immask(gm_mask);
+% immask(gm_mask);
+
+% Close all figures
+close all
 
 end
