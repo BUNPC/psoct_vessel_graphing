@@ -278,7 +278,9 @@ end
 fprintf('---------Finished Masking all Subjects---------\n')
 
 %% Convert segmentation to graph
-for ii = 6:10
+subid = {'CTE_7019','CTE_7126','CTE_8572',...
+         'NC_8653','NC_21499', 'NC_301181','NC_6974'};
+for ii = 1:length(subid)
     fprintf('---------Graphing Subject %s---------\n',subid{ii})
     fprintf('Generating graph data for subject %s\n',subid{ii})
     % Voxel dimensions

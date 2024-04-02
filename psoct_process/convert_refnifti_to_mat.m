@@ -47,24 +47,30 @@ elseif isunix
 %     end
 end
 
+%%% Subfolder for ref.tifs
 % Subfolder containing data
-subdir = '/dist_corrected/volume/ref';
+subdir = '/dist_corrected/volume/ref/';
 % Filename to parse (this will be the same for each subject)
 fbase = 'ref';
-%%% Complete subject ID list for Ann_Mckee_samples_10T
+% Complete subject ID list for Ann_Mckee_samples_10T
 subid = {'AD_10382','AD_20832', 'AD_20969',...
          'AD_21354', 'AD_21424',...
          'CTE_6489','CTE_6912',...
          'CTE_7019','CTE_8572','CTE_7126',...
          'NC_6839','NC_6974','NC_8653',...
          'NC_21499','NC_301181'};
-subid = {'AD_10382'};
+
+%%% Files just for converting masks
+subdir = '/dist_corrected/volume/ref/masks/';
+subid = {'CTE_8572','NC_6839'};
+% Filenames
+maskname = 'wm_maskec.nii';
+maskname_out = 'wm_maskec.mat';
+
 
 for ii = 1:length(subid)
 % parfor (ii = 1:length(subid), NSLOTS)
     %% Load "maskec.nii" from the subfolder
-    % Filenames
-    maskname = 'maskec.nii';
     % Define entire filepath 
     maskpath = fullfile(dpath, subid{ii}, subdir, maskname);
     % Load mask with MRIread
@@ -74,7 +80,7 @@ for ii = 1:length(subid)
     mask = vol.vol;
     %% Save the mask matrix as a .MAT
     % Names of output files
-    maskout = fullfile(dpath, subid{ii}, subdir, 'maskec.mat');
+    maskout = fullfile(dpath, subid{ii}, subdir, maskname_out);
     % Save as .MAT
     save(maskout, 'mask', '-v7.3');
 end

@@ -44,22 +44,24 @@ elseif isunix
 end
 
 % Subject IDs
-subid = {'AD_10382', 'AD_20832', 'AD_20969',...
-             'AD_21354', 'AD_21424',...
-             'CTE_6489','CTE_6912',...
-             'CTE_7019','CTE_8572','CTE_7126',...
-             'NC_6839','NC_6974','NC_8653',...
-             'NC_21499','NC_301181'};
+% subid = {'AD_10382', 'AD_20832', 'AD_20969','AD_21354', 'AD_21424',...
+%          'CTE_6489','CTE_6912','CTE_7019','CTE_7126','CTE_8572',...
+%          'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
+
+subid = {'AD_20832', 'AD_20969','AD_21354', 'AD_21424',...
+         'CTE_6489','CTE_6912','CTE_7019','CTE_7126','CTE_8572',...
+         'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
 
 % Volume filename
 volname = 'ref_4ds_norm_inv.tif';
 
 % Sigma subdirectories ctontaining segmentation TIF files
-sigma = {'gsigma_2-3-4_gsize_9-13-17','gsigma_3-5-7_gsize_13-21-29',...
-        'gsigma_5-7-9_gsize_21-29-37','gsigma_7--9-11_gsize_29-37-45'};
+sigma = {'gsigma_1-3-5_gsize_5-13-21','gsigma_2-3-4_gsize_9-13-17',...
+        'gsigma_3-5-7_gsize_13-21-29','gsigma_5-7-9_gsize_21-29-37',...
+        'gsigma_7--9-11_gsize_29-37-45'};
 
 % Combined segmentation output folder name
-dirout = 'gsigma_2-3-4_3-5-7_5-7-9_7-9-11';
+dirout = 'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11';
 
 %% Initialize struct for storing filepaths
 ov = struct();
@@ -71,18 +73,19 @@ for ii = 1:length(subid)
     ov(ii).s(2).sigma = sigma{2};
     ov(ii).s(3).sigma = sigma{3};
     ov(ii).s(4).sigma = sigma{4};
-    % Filename of segmentation
-    ov(ii).f(1).fname = 'ref_4ds_norm_inv_segment_pmin_0.23.tif';
-    ov(ii).f(2).fname = 'ref_4ds_norm_inv_segment_pmin_0.23.tif';
-    ov(ii).f(3).fname = 'ref_4ds_norm_inv_segment_pmin_0.23.tif';
-    ov(ii).f(4).fname = 'ref_4ds_norm_inv_segment_pmin_0.23.tif';
+    ov(ii).s(5).sigma = sigma{5};
 end
 
 %%% Call function to create full file paths
 ov = make_fpaths(dpath, subdir, ov, volname, dirout);
 
-%% Call function to overlay
-combine_segs(ov);
+%% Threshold the probability maps and overlay segmentations
+% Minimum threshold
+th = 0.18;
+% Subdirectory
+subdir = '/p18/';
+% Threshold probability maps and combine
+combine_pmats(ov,th,subdir);
 
 %% Function to create filepaths
 function [ov] = make_fpaths(dpath, subdir, ov, volname, dirout)
@@ -100,12 +103,8 @@ function [ov] = make_fpaths(dpath, subdir, ov, volname, dirout)
         %%% Iterate over sigma arrays
         for j = 1:length(ov(ii).s)
             % Create filepath for each sigma
-            % TODO: update output struct (ov_final(?,?))
             ov(ii).f(j).fpath = fullfile(basepath, ...
-                ov(ii).s(j).sigma, ov(ii).f(j).fname);
+                ov(ii).s(j).sigma, 'probability_map.mat');
         end
     end
 end
-
-
-%% Have a wonderful day, and go f

@@ -1,4 +1,4 @@
-function overlay_vol_seg(vol, seg, color, fout)
+function overlay_vol_seg(vol, seg, color, fout, invert_color)
 %overlay_vol_seg Overlay the volume with the segmentation output
 % INPUTS:
 %   vol (mat): tissue volume (grayscale)
@@ -7,7 +7,9 @@ function overlay_vol_seg(vol, seg, color, fout)
 %   fout (string): full filepath for output .TIF
 
 %% Convert volume back to non-inverted (black background)
-vol = imcomplement(vol);
+if invert_color
+    vol = imcomplement(vol);
+end
 
 %% Overlay segmentation and probaiblity
 nvol = size(vol,3);

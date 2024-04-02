@@ -16,9 +16,6 @@ function combine_segs(ov)
 %       segfinal (matrix): combined segmentation
 %       graphfinal (struct): graph from combined segmentation
 
-% TODO: 
-% - pass in the volume .TIF file
-% - create output file path
 
 %% Overlay all segmentations
 % Iterate over subjects
