@@ -6,9 +6,13 @@
 %
 % Remaining work:
 %{
-- bitwise multiply masks and refined mask
-- save the mask to the subject's folder
-- save the WM/GM to the subject's folder
+- Include operation to mask the sulci and gyri (after tissue mask)
+- Results:
+    - white matter sulci / gyri
+    - gray matter sucli / gyri
+    - white matter entire volume
+    - gray matter entire volume
+    - entire volume masked for agarose and pia
 %}
 clear; clc; close all;
 
@@ -42,6 +46,12 @@ n_cores = str2double(getenv('NSLOTS'));
 % Set the maximum number of threads equal to the number of cores
 maxNumCompThreads(n_cores);
 
+%% Debugging Variables
+% Debugging figures visualization
+viz = false;
+% Boolean to load in the cleaned tissue masks
+tmask_bool = true;
+
 %% Initialize subject ID lists
 %%% All subjects to analyze
 subid = {'AD_10382', 'AD_20832', 'AD_20969',...
@@ -73,13 +83,8 @@ for ii = 1:length(subid)
     regstruct.(sub).zmax = zmax(ii);
 end
 
-% Debugging variable. True to view figures.
-viz = true;
-
 %% Create white mask for subjects
-
-for ii = 1:length(subid)
-% for ii = 9:length(subid)
+for ii = 10:length(subid)
     %%% Debugging information
     fprintf('\n---------Starting Subject %s---------\n',subid{ii})
 
@@ -99,11 +104,16 @@ for ii = 1:length(subid)
     zmax = regstruct.(sid).zmax;
     
     %%% Initialize matrices for storing masks
-    wm_mat = false(size(ref,1),size(ref,2),zmax);
-    gm_mat = false(size(ref,1),size(ref,2),zmax);
-    tiss_mat = false(size(ref,1),size(ref,2),zmax);
+    mask_wm = false(size(ref,1),size(ref,2),zmax);
+    if ~tmask_bool
+        mask_gm = false(size(ref,1),size(ref,2),zmax);
+        mask_tiss = false(size(ref,1),size(ref,2),zmax);
+    end
+    
+    %%% Initialize directory for storing masks
+    mdir = fullfile(dpath,sid,subdir,'/masks/');
 
-    %% Create white mask for each physical slice   
+    %% Create white matter mask for each physical slice   
     % Load one depth of the OCT. This is to measure the size of the OCT
     % matrix, which varies from the size of the mus.
     oct = ref(:,:,1);
@@ -139,85 +149,91 @@ for ii = 1:length(subid)
 
         %%% Segment the white matter from the mus
         % Overlay the oct and mus
-        figure; h = imshow(oct);
-        set(h, 'AlphaData',mus);
+        if viz
+            figure; h = imshow(oct);
+            set(h, 'AlphaData',mus);
+        end
         % Set the mus threshold for white matter
         th = threshold(ii);
         % Call function to apply white matter mask
-        [wm_mask, gm_mask, tiss_mask] = create_wm_mask(mus,oct,th);
+        if tmask_bool
+            [mask_wm_tmp, ~, ~] = create_wm_mask(mus,oct,th,viz);
+        else
+            [mask_wm_tmp, mask_gm_tmp, mask_tiss_tmp] =...
+                create_wm_mask(mus,oct,th,viz);
+        end
         
-        %%% Save the masks
+        %%% Add masks to matrix
         % Replicate the masks "nstack" times in z dimension. This will
         % replicate the mask for each depth in the physical slice.
-        wm_mask = repmat(wm_mask,1,1,nstack);
-        gm_mask = repmat(gm_mask,1,1,nstack);
-        tiss_mask = repmat(tiss_mask,1,1,nstack);
+        mask_wm_tmp = repmat(mask_wm_tmp,1,1,nstack);
         % Add the masks to the matrix
-        wm_mat(:,:,j:j+nstack-1) = wm_mask;
-        gm_mat(:,:,j:j+nstack-1) = gm_mask;
-        tiss_mat(:,:,j:j+nstack-1) = tiss_mask;
+        mask_wm(:,:,j:j+nstack-1) = mask_wm_tmp;
+        
+        % Repeat for gray matter and tissue masks (commented out because
+        % they are generated later on by bitwise operation with the tissue
+        % mask.
+        if ~tmask_bool
+            mask_gm_tmp = repmat(mask_gm_tmp,1,1,nstack);
+            mask_tiss_tmp = repmat(mask_tiss_tmp,1,1,nstack);
+            mask_gm(:,:,j:j+nstack-1) = mask_gm_tmp;
+            mask_tiss(:,:,j:j+nstack-1) = mask_tiss_tmp;
+        end
     end
     
     %% Combine tissue mask and WM mask
-    t_mask = fullfile(dpath,sid,subdir,'maskec.mat');
-    if isfile(t_mask)
+    
+    %%% Check for cleaned white matter mask
+    mask_wm_path = fullfile(mdir,'wm_maskec.nii');
+    if isfile(mask_wm_path)
+        mask_wm = MRIread(mask_wm_path,0,1);
+        mask_wm = mask_wm.vol;
+        mask_wm = logical(mask_wm(:,:,1:zmax));
+    end
+
+    %%% Replace automated tissue mask with the cleaned tissue mask
+    if tmask_bool
+        mask_tiss = fullfile(dpath,sid,subdir,'maskec.nii');
         % Load tissue mask and truncate to match dimensions of mask
-        t_mask = load(t_mask);
-        t_mask = t_mask.mask;
-        t_mask = logical(t_mask(:,:,1:zmax));
-        % Bitwise multiply WM mask and refined tissue mask
-        wm_mask = bsxfun(@times,t_mask,cast(wm_mat,'like',t_mask));
-        % Bitwise multiply ~WM mask and refined tissue mask
-        gm_mask = bsxfun(@times,t_mask,cast(~wm_mat,'like',t_mask));     
+        mask_tiss = MRIread(mask_tiss,0,1);
+        mask_tiss = mask_tiss.vol;
+        mask_tiss = logical(mask_tiss(:,:,1:zmax));
+        % Bitwise operation to generate GM
+        mask_gm = bsxfun(@times,mask_tiss ,cast(~mask_wm,'like',mask_tiss));
+        mask_gm = logical(mask_gm);
     end
    
     %%% Save the output
-    mdir = fullfile(dpath,sid,subdir,'/masks/');
+    % Create the folder to store the masks
     if ~isfolder(mdir)
-        % Create the folder to store the masks
         mkdir(mdir);
     end
+    
     % Save outputs as .MAT
     fprintf('Saving outputs as .MAT\n')
-    wm_output = fullfile(mdir,'wm_mask.mat');
-    gm_output = fullfile(mdir,'gm_mask.mat');
-    t_output = fullfile(mdir,'t_mask.mat');
-    save(wm_output,"wm_mat",'-v7.3');
-    save(gm_output,"gm_mat",'-v7.3');
-    save(t_output,"tiss_mat",'-v7.3');
+    wm_output = fullfile(mdir,'mask_wm.mat');
+    gm_output = fullfile(mdir,'mask_gm.mat');
+    t_output = fullfile(mdir,'mask_tiss.mat');
+    save(wm_output,"mask_wm",'-v7.3');
+    save(gm_output,"mask_gm",'-v7.3');
+    save(t_output,"mask_tiss",'-v7.3');
+    
     % Save outputs as .TIF
     fprintf('Saving outputs as .TIF\n')
-    wm_output = fullfile(mdir,'wm_mask.tif');
-    gm_output = fullfile(mdir,'gm_mask.tif');
-    t_output = fullfile(mdir,'t_mask.tif');
-    segmat2tif(im2uint8(wm_mask),wm_output)
-    segmat2tif(im2uint8(gm_mask),gm_output);
-    segmat2tif(im2uint8(t_mask),t_output);
+    wm_output = fullfile(mdir,'mask_wm.tif');
+    gm_output = fullfile(mdir,'mask_gm.tif');
+    t_output = fullfile(mdir,'mask_tiss.tif');
+    segmat2tif(im2uint8(mask_wm),wm_output)
+    segmat2tif(im2uint8(mask_gm),gm_output);
+    segmat2tif(im2uint8(mask_tiss),t_output);
+    
     % Save outputs as .NII
     res = [0.012, 0.012, 0.015];
     ref_dtype = 'uchar';
     permuteflag = 1;
     fprintf('Saving outputs as .NII\n')
-    save_mri(wm_mask, fullfile(mdir,'wm_mask.nii'), res, ref_dtype, permuteflag);
-    save_mri(gm_mask, fullfile(mdir,'gm_mask.nii'), res, ref_dtype, permuteflag);
-    save_mri(t_mask, fullfile(mdir,'t_mask.nii'), res, ref_dtype, permuteflag);
+    save_mri(mask_wm, fullfile(mdir,'mask_wm.nii'), res, ref_dtype, permuteflag);
+    save_mri(mask_gm, fullfile(mdir,'mask_gm.nii'), res, ref_dtype, permuteflag);
+    save_mri(mask_tiss, fullfile(mdir,'mask_tiss.nii'), res, ref_dtype, permuteflag);
 
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
