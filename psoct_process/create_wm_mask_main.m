@@ -84,7 +84,7 @@ for ii = 1:length(subid)
 end
 
 %% Create white mask for subjects
-for ii = 10:length(subid)
+for ii = 1:length(subid)
     %%% Debugging information
     fprintf('\n---------Starting Subject %s---------\n',subid{ii})
 

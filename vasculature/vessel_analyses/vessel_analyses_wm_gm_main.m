@@ -133,9 +133,14 @@ save(nc_fout, 'met', '-v7.3');
 %% Generate Barcharts of metrics for entire tissue volumes
 
 %%% Filename prefix for WM and GM
-prefix = 'volume';
-% prefix = 'wm';
-% prefix = 'gm';
+% fprefix = 'volume';
+% fprefix = 'wm';
+fprefix = 'gm';
+
+%%% Title prefix for WM and GM
+% tprefix = 'Volume';
+% tprefix = 'White Matter';
+tprefix = 'Gray Matter';
 
 %%% Indices in structure corresponding to AD and CTE
 n_ad = length(ad_sub);
@@ -143,84 +148,106 @@ n_cte = length(cte_sub);
 ad_idx = 1:n_ad;
 cte_idx = (n_ad+1):(n_ad+n_cte);
 
-%%%% load metrics for AD & CTE
-met = load(ad_cte_fout);
-met = load(ad_cte_fout);
-met = load(ad_cte_fout);
+%%% load metrics for NC (select either tissue, wm, or gm)
+% nc = load(nc_fout);
+% nc = load(nc_wm_fout);
+nc = load(nc_gm_fout);
+nc = nc.met;
+
+%%% load metrics for AD & CTE (select either tissue, wm, or gm)
+% met = load(ad_cte_fout);
+% met = load(ad_cte_wm_fout);
+met = load(ad_cte_gm_fout);
 met = met.met;
 % Separate CTE and AD
 ad = met(ad_idx);
 cte = met(cte_idx);
 
-%%%% load metrics for NC
-nc = load(nc_fout);
-nc = nc.met;
-
 %%% total length (microns)
-mout = fullfile(mpath, strcat(prefix,'_total_length_bar'));
+mout = fullfile(mpath, strcat(fprefix,'_total_length_bar'));
 ad_total_length = vertcat(ad.total_length);
 cte_total_length = vertcat(cte.total_length);
 nc_total_length = vertcat(nc.total_length);
+% Title
+tstring = strcat(tprefix,' Total Vessel Length (\mum)');
+% Plot barchart
 barchart(ad_total_length, cte_total_length, nc_total_length,...
         ad_sub, cte_sub, nc_sub,...
-        'Total Vessel Length (\mum)','Length (\mum)',mout);
+        tstring,'Length (\mum)',mout);
 
 %%% average length (microns)
-mout = fullfile(mpath, strcat(prefix,'_avg_length_bar'));
+mout = fullfile(mpath, strcat(fprefix,'_avg_length_bar'));
 ad_avg_len = vertcat(ad.avg_length);
 cte_avg_len = vertcat(cte.avg_length);
 nc_avg_len = vertcat(nc.avg_length);
+% Title
+tstring = strcat(tprefix,' Average Vessel Length (\mum)');
+% Plot barchart
 barchart(ad_avg_len, cte_avg_len, nc_avg_len,...
         ad_sub, cte_sub, nc_sub,...
-        'Average Vessel Length (\mum)','Length (\mum)',mout);
+        tstring,'Length (\mum)',mout);
 
 %%% length density
-mout = fullfile(mpath, strcat(prefix,'_length_density_bar'));
+mout = fullfile(mpath, strcat(fprefix,'_length_density_bar'));
 ad_lenden = vertcat(ad.length_density);
 cte_lenden = vertcat(cte.length_density);
 nc_lenden =  vertcat(nc.length_density);
+% Title
+tstring = strcat(tprefix,' Length Density');
+% Plot barchart
 barchart(ad_lenden, cte_lenden, nc_lenden,...
         ad_sub, cte_sub, nc_sub,...
-        'Length Density','Length/Volume (1/\mum^2)',mout);
+        tstring,'Length/Volume (1/\mum^2)',mout);
 
 %%% total vessels
-mout = fullfile(mpath, strcat(prefix,'_total_vessels_bar'));
+mout = fullfile(mpath, strcat(fprefix,'_total_vessels_bar'));
 ad_nves = vertcat(ad.total_vessels);
 cte_nves = vertcat(cte.total_vessels);
 nc_nves = vertcat(nc.total_vessels);
+% Title
+tstring = strcat(tprefix,' Total Vessels per Sample');
+% Plot barchart
 barchart(ad_nves, cte_nves, nc_nves,...
         ad_sub, cte_sub, nc_sub,...
-        'Total Vessels per Sample','Number of Vessels',mout);
+        tstring,'Number of Vessels',mout);
 
 %%% tortuosity (unitless)
-mout = fullfile(mpath, strcat(prefix,'_tortuosity_bar'));
+mout = fullfile(mpath, strcat(fprefix,'_tortuosity_bar'));
 ad_tort = vertcat(ad.tortuosity);
 cte_tort = vertcat(cte.tortuosity);
 nc_tort = vertcat(nc.tortuosity);
+% Title
+tstring = strcat(tprefix,' Tortuosity');
+% Plot barchart
 barchart(ad_tort, cte_tort, nc_tort,...
         ad_sub, cte_sub, nc_sub,...
-        'Tortuosity','a.u.',mout);
+        tstring,'a.u.',mout);
 
 %%% Branch Density (branch / mm^3)
-mout = fullfile(mpath, strcat(prefix,'_branch_density_bar'));
+mout = fullfile(mpath, strcat(fprefix,'_branch_density_bar'));
 % Create branch density arrays. Convert from branch/um^3 -> branch / mm^3
 ad_bden = vertcat(ad.branchden) .* 1e9;
 cte_bden = vertcat(cte.branchden) .* 1e9;
 nc_bden = vertcat(nc.branchden) .* 1e9;
+% Title
+tstring = strcat(tprefix,' Branch Density (branches / mm^3)');
+% Plot barchart
 barchart(ad_bden, cte_bden, nc_bden,...
         ad_sub, cte_sub, nc_sub,...
-        'Branch Density (branches / mm^3)','Branches / mm^3',mout);
+        tstring,'Branches / mm^3',mout);
 
 %%% Volume Fraction (unitless)
-mout = fullfile(mpath, strcat(prefix,'_volume_fraction_bar'));
+mout = fullfile(mpath, strcat(fprefix,'_volume_fraction_bar'));
 % Create vessel fraction volume arrays.
 ad_fvol = vertcat(ad.vol_frac);
 cte_fvol = vertcat(cte.vol_frac);
 nc_fvol = vertcat(nc.vol_frac);
-% Create bar chart
+% Title
+tstring = strcat(tprefix,' Volume Fraction');
+% Plot barchart
 barchart(ad_fvol, cte_fvol, nc_fvol,...
         ad_sub, cte_sub, nc_sub,...
-        'Volume Fraction','a.u.',mout);
+        tstring,'a.u.',mout);
 %}
 
 %% Box / Whisker Plots
