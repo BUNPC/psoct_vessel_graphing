@@ -8,19 +8,6 @@ This script performs the following:
 - segment the original volume
 - apply a mask to the segmentation
 - convert segmentation to graph
-To Do:
-- find optimal range for remove_mask_islands
-- prune graph (remove loops and unterminated segments)
-    - remove loops ()
-    - remove segments ()
-- segment the original volume
-- apply a mask to the segmentation
-- convert segmentation to graph
-- Remove loops from graph
-
-To Do:
-- find optimal range for remove_mask_islands
-- prune spurs from segments in graph
 %}
 clear; clc; close all;
 
@@ -77,9 +64,8 @@ elseif isunix
     % Small vessel sigma array = [1, 3, 5]
     % Medium vessel sigma array = [5, 7, 9]
     % Large vessel sigma array = [7, 9, 11]
-    sigmas = [3,5,7; 5,7,9; 7,9,11];
-    sigmas = [2,3,4];    
-    
+    sigmas = [1,3,5; 3,5,7; 5,7,9; 7,9,11];
+   
     %%% Create cell array of subject ID and sigma for job array on the SCC 
     nrow = length(subid)*size(sigmas,1);
     nsigma = size(sigmas,1);
@@ -138,8 +124,7 @@ end
 gsize = 2.*ceil(2.*gsigma)+1;
 
 %%% Minimum fringi filter probability to classify voxel as vessel
-min_prob = 0.18:0.04:0.26;
-min_prob = 0.23;
+min_prob = 0.18;
 
 %%% A segment with < "min_conn" voxels will be removed
 min_conn = 5;
@@ -149,6 +134,9 @@ graph_boolean = 0;
 
 %%% Boolean for visualizing the graph debugging plots
 viz = false;
+
+%%% Boolean for removing loops from graph
+loop_bool = 1;
 
 %% Load raw volume (TIF) and convert to MAT
 % Define entire filepath 
@@ -224,6 +212,6 @@ for j = 1:length(min_prob)
     
     %%% Create a graph of the segmentation
     if graph_boolean
-        seg_graph_init(I_seg, vox_dim, fullpath, fname_seg, viz);
+        seg_graph_init(I_seg, vox_dim, fullpath, fname_seg, viz, loop_bool);
     end    
 end

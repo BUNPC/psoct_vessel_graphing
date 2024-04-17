@@ -1,6 +1,15 @@
 %% Apply the tissue, white matter, and gray matter masks to segmentation
-% This script applies the tissue mask to the segmentation. Then, it applies
-% the white matter mask and then the inverse of the white matter mask.
+% This script applies several masks to the segmentation. These are the
+% following masks: tissue, white matter (WM), gray matter (GM), sulci, and
+% gyri. The names of the masks are: mask_tiss, mask_gm, mask_wm,
+% mask_sulci, mask_gyri. The purpose of applying these masks is to analyze
+% the various regional characteristics of the brain tissue specimens.
+% The masks are all stored in the directory:
+% Ann_Mckee_samples_55T/[subID]/dist_corrected/volume/ref/masks/
+%
+% Then, this script converts the masked components of segmentation into
+% graphs before analyzing the graphs.
+
 clear; clc; close all;
 
 %% Add top-level directory of code repository to path
@@ -14,7 +23,7 @@ elseif isunix
 end
 % Remove the two sub folders to reach parent
 % (psoct_human_brain\vasculature\vesSegment)
-topdir = mydir(1:idcs(end-1));
+topdir = mydir(1:idcs(end));
 addpath(genpath(topdir));
 
 %% Initialize paralell pool
@@ -52,7 +61,7 @@ d = dictionary(subid, zmins);
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T';    
 % Subfolder with normalized volume
 subdir = '/dist_corrected/volume';
-% Subfolder containing ref files
+% Subfolder containing non-normalized ref files
 subdir1 = '/dist_corrected/volume/ref';
 % Combined segmentation subfolder
 segdir = '/combined_segs/gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/';
@@ -67,13 +76,12 @@ vol_name = 'ref';
 % Normalized PSOCT tissue volume
 voln_name = 'ref_4ds_norm_inv';
 
-%% Iterate through subjects. Create and apply mask.
-% parfor (ii = 2:length(subid),NSLOTS)
-for ii = 15:length(subid)
+%% Iterate through subjects. Create and apply mask_tiss.
+parfor (ii = 1:length(subid),NSLOTS)
     %%% Debugging information
     fprintf('\n---------Starting Subject %s---------\n',subid{ii})
 
-    %% Import volumes, mask, and segmentation
+    %% Import tissue volumes, segmentation, and masks
     %%% Import normalized volume
     fpath = fullfile(dpath, subid{ii}, subdir, strcat(voln_name,'.tif'));
     voln = TIFF2MAT(fpath);   
@@ -85,202 +93,331 @@ for ii = 15:length(subid)
 
     %%% Import combined segmentation file
     fpath = fullfile(dpath, subid{ii}, subdir, segdir, 'seg.mat');
-    seg = load(fpath,'seg');
-    field = fieldnames(seg);
-    field = field{:};
-    seg = seg.(field);
+    seg = import_mask(fpath);
 
-    %%% Import tissue mask matrix
-    fpath = fullfile(dpath, subid{ii}, subdir1, 'maskec.mat');
-    mask = load(fpath);
-    mask = mask.mask;
-    % Convert mask to logical for matrix operations
-    if ~isa(mask,'logical')
-        mask = imbinarize(mask);
-    end
+    %%% Import tissue mask
+    fpath = fullfile(dpath, subid{ii}, mdir, 'mask_tiss.mat');
+    mask_tiss = import_mask(fpath);
 
     %%% Import white matter mask
-    % Import the cleaned mask, if it exists
-    wmask_path = fullfile(dpath, subid{ii}, mdir,'wm_mask.mat');
-    wmaskec_path = fullfile(dpath, subid{ii}, mdir,'wm_maskec.mat');
-    if isfile(fullfile(wmaskec_path))
-        wm_mask = load(wmaskec_path);
-    else
-        wm_mask = load(wmask_path);
-    end
-    % Convert mask to logical for matrix operations
-    field = fieldnames(wm_mask);
-    field = field{:};
-    wm_mask = wm_mask.(field);
-    % Convert to logical if not already
-    if ~isa(wm_mask,'logical')
-        wm_mask = imbinarize(wm_mask);
-    end
+    fpath = fullfile(dpath, subid{ii}, mdir,'mask_wm.mat');
+    mask_wm = import_mask(fpath);
+    % Bitwise operation between WM and tissue masks.
+    mask_wm = bsxfun(@times, mask_tiss, cast(mask_wm,'like',mask_tiss));
+    mask_wm = logical(mask_wm);
+
+    %%% Import gray matter mask
+    fpath = fullfile(dpath, subid{ii}, mdir,'mask_gm.mat');
+    mask_gm = import_mask(fpath);
+    % Bitwise operation between GM and tissue masks.
+    mask_gm = bsxfun(@times, mask_tiss, cast(mask_gm,'like',mask_tiss));
+    mask_gm = logical(mask_gm);
+
+    %%% Import sulci & gyri masks
+    fpath = fullfile(dpath, subid{ii}, mdir,'mask_sulci.mat');
+    mask_sulci = import_mask(fpath);
+    fpath = fullfile(dpath, subid{ii}, mdir,'mask_gyri.mat');
+    mask_gyri = import_mask(fpath);
     
     %% Verify dimensions of masks and volumes
     % The segmentation file was made using the normalized volume. Therefore
-    % the dimensions of the mask must be made equal to those of the seg.
+    % the dimensions of the mask_tiss must be made equal to those of the seg.
 
     %%% Set zmin for truncating finals slices
-    % Truncate the mask, and the others will be subsequently truncated.
+    % Truncate the mask_tiss, and the others will be subsequently truncated.
     sid = subid{ii};
     % Retrieve the zmin from the array
     zmin = d({sid});
-    % Truncate the tissue mask
-    mask = mask(:,:,1:zmin);
+    % Truncate the tissue mask_tiss
+    mask_tiss = mask_tiss(:,:,1:zmin);
 
-    %%% Truncate mask & vol (ref) to match dimensions of normalized
+    %%% Truncate mask_tiss & vol (ref) to match dimensions of normalized
     % Find smallest dimensions
-    ymin = min([size(mask,1), size(wm_mask,1), size(voln,1)]);
-    xmin = min([size(mask,2), size(wm_mask,2), size(voln,2)]);
-    zmin = min([size(mask,3), size(wm_mask,3), size(voln,3)]);
+    ymin = min([size(mask_tiss,1), size(mask_wm,1), size(voln,1)]);
+    xmin = min([size(mask_tiss,2), size(mask_wm,2), size(voln,2)]);
+    zmin = min([size(mask_tiss,3), size(mask_wm,3), size(voln,3)]);
     % Truncate all volumes
-    mask =      mask(1:ymin, 1:xmin, 1:zmin);
-    wm_mask =   wm_mask(1:ymin, 1:xmin, 1:zmin);
-    vol =       vol( 1:ymin, 1:xmin, 1:zmin);
-    voln =      voln(1:ymin, 1:xmin, 1:zmin);
-    seg =       seg( 1:ymin, 1:xmin, 1:zmin);
+    mask_tiss =     mask_tiss(1:ymin, 1:xmin, 1:zmin);
+    mask_wm =       mask_wm(1:ymin, 1:xmin, 1:zmin);
+    mask_gm =       mask_gm(1:ymin, 1:xmin, 1:zmin);
+    mask_sulci =    mask_sulci(1:ymin, 1:xmin, 1:zmin);
+    mask_gyri =     mask_gyri(1:ymin, 1:xmin, 1:zmin);
+    vol =           vol( 1:ymin, 1:xmin, 1:zmin);
+    voln =          voln(1:ymin, 1:xmin, 1:zmin);
+    seg =           seg( 1:ymin, 1:xmin, 1:zmin);
     % Assert that the new matrices are all equivalent
-    assert(isequal(size(mask),size(voln)),...
+    assert(isequal(size(mask_tiss),size(voln)),...
         'Mask and normalized volume dimensions mismatch for subject %s',sid);
-    assert(isequal(size(mask),size(vol)),...
+    assert(isequal(size(mask_tiss),size(vol)),...
         'Mask and volume dimensions mismatch for subject %s',sid);
-    assert(isequal(size(mask),size(seg)),...
+    assert(isequal(size(mask_tiss),size(seg)),...
         'Mask and segmentation volume dimensions mismatch for subject %s',sid);
 
-    %% Apply masks
+    %% Apply masks and save outputs
     try
-        fprintf('Applying mask to subject %s\n',sid)
+        %% Apply masks
+        % Meaning of variables:
+        %   vol = OCT volume
+        %   voln = normalized OCT volume
+        %   volnm = normalized OCT volume (tissue masked)
+        %   volnm_wm = normalized OCT volume (tissue, WM masked)
+        %   volnm_gm = normalized OCT volume (tissue, GM masked)
+        %   seg = segmentation (not masked)
+        %   segm = segmentation (tissue masked)
+        %   segm_wm = segmentation (tissue, WM masked)
+        %   segm_gm = segmentation (tissue, GM masked)
+
+        fprintf('Applying masks to subject %s\n',sid)
         %%% Apply tissue mask
         % Mask the non-normalized volume (volm)
         if isa(vol,'uint8')
-            volm = vol .* uint8(mask);
+            volm = vol .* uint8(mask_tiss);
         elseif isa(vol,'uint16')
-            volm = vol .* uint16(mask);
+            volm = vol .* uint16(mask_tiss);
         else
-            volm = vol .* mask;
+            volm = vol .* mask_tiss;
         end
         % Mask the normalized volume (volnm)
-        volnm = voln .* uint16(mask);
+        volnm = voln .* uint16(mask_tiss);
         % Mask the segmentation (segm)
-        segm = logical(seg .* mask);
+        segm = logical(seg .* mask_tiss);
         
         %%% Clear variables to save memory
         vol = [];
         voln = [];
         seg = [];
 
-        %%% Apply white matter mask to the tissue-masked volumes
+        %%% Apply masks (WM, GM, sulci, gyri) to non-normalized OCT
         if isa(volm,'uint8')
-            volm_wm = volm .* uint8(wm_mask);
+            volm_wm = volm .* uint8(mask_wm);
+            volm_gm = volm .* uint8(mask_gm);
+            volm_sulci = volm .* uint8(mask_sulci);
+            volm_gyri = volm .* uint8(mask_gyri);
         elseif isa(volm,'uint16')
-            volm_wm = volm .* uint16(wm_mask);
+            volm_wm = volm .* uint16(mask_wm);
+            volm_gm = volm .* uint16(mask_gm);
+            volm_sulci = volm .* uint16(mask_sulci);
+            volm_gyri = volm .* uint16(mask_gyri);
         else
-            volm_wm = volm .* wm_mask;
+            volm_wm = volm .* mask_wm;
+            volm_gm = volm .* mask_gm;
+            volm_sulci = volm .* mask_sulci;
+            volm_gyri = volm .* mask_gyri;
         end
-        volnm_wm = volnm .* uint16(wm_mask);
-        segm_wm = logical(segm .* wm_mask);
 
-        %%% Apply gray matter mask (inverse of white matter) to tissue-masked volumes
-        if isa(volm,'uint8')
-            volm_gm = volm .* uint8(~wm_mask);
-        elseif isa(volm,'uint16')
-            volm_gm = volm .* uint16(~wm_mask);
-        else
-            volm_gm = volm .* ~wm_mask;
-        end
-        volnm_gm = volnm .* uint16(~wm_mask);
-        segm_gm = logical(segm .* ~wm_mask);
+        %%% Apply masks (WM,GM,sulci,gyri) to normalized OCT
+        volnm_wm =          volnm .*        uint16(mask_wm);
+        volnm_gm =          volnm .*        uint16(mask_gm);
+        volnm_sulci =       volnm .*        uint16(mask_sulci);
+        volnm_gyri =        volnm .*        uint16(mask_gyri);
+        volnm_wm_sulci =    volnm_sulci .*  uint16(mask_wm);
+        volnm_wm_gyri =     volnm_gyri .*   uint16(mask_wm);
+        volnm_gm_sulci =    volnm_sulci .*  uint16(mask_gm);
+        volnm_gm_gyri =     volnm_gyri .*   uint16(mask_gm);
+        
+        %%% Apply masks (WM,GM,sulci,gyri) to segmentation
+        segm_wm =       logical(segm .*         mask_wm);
+        segm_gm =       logical(segm .*         mask_gm);
+        segm_sulci =    logical(segm .*         mask_sulci);
+        segm_gyri =     logical(segm .*         mask_gyri);
+        segm_wm_sulci = logical(segm_sulci .*   mask_wm);
+        segm_wm_gyri =  logical(segm_gyri .*    mask_wm);
+        segm_gm_sulci = logical(segm_sulci .*   mask_gm);
+        segm_gm_gyri =  logical(segm_gyri .*    mask_gm);
+
         fprintf('Finished masking subject %s\n',sid)
+        %% Create overlays
+        fprintf('Saving overlays and masked volumes for subject %s\n',sid)
+        % Overlay masked normalized volume and segmentation
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name, '_refined_mask_overlay_norm.tif'));
+        overlay_vol_seg(volnm, segm, 'magenta', fout, false);
+        % Overlay masked normalized WM and segmentation
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name, '_wm_refined_mask_overlay_norm.tif'));
+        overlay_vol_seg(volnm_wm, segm_wm, 'magenta', fout, false);
+        % Overlay masked normalized GM and segmentation
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name, '_gm_refined_mask_overlay_norm.tif'));
+        overlay_vol_seg(volnm_gm, segm_gm, 'magenta', fout, false);
+        % Overlay SULCI and segmentation
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name, '_sulci_refined_mask_overlay_norm.tif'));
+        overlay_vol_seg(volnm_sulci, segm_sulci, 'magenta', fout, false);
+        % Overlay GYRI and segmentation
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name, '_gyri_refined_mask_overlay_norm.tif'));
+        overlay_vol_seg(volnm_gyri, segm_gyri, 'magenta', fout, false);
+        
+        %% Save masked volumes
+        %%% Masked non-normalized volume (volm)
+        % Entire volume
+        volm_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(vol_name,'_refined_masked.tif'));
+        segmat2tif(volm, volm_out);
+        % White matter
+        volwm_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(vol_name,'_wm_refined_masked.tif'));
+        segmat2tif(volm_wm, volwm_out);
+        % Gray matter
+        volgm_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(vol_name,'_gm_refined_masked.tif'));
+        segmat2tif(volm_gm, volgm_out);
+        % Sulci
+        vol_sulci_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(vol_name,'_sulci_refined_masked.tif'));
+        segmat2tif(volm_sulci, vol_sulci_out);
+        % Gyri
+        vol_gyri_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(vol_name,'_gyri_refined_masked.tif'));
+        segmat2tif(volm_gyri, vol_gyri_out);
+    
+        %%% Masked normalized volume (volnm)
+        % Tissue Mask
+        vol_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(voln_name,'_refined_masked.tif'));
+        segmat2tif(volnm, vol_out);
+        % White Matter
+        vol_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(voln_name,'_wm_refined_masked.tif'));
+        segmat2tif(volnm_wm, vol_out);
+        % Gray Matter
+        vol_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(voln_name,'_gm_refined_masked.tif'));
+        segmat2tif(volnm_gm, vol_out);
+        % Sulci
+        vol_sulci_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(voln_name,'_sulci_refined_masked.tif'));
+        segmat2tif(volnm_sulci, vol_sulci_out);
+        % Gyri
+        vol_gyri_out = fullfile(dpath, subid{ii}, mdir,...
+            strcat(voln_name,'_gyri_refined_masked.tif'));
+        segmat2tif(volnm_gyri, vol_gyri_out);
+        
+        %% Save masked segmentation as .MAT
+        % Entire volume
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_refined_masked.mat'));
+        save_seg(segm, fout);
+
+        % White matter
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_wm_refined_masked.mat'));
+        save_seg(segm_wm, fout);
+
+        % Gray matter
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_gm_refined_masked.mat'));
+        save_seg(segm_gm, fout);
+
+        % Sulci
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_sulci_refined_masked.mat'));
+        save_seg(segm_sulci, fout);
+
+        % Sulci - WM
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_wm_sulci_refined_masked.mat'));
+        save_seg(segm_wm_sulci, fout);
+
+        % Sulci - GM
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_gm_sulci_refined_masked.mat'));
+        save_seg(segm_gm_sulci, fout);
+
+        % Gyri
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_gyri_refined_masked.mat'));
+        save_seg(segm_gyri, fout);
+
+        % Gyri - WM
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_wm_gyri_refined_masked.mat'));
+        save_seg(segm_wm_gyri, fout);
+
+        % Gyri - GM
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_gm_gyri_refined_masked.mat'));
+        save_seg(segm_gm_gyri, fout);
+
+        %% Convert masked segmentation as TIF
+        % Entire volume
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm,0,255)), fout);
+
+        % White matter
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_wm_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm_wm,0,255)), fout);
+
+        % Gray matter
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_gm_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm_gm,0,255)), fout);
+
+        % Sulci
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_sulci_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm_sulci,0,255)), fout);
+
+        % Sulci - WM
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_wm_sulci_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm_wm_sulci,0,255)), fout);
+
+        % Sulci - GM
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_gm_sulci_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm_gm_sulci,0,255)), fout);
+
+        % Gyri
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_gyri_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm_gyri,0,255)), fout);
+
+        % Gyri - WM
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_wm_gyri_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm_wm_gyri,0,255)), fout);
+
+        % Gyri - GM
+        fout = fullfile(dpath, subid{ii}, subdir, segdir,...
+                        strcat(seg_name,'_gm_gyri_refined_masked.tif'));
+        segmat2tif(uint8(rescale(segm_gm_gyri,0,255)), fout);
+
+        fprintf('\n---------Finished Subject %s---------\n',subid{ii})
+
+        %% Clear Variables to save memory
+        volnm_wm =          [];
+        volnm_gm =          [];
+        volnm_sulci =       [];
+        volnm_gyri =        [];
+        volnm_wm_sulci =    [];
+        volnm_wm_gyri =     [];
+        volnm_gm_sulci =    [];
+        volnm_gm_gyri =     [];
+        segm_wm =       [];
+        segm_gm =       [];
+        segm_sulci =    [];
+        segm_gyri =     [];
+        segm_wm_sulci = [];
+        segm_wm_gyri =  [];
+        segm_gm_sulci = [];
+        segm_gm_gyri =  [];
+    
     catch
-        %%% catch where mask if different data type
+        %%% catch where mask failed, if different data type
         fprintf('failed to apply mask to subject %s\n',sid)
         continue
     end
-
-    
-    %% Create overlays
-    fprintf('Saving overlays and masked volumes for subject %s\n',sid)
-    % Overlay masked normalized volume and segmentation
-    fout = fullfile(dpath, subid{ii}, subdir, segdir,...
-                    strcat(seg_name, '_refined_mask_overlay_norm.tif'));
-    overlay_vol_seg(volnm, segm, 'magenta', fout, false);
-    % Overlay masked normalized white matter and segmentation
-    fout = fullfile(dpath, subid{ii}, subdir, segdir,...
-                    strcat(seg_name, '_wm_refined_mask_overlay_norm.tif'));
-    overlay_vol_seg(volnm_wm, segm_wm, 'magenta', fout, false);
-    % Overlay masked normalized gray matter and segmentation
-    fout = fullfile(dpath, subid{ii}, subdir, segdir,...
-                    strcat(seg_name, '_gm_refined_mask_overlay_norm.tif'));
-    overlay_vol_seg(volnm_gm, segm_gm, 'magenta', fout, false);
-    
-    %% Save masked volumes
-    %%% Masked non-normalized volume (volm)
-    % Entire volume
-    volm_out = fullfile(dpath, subid{ii}, mdir,...
-        strcat(vol_name,'_refined_masked.tif'));
-    segmat2tif(volm, volm_out);
-    % White matter
-    volwm_out = fullfile(dpath, subid{ii}, mdir,...
-        strcat(vol_name,'_wm_refined_masked.tif'));
-    segmat2tif(volm_wm, volwm_out);
-    % Gray matter
-    volgm_out = fullfile(dpath, subid{ii}, mdir,...
-        strcat(vol_name,'_gm_refined_masked.tif'));
-    segmat2tif(volm_gm, volgm_out);
-
-    %%% Masked normalized volume (volnm)
-    vol_out = fullfile(dpath, subid{ii}, mdir,...
-        strcat(voln_name,'_refined_masked.tif'));
-    segmat2tif(volnm, vol_out);
-    vol_out = fullfile(dpath, subid{ii}, mdir,...
-        strcat(voln_name,'_wm_refined_masked.tif'));
-    segmat2tif(volnm_wm, vol_out);
-    vol_out = fullfile(dpath, subid{ii}, mdir,...
-        strcat(voln_name,'_gm_refined_masked.tif'));
-    segmat2tif(volnm_gm, vol_out);
-    
-    %% Save masked segmentation
-    
-    %%% Save the .MAT files
-    % Entire volume
-    segm_out = fullfile(dpath, subid{ii}, subdir, segdir,...
-                        strcat(seg_name,'_refined_masked.mat'));
-    save_seg(segm, segm_out);
-    % White matter
-    segm_out = fullfile(dpath, subid{ii}, subdir, segdir,...
-                        strcat(seg_name,'_wm_refined_masked.mat'));
-    save_seg(segm_wm, segm_out);
-    % Gray matter
-    segm_out = fullfile(dpath, subid{ii}, subdir, segdir,...
-                        strcat(seg_name,'_gm_refined_masked.mat'));
-    save_seg(segm_gm, segm_out);
-
-    %%% Convert to uint8 and save as NIFTI
-    % Entire volume
-    segm_out = fullfile(dpath, subid{ii}, subdir, segdir,...
-                        strcat(seg_name,'_refined_masked.tif'));
-    segm_uint8 = uint8(rescale(segm,0,255));
-    segmat2tif(segm_uint8, segm_out);
-    % White matter
-    segm_out = fullfile(dpath, subid{ii}, subdir, segdir,...
-                        strcat(seg_name,'_wm_refined_masked.tif'));
-    segm_wm_uint8 = uint8(rescale(segm_wm,0,255));
-    segmat2tif(segm_wm_uint8, segm_out);
-    % Gray matter
-    segm_out = fullfile(dpath, subid{ii}, subdir, segdir,...
-                        strcat(seg_name,'_gm_refined_masked.tif'));
-    segm_gm_uint8 = uint8(rescale(segm_gm,0,255));
-    segmat2tif(segm_gm_uint8, segm_out);
-    fprintf('\n---------Finished Subject %s---------\n',subid{ii})
 end
 
 fprintf('---------Finished Masking all Subjects---------\n')
 
 %% Convert segmentation to graph
-for ii = 6:10
+for ii = 1:length(subid)
     fprintf('---------Graphing Subject %s---------\n',subid{ii})
-    fprintf('Generating graph data for subject %s\n',subid{ii})
     % Voxel dimensions
     vox_dim = [12, 12, 15];
     % Full filepath to save output
@@ -291,34 +428,70 @@ for ii = 6:10
     rmloop_bool = true;
     
     %%% Entire volume
-    % Filename
-    fname_seg = strcat(seg_name,'_refined_masked');
     % Import segmentation
-    segm = load(fullfile(fullpath, strcat(fname_seg,'.mat')));
-    segm = segm.seg;
-    % Function to initialize graph and remove loops
-    seg_graph_init(segm, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+    fname_seg = strcat(seg_name,'_refined_masked');
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
 
     %%% White Matter
-    % Filename
-    fname_seg = strcat(seg_name,'_wm_refined_masked');
     % Import segmentation
-    segm_wm = load(fullfile(fullpath, strcat(fname_seg,'.mat')));
-    segm_wm = segm_wm.seg;
-    % Function to initialize graph and remove loops
-    seg_graph_init(segm_wm, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+    fname_seg = strcat(seg_name,'_wm_refined_masked');
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
 
     %%% Gray Matter
-    % Filename
     % Import segmentation
-    segm_gm = load(fullfile(fullpath, strcat(fname_seg,'.mat')));
-    segm_gm = segm_gm.seg;
     fname_seg = strcat(seg_name,'_gm_refined_masked');
-    % Function to initialize graph and remove loops
-    seg_graph_init(segm_gm, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+
+    %%% Sulci
+    % Import segmentation
+    fname_seg = strcat(seg_name,'_sulci_refined_masked');
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+
+    %%% Gyri
+    % Import segmentation
+    fname_seg = strcat(seg_name,'_gyri_refined_masked');
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+
+    %%% Sulci - WM
+    % Import segmentation
+    fname_seg = strcat(seg_name,'_wm_sulci_refined_masked');
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+
+    %%% Gyri - WM
+    % Import segmentation
+    fname_seg = strcat(seg_name,'_wm_gyri_refined_masked');
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+
+    %%% Sulci - GM
+    % Import segmentation
+    fname_seg = strcat(seg_name,'_gm_sulci_refined_masked');
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
+
+    %%% Gyri - GM
+    % Import segmentation
+    fname_seg = strcat(seg_name,'_gm_gyri_refined_masked');
+    seg = import_mask(fullfile(fullpath, strcat(fname_seg,'.mat')));
+    % Initialize graph and remove loops
+    seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
 
     %%% Debugging Info
-    fprintf('---------Finished Subject %s---------\n',subid{ii})
+    fprintf('---------Finished Graphing Subject %s---------\n',subid{ii})
 end
 
 %% Function to save segmentation during parallelization
@@ -329,5 +502,26 @@ function save_seg(seg, fout)
 %   seg (string):  segmentation matrix
 
 save(fout,'seg','-v7.3')
+
+end
+
+%% Function to import masks
+function mask = import_mask(fpath)
+% import_mask Load the .MAT of the respective mask
+% INPUTS:
+%   fpath (string): path to the mask file
+% OUTPUTS:
+%   mask (logical matrix): binary matrix of mask (1=keep, 0=discard)
+
+% Import the mask file
+mask = load(fpath);
+field = fieldnames(mask);
+field = field{:};
+mask = mask.(field);
+
+% Convert mask to logical for matrix operations
+if ~isa(mask,'logical')
+    mask = imbinarize(mask);
+end
 
 end

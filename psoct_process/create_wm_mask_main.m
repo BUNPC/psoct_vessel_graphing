@@ -4,16 +4,13 @@
 % uses a GUI for manually modfiying the mask to remove any false positives
 % and fill in false negatives.
 %
-% Remaining work:
-%{
-- Include operation to mask the sulci and gyri (after tissue mask)
-- Results:
-    - white matter sulci / gyri
-    - gray matter sucli / gyri
-    - white matter entire volume
-    - gray matter entire volume
-    - entire volume masked for agarose and pia
-%}
+% This script outputs three masks: mask_tiss, mask_gm_, and mask_wm, which
+% are masks for the tissue, white matter, and gray matter, respectively. 
+% The tissue mask is generated in a different script, and it is then
+% manually refined in Freeview.
+% The gray matter (GM) mask is created by taking the bitwise operation
+% between the tissue mask and the inverse of the white matter (WM) mask.
+
 clear; clc; close all;
 
 %% Add top-level directory of code repository to path
