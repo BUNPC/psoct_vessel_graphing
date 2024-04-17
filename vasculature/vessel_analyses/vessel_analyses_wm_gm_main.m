@@ -92,7 +92,7 @@ vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 % Metrics are: total length, length density, mean length, tortuosity
 
 %%% Gray Matter
-%{
+
 % AD / CTE
 subid = horzcat(ad_sub, cte_sub);
 [met] = stats(dpath, subid, voldir, maskdir, graphdir, gm_graphname, gm_mask,...
@@ -105,7 +105,7 @@ save(nc_gm_fout, 'met', '-v7.3');
 %}
 
 %%% White Matter
-%{
+
 % AD / CTE
 subid = horzcat(ad_sub, cte_sub);
 [met] = stats(dpath, subid, voldir, maskdir, graphdir, wm_graphname, wm_mask,...

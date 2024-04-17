@@ -43,7 +43,7 @@ subids = fields(metrics);
 vox_dim = [12, 12, 15];
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
-%% Barcharts
+%% Reorganize data and generate barcharts
 % Metrics: length density, branch density, fraction volume
 regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
             'gm_gyri','wm_gyri'};
@@ -76,6 +76,81 @@ for ii = 1:length(regions)
         end
     end
 end
+
+%% Calculate ratio of sulci/gyri
+% Cell array of parameters to compute ratio 
+ratio_params = {'length_density','branch_density','fraction_volume'};
+groups = {'ad','cte','nc'};
+
+% Iterate over each parameter
+for ii = 1:length(ratio_params)
+    % Iterate over groups
+    for j = 1:length(groups)
+        %%% Retrieve the parameter for each region
+        sulci = metrics.sulci.(ratio_params{ii}).(groups{j});
+        gyri = metrics.gyri.(ratio_params{ii}).(groups{j});
+        wm_sulci = metrics.wm_sulci.(ratio_params{ii}).(groups{j});
+        gm_sulci = metrics.gm_sulci.(ratio_params{ii}).(groups{j});
+        wm_gyri = metrics.wm_gyri.(ratio_params{ii}).(groups{j});
+        gm_gyri = metrics.gm_gyri.(ratio_params{ii}).(groups{j});
+        
+        %%% Compute the ratios
+        % sulci / gyri ratios
+        sulci_gyri = sulci ./ gyri;
+        % WM sulci / gyri ratios
+        wm_sulci_gyri = wm_sulci ./ wm_gyri;
+        % GM sulci / gyri ratios
+        gm_sulci_gyri = gm_sulci ./ gm_gyri;
+
+        %%% Save to the struct
+        metrics.sulci_gyri.(ratio_params{ii}).(groups{j}) = sulci_gyri;
+        metrics.wm_sulci_gyri.(ratio_params{ii}).(groups{j}) = wm_sulci_gyri;
+        metrics.gm_sulci_gyri.(ratio_params{ii}).(groups{j}) = gm_sulci_gyri;
+    end
+end
+
+%% Statistical Hypothesis Testing
+% Trend threshold
+th_trend = 0.10;
+% Significant Difference threshold
+th_sigdif = 0.05;
+% Include the ratios in the regions
+regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
+            'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri','gm_sulci_gyri'};
+% Calculate stats
+pstats = metrics_stats(metrics, regions, params, th_trend, th_sigdif);
+
+%% Calculate average + std of age
+
+%{
+AD subjects = AD_10382, AD_20969, AD_21354, AD_21424
+CTE subjects = CTE_6489, CTE_6912, CTE_7019, CTE_7126
+NC subjects = NC_301181, NC_21499, NC_6839, NC_6974, NC_7597, NC_8653
+%}
+
+age_ad = [84;76;86;83];
+age_cte = [81; 78; 75; 86];
+age_nc = [59;88;71;69;80];
+age_all_groups = [age_ad; age_cte; age_nc];
+
+% AD
+age.ad_mean = mean(age_ad);
+age.ad_std = std(age_ad);
+
+% CTE
+age.cte_mean = mean(age_cte);
+age.cte_std = std(age_cte);
+
+% NC
+age.nc_mean = mean(age_nc);
+age.nc_std = std(age_nc);
+
+% Overall age stats
+age.mean = mean(age_all_groups);
+age.std = std(age_all_groups);
+age.min = min(age_all_groups);
+age.max = max(age_all_groups);
+%}
 
 %% Box / Whisker Plots
 %{
@@ -189,142 +264,4 @@ yticks([0.6, 1.2, 1.8] * 1e-3);
 set(gca, 'FontSize', 80)
 set(b,'LineWidth',4)
 
-%}
-
-%% Statistical Hypothesis Testing
-% Trend threshold
-th_trend = 0.10;
-% Significant Difference threshold
-th_sigdif = 0.05;
-% Calculate stats
-pstats = metrics_stats(metrics, regions, params, th_trend, th_sigdif);
-
-%% Calculate ANOVA for: length density, branch density, fraction volume
-
-%%% Load the AD,CTE struct and the NC struct
-% load metrics for AD & CTE
-met = load(ad_cte_fout);
-met = met.met;
-% Separate CTE and AD
-ad = met(ad_idx);
-cte = met(cte_idx);
-% load metrics for NC ('NC_6839','NC_8095', 'NC_8653', 'NC_21499')
-met = load(nc_fout);
-nc = met.met;
-
-%%% Define sample size for each group
-n_ad = 5;
-n_cte = 4;
-n_nc = 4;
-
-%%% Define arrays for unbalanced ANOVA
-% Factor name arrays
-g_ad_nc = [repmat("AD",n_ad,1); repmat("NC",n_nc,1)];
-g_cte_nc = [repmat("CTE",n_cte,1); repmat("NC",n_nc,1)];
-g_ad_cte = [repmat("AD",n_ad,1); repmat("CTE",n_cte,1)];
-
-% Tortuosity
-ad_tort = vertcat(ad.tort);
-nc_tort = vertcat(nc.tort);
-cte_tort = vertcat(cte.tort);
-ad_nc_tort = [ad_tort', nc_tort'];
-cte_nc_tort = [cte_tort', nc_tort'];
-ad_cte_tort = [ad_tort',cte_tort'];
-% Group labels for unbalanced
-g_ad_nc_tort = [repmat("AD",length(ad_tort),1); repmat("NC",length(nc_tort),1)];
-g_cte_nc_tort = [repmat("CTE",length(cte_tort),1); repmat("NC",length(nc_tort),1)];
-g_ad_cte_tort = [repmat("AD",length(ad_tort),1); repmat("CTE",length(cte_tort),1)];
-
-% Length density arrays
-ad_nc_den = [ad_lenden', nc_lenden'];
-cte_nc_den = [cte_lenden', nc_lenden'];
-ad_cte_den = [ad_lenden', cte_lenden'];
-
-% Total length arrays
-ad_nc_len = [ad_total_len', nc_total_len'];
-cte_nc_len = [cte_total_len', nc_total_len'];
-ad_cte_len = [ad_total_len', cte_total_len'];
-
-% Total number vessels
-ad_nc_nves = [ad_nves', nc_nves'];
-cte_nc_nves = [cte_nves', nc_nves'];
-ad_cte_nves = [ad_nves',cte_nves'];
-
-% Branch Density
-ad_nc_bden = [ad_bden', nc_bden'];
-cte_nc_bden = [cte_bden', nc_bden'];
-ad_cte_bden = [ad_bden',cte_bden'];
-
-% Fraction Volume
-ad_nc_fvol = [ad_fvol', nc_fvol'];
-cte_nc_fvol = [cte_fvol', nc_fvol'];
-ad_cte_fvol = [ad_fvol',cte_fvol'];
-
-%%% Perform one-way unbalanced ANOVA (AD vs. NC, CTE vs. NC)
-% Tortuosity
-aov.ad_nc_tort = anova1(ad_nc_tort, g_ad_nc_tort);
-title('AD vs NC Tortuosity')
-aov.cte_nc_tort = anova1(cte_nc_tort, g_cte_nc_tort);
-title('CTE vs NC Tortuosity')
-aov.ad_cte_tort = anova1(ad_cte_tort, g_ad_cte_tort);
-title('AD vs CTE Tortuosity')
-
-% Length density
-aov.ad_nc_lenden = anova1(ad_nc_den, g_ad_nc);
-title('AD vs NC Length Density')
-aov.cte_nc_lenden = anova1(cte_nc_den, g_cte_nc);
-title('CTE vs NC Length Density')
-aov.ad_cte_lenden = anova1(ad_cte_den, g_ad_cte);
-title('AD vs CTE Length Density')
-
-% Branch Density
-aov.ad_nc_bden = anova1(ad_nc_bden, g_ad_nc);
-title('AD vs NC Branch Density')
-aov.cte_nc_bden = anova1(cte_nc_bden, g_cte_nc);
-title('CTE vs NC Branch Density')
-aov.ad_cte_bden = anova1(ad_cte_bden, g_ad_cte);
-title('AD vs CTE Branch Density')
-
-% Fraction Volume
-aov.ad_nc_fvol = anova1(ad_nc_fvol, g_ad_nc);
-title('AD vs NC Fraction Volume')
-aov.cte_nc_fvol = anova1(cte_nc_fvol, g_cte_nc);
-title('CTE vs NC Fraction Volume')
-aov.ad_cte_fvol = anova1(ad_cte_fvol, g_ad_cte);
-title('AD vs CTE Fraction Volume')
-
-%%% Save the ANOVA
-save(anova_fout, 'aov', '-v7.3');
-
-
-%% Calculate average + std of age
-
-%{
-AD subjects = AD_10382, AD_20969, AD_21354, AD_21424
-CTE subjects = CTE_6489, CTE_6912, CTE_7019, CTE_7126
-NC subjects = NC_301181, NC_21499, NC_6839, NC_6974, NC_7597, NC_8653
-%}
-
-age_ad = [84;76;86;83];
-age_cte = [81; 78; 75; 86];
-age_nc = [59;88;71;69;80];
-age_all_groups = [age_ad; age_cte; age_nc];
-
-% AD
-age.ad_mean = mean(age_ad);
-age.ad_std = std(age_ad);
-
-% CTE
-age.cte_mean = mean(age_cte);
-age.cte_std = std(age_cte);
-
-% NC
-age.nc_mean = mean(age_nc);
-age.nc_std = std(age_nc);
-
-% Overall age stats
-age.mean = mean(age_all_groups);
-age.std = std(age_all_groups);
-age.min = min(age_all_groups);
-age.max = max(age_all_groups);
 %}

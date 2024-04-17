@@ -26,54 +26,60 @@ pstats = struct();
 for ii = 1:length(regions)
     % Iterate over parameters
     for j = 1:length(params)
-        % Load in the arrays from each group (ad, cte, nc)
-        ad = metrics.(regions{ii}).(params{j}).ad;
-        cte = metrics.(regions{ii}).(params{j}).cte;
-        nc = metrics.(regions{ii}).(params{j}).nc;
-        % Check for normality (lillietest)
-        lt = zeros(1,3);
-        lt(1) = lillietest(ad);
-        lt(2) = lillietest(cte);
-        lt(3) = lillietest(nc);
-
-        %% Concatenate groups into matrix for unbalanced comparison
-        % Create labels arrays
-        ad_label = repmat("AD",1,length(ad));
-        cte_label = repmat("CTE",1,length(cte));
-        nc_label = repmat("NC",1,length(nc));
-        label_array = [ad_label, cte_label, nc_label];
-
-        % Combine each group into single 1D array
-        metric_array = [ad', cte', nc'];
-        
-        % ANOVA: all distributions are normal
-        if ~all(lt)
-            % Save result of normality
-            pstats.(regions{ii}).(params{j}).normality = true;
-            % Perform ANOVA
-            [p, ~, stats] = anova1(metric_array, label_array);
-        % kruskal-wallis test: at least one distribution not normal
+        %% Skip tortuosity for the ratio metrics
+        if strcmp(params{j},'tortuosity') && contains(regions{ii},'sulci_')
+            continue
         else
-            % Save result of normality
-            pstats.(regions{ii}).(params{j}).normality = false;
-            % Perform kruskal-wallis test
-            [p, ~, stats] = kruskalwallis(metric_array, label_array);
-        end
-        % Examine test statistic of each group comparison
-        results = multcompare(stats);
-        % Save the p-value for each comparison
-        pstats.(regions{ii}).(params{j}).p.group = p;
-        pstats.(regions{ii}).(params{j}).p.ad_cte = results(1,end);
-        pstats.(regions{ii}).(params{j}).p.ad_nc = results(2,end);
-        pstats.(regions{ii}).(params{j}).p.cte_nc = results(3,end);
-        close all;
-        % Print the region/parameter for p-values below threshold
-        if p <= th_sigdif
-            sprintf('Significant difference within the %s for %s',...
-                regions{ii}, params{j})
-        elseif p <= th_trend
-            sprintf('Trend within the %s for %s',...
-                regions{ii}, params{j})
+            %% Check for normality
+            % Load in the arrays from each group (ad, cte, nc)
+            ad = metrics.(regions{ii}).(params{j}).ad;
+            cte = metrics.(regions{ii}).(params{j}).cte;
+            nc = metrics.(regions{ii}).(params{j}).nc;
+            % Check for normality (lillietest)
+            lt = zeros(1,3);
+            lt(1) = lillietest(ad);
+            lt(2) = lillietest(cte);
+            lt(3) = lillietest(nc);
+    
+            %% Concatenate groups into matrix for unbalanced comparison
+            % Create labels arrays
+            ad_label = repmat("AD",1,length(ad));
+            cte_label = repmat("CTE",1,length(cte));
+            nc_label = repmat("NC",1,length(nc));
+            label_array = [ad_label, cte_label, nc_label];
+    
+            % Combine each group into single 1D array
+            metric_array = [ad', cte', nc'];
+            
+            % ANOVA: all distributions are normal
+            if ~all(lt)
+                % Save result of normality
+                pstats.(regions{ii}).(params{j}).normality = true;
+                % Perform ANOVA
+                [p, ~, stats] = anova1(metric_array, label_array);
+            % kruskal-wallis test: at least one distribution not normal
+            else
+                % Save result of normality
+                pstats.(regions{ii}).(params{j}).normality = false;
+                % Perform kruskal-wallis test
+                [p, ~, stats] = kruskalwallis(metric_array, label_array);
+            end
+            % Examine test statistic of each group comparison
+            results = multcompare(stats);
+            % Save the p-value for each comparison
+            pstats.(regions{ii}).(params{j}).p.group = p;
+            pstats.(regions{ii}).(params{j}).p.ad_cte = results(1,end);
+            pstats.(regions{ii}).(params{j}).p.ad_nc = results(2,end);
+            pstats.(regions{ii}).(params{j}).p.cte_nc = results(3,end);
+            % Print the region/parameter for p-values below threshold
+            if p <= th_sigdif
+                fprintf('Significant difference within the %s for %s\n',...
+                    regions{ii}, params{j})
+            elseif p <= th_trend
+                fprintf('Trend within the %s for %s\n',...
+                    regions{ii}, params{j})
+            end
+            close all;
         end
     end
 end
