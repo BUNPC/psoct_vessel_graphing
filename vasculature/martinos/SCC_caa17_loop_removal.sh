@@ -22,5 +22,5 @@
 #$ -j y
 
 module load matlab/2022b
-matlab -nodisplay -singleCompThread -r "caa_17_remove_loops_main; exit"
+matlab -nodisplay -r "caa_17_remove_loops_main; exit"
 
