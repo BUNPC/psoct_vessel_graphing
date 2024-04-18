@@ -66,8 +66,6 @@ while ~isempty(cnodes)
     cnt_outer = cnt_outer + 1;
     % Initialize inner while-loop counter
     cnt_inner = 1;
-    % Outer while-loop iteration
-    fprintf('\nOuter while-loop iteration = %i\n', cnt_outer)    
     % Visualize Graph
     iter_str = strcat('Iteration ',num2str(cnt_outer));
     tstr = {'Before Mv2Mean & Downsampling Graph',iter_str};
@@ -86,9 +84,6 @@ while ~isempty(cnodes)
     xlim(lim.x); ylim(lim.y); zlim(lim.z);
 
     while (n_pre - n_loops) < n_post
-        %% Debugging information
-        fprintf('\nInner while-loop iteration = %i', cnt_inner)
-        fprintf('\nNumber of nodes before mv2mean & DS = %i', length(nodes))
         %% Move to mean (collapse loops)
         % Create struct of graph to be compatible with move to mean
         im_mv.nodes = nodes;
@@ -106,10 +101,6 @@ while ~isempty(cnodes)
             visualize_graph(nodes_mv, edges_mv, tstr, []);
         end
         xlim(lim.x); ylim(lim.y); zlim(lim.z);
-        %%% Recalculate loops
-        [~, cnodes, ~] = count_loops(edges_mv);
-        nnodes = length(cnodes{1,:});
-        fprintf('\nNumber of nodes in loop after mv2mean = %i', length(nnodes));
         %% Regraph (downsample) to remove collapsed loops
         [nodes_ds, edges_ds] =...
             downsample_loops(n_idcs, nodes_mv, edges_mv, delta, protect);
