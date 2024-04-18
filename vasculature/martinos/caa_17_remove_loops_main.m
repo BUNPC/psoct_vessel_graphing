@@ -43,5 +43,11 @@ mv_iter = 1;
 viz = false;
 
 % Call the function to remove loops
-[node_rm, edges_rm] =...
+[nodes_rm, edges_rm] =...
     rm_loops_parallel(nodes, edges, vol, delta, v_min, mv_iter, viz);
+
+% Save the output to the same directory
+graph.nodes = nodes_rm;
+graph.edges = edges_rm;
+fout = '/projectnb/npbssmic/ns/CAA/caa_17/occipital/caa17-occipital_masked-filtered/seg_masked_graph_rmloops.mat';
+save(fout, 'graph', '-v7.3');
