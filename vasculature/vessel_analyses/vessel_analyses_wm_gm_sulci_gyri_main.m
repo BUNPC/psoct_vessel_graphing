@@ -111,14 +111,14 @@ end
 
 %% Statistical Hypothesis Testing
 % Trend threshold
-th_trend = 0.10;
+trend = 0.10;
 % Significant Difference threshold
-th_sigdif = 0.05;
+alpha = 0.05;
 % Include the ratios in the regions
 regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
             'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri','gm_sulci_gyri'};
 % Calculate stats
-pstats = metrics_stats(metrics, regions, params, th_trend, th_sigdif);
+pstats = metrics_stats(metrics, regions, params, groups, alpha, trend);
 
 %% Calculate average + std of age
 
