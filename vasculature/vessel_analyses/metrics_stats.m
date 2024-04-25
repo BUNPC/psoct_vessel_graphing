@@ -71,20 +71,21 @@ for ii = 1:length(regions)
             pstats.(regions{ii}).(params{j}).p.group = p;
             
             %%% pair-wise comparisons
-            p = ones(3,1);
+            p = zeros(3,1);
+            h = zeros(3,1);
             % Use kolmogorov-smirnov test for tortuosity distributions
             if strcmp(params{j},'tortuosity')
-                [~,p(1)] = kstest2(ad, cte,'Alpha',alpha);
-                [~,p(2)] = ranksum(ad, nc,'Alpha',alpha);
-                [~,p(3)] = ranksum(cte, nc,'Alpha',alpha);
+                [h(1),p(1)] = kstest2(ad, cte,'Alpha',alpha);
+                [h(2),p(2)] = kstest2(ad, nc,'Alpha',alpha);
+                [h(3),p(3)] = kstest2(cte, nc,'Alpha',alpha);
             % Use Wilcoxon rank sum test for all others
             else
-                p(1) = ranksum(ad, cte);
-                p(2) = ranksum(ad, nc);
-                p(3) = ranksum(cte, nc);
+                [p(1), h(1)] = ranksum(ad, cte, 'alpha', alpha);
+                [p(2), h(2)] = ranksum(ad, nc, 'alpha', alpha);
+                [p(3), h(3)] = ranksum(cte, nc, 'alpha', alpha);
             end
             % Print region/parameter for p-values below alpha/threshold
-            if any(p < alpha)
+            if any(h)
                 fprintf('Significant difference within the %s for %s\n',...
                         regions{ii}, params{j})
             elseif any(p < trend)

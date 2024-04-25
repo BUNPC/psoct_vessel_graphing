@@ -120,37 +120,20 @@ regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
 % Calculate stats
 pstats = metrics_stats(metrics, regions, params, groups, alpha, trend);
 
-%% Calculate average + std of age
+%% Generate table of p-values
+% TODO: organize the p-values into a table. Call the function "make_ptable"
 
 %{
-AD subjects = AD_10382, AD_20969, AD_21354, AD_21424
-CTE subjects = CTE_6489, CTE_6912, CTE_7019, CTE_7126
-NC subjects = NC_301181, NC_21499, NC_6839, NC_6974, NC_7597, NC_8653
+% Pairwise comparison names
+Pairs = {'AD vs CTE', 'AD vs. HC', 'CTE vs. HC'};
+LengthDensity = ;
+BranchDensity = ;
+VolumeFraction = ;
+Tortuosity = ;
 %}
 
-age_ad = [84;76;86;83];
-age_cte = [81; 78; 75; 86];
-age_nc = [59;88;71;69;80];
-age_all_groups = [age_ad; age_cte; age_nc];
-
-% AD
-age.ad_mean = mean(age_ad);
-age.ad_std = std(age_ad);
-
-% CTE
-age.cte_mean = mean(age_cte);
-age.cte_std = std(age_cte);
-
-% NC
-age.nc_mean = mean(age_nc);
-age.nc_std = std(age_nc);
-
-% Overall age stats
-age.mean = mean(age_all_groups);
-age.std = std(age_all_groups);
-age.min = min(age_all_groups);
-age.max = max(age_all_groups);
-%}
+%% Generate histograms/violin plots of tortuosity
+% TODO: generalize a function and call for all tortuosities
 
 %% Box / Whisker Plots
 %{
