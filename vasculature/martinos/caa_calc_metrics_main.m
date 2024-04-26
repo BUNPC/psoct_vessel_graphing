@@ -24,8 +24,12 @@ addpath(genpath(topdir));
 % Path to top-level directory
 if ispc
     dpath = 'C:\Users\mhyman\boas_wang_lab\CAA\';
+    % Metrics output path
+    mpath = 'C:\Users\mhyman\boas_wang_lab\CAA\metrics\';
 else
     dpath = '/projectnb/npbssmic/ns/CAA/';
+    % Metrics output path
+    mpath = '/projectnb/npbssmic/ns/CAA/metrics/';
 end
    
 % Directory containing masks
@@ -41,8 +45,7 @@ subs = strrep(mdirs,'/','_');
 % Subdirectory containing the segmentation and graph
 segdir = '/segmentations/';
 
-% Metrics output path
-mpath = '/projectnb/npbssmic/ns/CAA/metrics/';
+
 
 % Graph structures to import and analyze
 graphs = {'caa6-frontal_vessels-masked_graph_data.mat',...
@@ -57,7 +60,7 @@ graphs = {'caa6-frontal_vessels-masked_graph_data.mat',...
 % Masks corresponding to each respective graph
 masks = {'caa6_frontal_mask_edited.nii',...
         'caa6_occipital_mask_edited.nii',...
-        'caa17_occipital_mask.nii.gz',...
+        'caa17_occipital_mask_5x-dilate.nii',...
         'caa22_frontal_mask_edited.nii',...
         'caa25_frontal_mask_edited.nii',...
         'caa25_occipital_mask_edited.nii',...
