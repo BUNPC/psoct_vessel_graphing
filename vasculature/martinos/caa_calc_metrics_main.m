@@ -22,7 +22,11 @@ addpath(genpath(topdir));
 %% Define directory paths
 
 % Path to top-level directory
-dpath = '/projectnb/npbssmic/ns/CAA/';
+if ispc
+    dpath = 'C:\Users\mhyman\boas_wang_lab\CAA\';
+else
+    dpath = '/projectnb/npbssmic/ns/CAA/';
+end
    
 % Directory containing masks
 mdirs = {'caa6/frontal', 'caa6/occipital',...
@@ -61,7 +65,14 @@ masks = {'caa6_frontal_mask_edited.nii',...
         'caa26_occipital_mask.nii'};
 
 % Creating struct for storing all of the metrics for each subject
-metrics = struct(); 
+metrics = struct();
+
+% Change slashes if running on PC
+if ispc
+    mdirs = strrep(mdirs, '/','\');
+    segdir = strrep(segdir, '/','\');
+    mpath = strrep(mpath, '/','\');
+end
 
 %% Iterate through each segmentation graph
 for ii=1:length(graphs)
