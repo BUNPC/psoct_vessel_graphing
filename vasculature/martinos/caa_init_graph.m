@@ -22,7 +22,7 @@ elseif isunix
     idcs = strfind(mydir,'/');
 end
 % Truncate path to reach top-level directory (psoct_vessel_graphing)
-topdir = mydir(1:idcs(end));
+topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
 %% Set maximum number of cores
@@ -39,14 +39,14 @@ subdir = 'segmentations/';
 % Filename to parse (this will be the same for each subject)
 fnames = {'caa6-frontal_vessels-masked',...
           'caa6-occipital_vessels-masked',...
-          'caa17-occipital_vessels-masked',...
+          'caa17_occipital_THRESH-0.5_masked',...
           'caa22-frontal_vessels-masked',...
           'caa25-frontal_vessels-masked',...
           'caa25-occipital_vessels-masked',...
           'caa26-frontal_vessels-masked',...
           'caa26-occipital_vessels-masked'};
 % filename extension
-ext = '.nii';
+ext = '.mat';
 
 %%% Complete subject ID list for Ann_Mckee_samples_10T
 subids = {'caa6/frontal/', 'caa6/occipital/',...
@@ -69,24 +69,22 @@ fname = fnames{batch_idx};
 fullpath = fullfile(dpath, subid, subdir);
 filename = strcat(fullpath, strcat(fname, ext));
 % Convert .tif to .MAT
-seg = MRIread(filename, 0, 0);
-seg = logical(seg.vol);
-
-%% Save Segmentation
-% Save masked segmentation as a sparse matrix in .MAT
-fout = strcat(fullfile(fullpath, fname), '.mat');
-save(fout, 'seg', '-v7.3');
+seg = load(filename);
+try
+    seg = seg.seg;
+catch
+    seg = seg.seg_masked;
+end
 
 %% Convert to graph and save
-
-% Voxel dimensions
+% Voxel dimensions (microns)
 vox_dim = [20, 20, 20];
 
 % Boolean for visualizing the graph debugging plots
 viz = false;
 
 % Boolean for removing loops from graph
-rmloop_bool = 0;
+rmloop_bool = 1;
 
 %%% Create a graph of the segmentation
 seg_graph_init(seg, vox_dim, fullpath, fname, viz, rmloop_bool); 

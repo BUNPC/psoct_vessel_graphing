@@ -68,35 +68,37 @@ function [nodes, edges] =...
     %SUBGRAPH_RM create subgraphs, remove loops, recombine into graph
     %%% Find connected components (subgraphs)
     % This will classify nodes into the same "bin" index if they are
-    % connected in the graph. The "weak" type ensures that connected
-    % branches all have the same bin index.
-    bins = conncomp(g);
-    % The unique number of bins is the total number of subgraphs
-    subgraph_idcs = unique(bins);
+    % connected in the graph. We calculate two different forms of the same
+    % bins, they are each more convenient in some uses
+    bins = conncomp(g,'OutputForm','cell');
+    binsv = conncomp(g,'OutputForm','vector');
     
-    %%% Separate graph into subgraphs (re-index nodes/edges)
+    % This labels the edges by bin number. We only need to look at one of
+    % the nodes in an edge to determine its bin.
+    edge_bin = binsv(edges(:,1));
+    
     subgraphs = struct();
     % Create subgraph for each bin index
-    parfor (ii = 1:length(subgraph_idcs), n_cores)
-        % Find node indices with bin value of ii. In "nodeidx" the nodes
-        % with a bin value equal to ii will be set to 1 and the others will
-        % be set to 0.
-        nodeidx = bins == ii;
-
-        % Create list of node indices to remove. These have a bin value
-        % different from ii.
-        rm_idcs = 1:size(nodes,1);
-        rm_idcs = rm_idcs(~nodeidx);
-        
-        % Reindex nodes/edges for subgraph
-        [nodes_sub, edges_sub] = remove_reindex_nodes(rm_idcs, nodes, edges);
+    for ii = 1:length(bins)        
+        % edge_bin labels all edges by bin, so we just find all edges that
+        % match our current bin and use this as a mask to select only the
+        % edges in the bin
+        edges_sub = edges(edge_bin==ii,:);
+        % Reindex nodes/edges for subgraph, unique() labels each unique
+        % value in ascending order, so we can use this a simple way to
+        % reindex our global node indices
+        [~,~,reindex] = unique(edges_sub);
+        % We need to reshape the result to match the desired edges structure
+        edges_sub = reshape(reindex, [], 2);
+        % The cell format of bins means we can construct the nodes directly
+        nodes_sub = nodes(bins{ii}, :);
+    
         n_nodes = size(nodes_sub,1);
         n_edges = size(edges_sub,1);
-
+    
         % Check if subgraph contains loops
-        subg = graph(edges_sub(:,1), edges_sub(:,2));
-        loop_tf = hascycles(subg);
-
+        loop_tf = hasCyclesRCS(n_nodes, n_edges);
+    
         % Place nodes/edges into struct
         subgraphs(ii).nodes = nodes_sub;
         subgraphs(ii).edges = edges_sub;
@@ -196,4 +198,18 @@ function [nodes, edges] =...
         visualize_graph(nodes, edges, 'Graph after loop removal',[])
     end
 end
+end
+
+function cyc = hasCyclesRCS(numnodes, numedges)
+%Based on MathWorks "hasCycles", but simplified thanks to a priori
+%knowledge
+%Trivial case
+if numnodes == 0
+    cyc = false;
+    return;
+end
+
+% The original version needs to compute number of bins, but we now this
+% must be 1 as we by design only pass subgraphs in the same bin
+cyc = (numedges-numnodes+1) > 0;
 end
