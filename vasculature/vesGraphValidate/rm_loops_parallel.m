@@ -42,6 +42,11 @@ if isempty(poolobj)
     parpool(pc, n_cores);
 end
 
+% Create Data Queue for broadcasting from threads
+q = parallel.pool.DataQueue;
+% Increment the waitbar after each subgraph has loops removed (parfor)
+afterEach(q,@parforWaitbar);
+
 %% Initialize graph
 g = graph(edges(:,1), edges(:,2));
 % Boolean for tracking whether loops exist
@@ -112,13 +117,17 @@ function [nodes, edges] =...
     sub_idx = [subgraphs.loop_tf].';
     % struct index of subgraph containing loops
     sub_idx = find(sub_idx);
-    L = length(sub_idx);
+    n_loop_subgraphs = length(sub_idx);
+    fprintf('\n%i subgraphs contain loops\n', n_loop_subgraphs);
     
     %% Remove loops from subgraphs
     % Initialize new struct for storing subgraphs after loop removal
     subg_rm = subgraphs(sub_idx);
+    % Initialize the wait bar
+    w = waitbar(0,'Removing loops from subgraphs');
+    parforWaitbar(w,n_loop_subgraphs);
 
-    parfor (j = 1:L, n_cores)
+    parfor (j = 1:n_loop_subgraphs, n_cores)
         % Extract subgraph nodes/edges
         sub_nodes = subg_rm(j).nodes;
         sub_edges = subg_rm(j).edges;
@@ -141,14 +150,17 @@ function [nodes, edges] =...
         subg_rm(j).n_nodes = n_nodes;
         subg_rm(j).n_edges = n_edges;
 
-        % Print to console that loop was removed
-        fprintf('\n\nSubgraph %i had all loopsremoved\n', j);
+        % Broadcast to the listener that this iteration is compelte.
+        send(q,[]);
     end
+
+    % Delete the wait bar
+    delete(w);
     
     %% Recombine subgraphs (after loop removal) and subgraphs (w/o loops)
     
     %%% Move subg_rm back into subgraphs struct
-    for ii = 1:L
+    for ii = 1:n_loop_subgraphs
         subgraphs(sub_idx(ii)) = subg_rm(ii);
     end
     

@@ -283,7 +283,6 @@ idcs_re = 1:max(node_map(:));
 
 %%% Find hanging nodes (not contained in edges_mapped)
 solo = setdiff(idcs_re, edges_mapped(:));
-fprintf('Total disjoint nodes = %d\n', length(solo))
 
 %%% If unconnected nodes, then reindex edges to exclude them
 if ~isempty(solo)
@@ -298,9 +297,4 @@ else
     nodes_keep_re = nodes_keep;
     edges_mapped_re = edges_mapped;
 end
-
-%%% Print number of removed nodes
-fprintf('Regraph reduced %d nodes to %d\n',size(nodes,1),size(nodes_keep_re,1))
-
-pause(0.001)
 end
