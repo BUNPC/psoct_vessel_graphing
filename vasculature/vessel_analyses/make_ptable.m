@@ -9,19 +9,23 @@ function [ptable] = make_ptable(varargin)
 %   OUTPUTS:
 %       ptable (table): p-values organized into a table structure
 
-% TODO:
-%{
-- determine correct way to have variable number of input arguments for the
-metrics
-- 
-%}
-
 % Retrieve the names of each pairwise comparison
-pairs = varargin.Pairs;
+Pairs = varargin{1};
 
-% TODO Rerieve the metrics
-ptable = table(pairs, varargin(2:end));
+% Rerieve the metrics that occur for all comparisons
+LengthDensity = varargin{2};
+BranchDensity = varargin{3};
+VolumeFraction = varargin{4};
 
-% TODO Generate table
+% Inlcude tortuosity if present
+if length(varargin) == 5
+    Tortuosity = varargin{5};
+    % Create p-value table with tortuosity
+    ptable = table(Pairs, LengthDensity, BranchDensity, VolumeFraction,...
+                    Tortuosity);
+else
+    % Create p-value table without tortuosity
+    ptable = table(Pairs, LengthDensity, BranchDensity, VolumeFraction);
+end
 
 end

@@ -1,5 +1,5 @@
 function [pstats] = metrics_stats(metrics, regions, params, groups,...
-                        alpha, trend)
+                        alpha, trend, dout, fname)
 %METRICS_ANOVA perform ANOVA on the subset of metrics
 %   Parse the "metrics" struct, separate each into its constituent vascular
 %   metrics. Given the small sample size, it is unlikely that any of these
@@ -23,6 +23,8 @@ function [pstats] = metrics_stats(metrics, regions, params, groups,...
 %       groups (cell array): groups to compare (ad, cte, nc)
 %       alpha (double): threshold for kruskal-wallis significance
 %       trend (double): threshold for a trend
+%       dout (string): directory to save table
+%       fname (string): filename to save table
 %   OUTPUTS:
 %       stats (struct): contains p-value and test decision for either ANOVA
 %           or kurskal-wallis test for each parameter from each region.
@@ -41,34 +43,19 @@ m = double(symsum(k,k,1,n-1));
 % bonferroni correction
 alpha = alpha ./ m;
 
-
 %% Iterate over tissue regions
 for ii = 1:length(regions)
-    % Iterate over parameters
+    %%% Iterate over parameters
     for j = 1:length(params)
         %% Skip tortuosity for the ratio metrics
         if strcmp(params{j},'tortuosity') && contains(regions{ii},'sulci_')
             continue
         else    
-            %% Concatenate groups into matrix for unbalanced comparison
+            %% Concatenate groups into matrix for pair-wise comparison
             % Load in the arrays from each group (ad, cte, nc)
             ad = metrics.(regions{ii}).(params{j}).ad;
             cte = metrics.(regions{ii}).(params{j}).cte;
-            nc = metrics.(regions{ii}).(params{j}).nc;
-            % Create labels arrays
-            ad_label = repmat("AD",1,length(ad));
-            cte_label = repmat("CTE",1,length(cte));
-            nc_label = repmat("NC",1,length(nc));
-            label_array = [ad_label, cte_label, nc_label];
-    
-            % Combine each group into single 1D array
-            metric_array = [ad', cte', nc'];
-            
-            %%% kruskal-wallis test: at least one distribution not normal
-            % Perform kruskal-wallis test
-            [p, ~, ~] = kruskalwallis(metric_array, label_array);
-            % Save the result
-            pstats.(regions{ii}).(params{j}).p.group = p;
+            nc = metrics.(regions{ii}).(params{j}).nc;        
             
             %%% pair-wise comparisons
             p = zeros(3,1);
@@ -92,7 +79,6 @@ for ii = 1:length(regions)
                 fprintf('Trend within the %s for %s\n',...
                         regions{ii}, params{j})
             end
-
             % Save the p-value for each comparison
             pstats.(regions{ii}).(params{j}).p.ad_cte = p(1);
             pstats.(regions{ii}).(params{j}).p.ad_nc = p(2);
@@ -100,6 +86,30 @@ for ii = 1:length(regions)
             close all;
         end
     end
+    %%% Generate a table for the region
+    % Create cell array for the pairwise comparisons
+    Pairs = {'AD vs CTE'; 'AD vs. HC'; 'CTE vs. HC'};
+    % Retrieve the p-values for each parameter
+    LengthDensity = cell2mat(struct2cell(pstats.(regions{ii}).(params{1}).p));
+    BranchDensity = cell2mat(struct2cell(pstats.(regions{ii}).(params{2}).p));
+    VolumeFraction = cell2mat(struct2cell(pstats.(regions{ii}).(params{3}).p));
+    % Skip tortuosity if measuring the ratios
+    if contains(regions{ii},'sulci_')
+        % Create the p-value table
+        ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
+            VolumeFraction);
+    else
+        % Create tortuosity array
+        Tortuosity = cell2mat(struct2cell(pstats.(regions{ii}).(params{4}).p));
+        % Create the p-value table
+        ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
+            VolumeFraction, Tortuosity);
+    end    
+    
+    %%% Save table to CSV on a specific sheet
+    % Create output filename
+    table_out = fullfile(dout, fname);
+    writetable(ptable, table_out, 'Sheet',regions{ii});
 end
 
 end

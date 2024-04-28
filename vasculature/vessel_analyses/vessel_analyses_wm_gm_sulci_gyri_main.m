@@ -20,7 +20,7 @@ end
 topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
-%% Data Directories
+%% Data Directories and filenames
 % Path to top-level directory
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
    
@@ -38,20 +38,28 @@ metrics = load(fullfile(mpath, 'metrics.mat'));
 metrics = metrics.metrics;
 subids = fields(metrics);
 
+% Output filename for saving the p-value table
+ptable_out = 'p_value_table.xls';
 
 % Voxel dimensions (microns) and volume (cubic micron)
 vox_dim = [12, 12, 15];
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
 %% Reorganize data and generate barcharts
-% Metrics: length density, branch density, fraction volume
+% Region of brain
 regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
             'gm_gyri','wm_gyri'};
+% Metric
 params = {'length_density','branch_density','fraction_volume','tortuosity'};
-titles = {'Tissue Length Density','Tissue Branch Density',...
-            'Tissue Volume Fraction'};
-xlabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...
+% Title of each bar chart
+titles = {'Length Density','Branch Density','Volume Fraction'};
+% Region titles
+r_titles = {'Tissue', 'Gyri', 'Sulci', 'GM', 'WM',...
+            'GM Sulci', 'WM Sulci', 'GM Gyri', 'WM Gyri'};
+% Y-axis labels
+ylabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...
             'Volume Fraction (a.u.)'};
+% Name of file to save
 plot_names = {'length_density','branch_density','volume_fraction'};
 
 % Iterate over each tissue region
@@ -69,9 +77,13 @@ for ii = 1:length(regions)
 
         % Create and save the bar chart (except for tortuosity
         if j~=4
+            % Filename to save
             plot_name = strcat(regions{ii},'_',plot_names{j});
-            bar_chart(ad, cte, nc, subids, mpath, titles{j},'',...
-                      xlabels{j}, plot_name);
+            % Title for bar chart
+            tstr = append(r_titles{ii},' - ', titles{j});
+            % Create bar chart
+            bar_chart(ad, cte, nc, subids, mpath, tstr,'',...
+                      ylabels{j}, plot_name);
             close;
         end
     end
@@ -118,19 +130,8 @@ alpha = 0.05;
 regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
             'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri','gm_sulci_gyri'};
 % Calculate stats
-pstats = metrics_stats(metrics, regions, params, groups, alpha, trend);
-
-%% Generate table of p-values
-% TODO: organize the p-values into a table. Call the function "make_ptable"
-
-%{
-% Pairwise comparison names
-Pairs = {'AD vs CTE', 'AD vs. HC', 'CTE vs. HC'};
-LengthDensity = ;
-BranchDensity = ;
-VolumeFraction = ;
-Tortuosity = ;
-%}
+pstats = metrics_stats(metrics, regions, params, groups, alpha, trend,...
+                       mpath, ptable_out);
 
 %% Generate histograms/violin plots of tortuosity
 % TODO: generalize a function and call for all tortuosities
