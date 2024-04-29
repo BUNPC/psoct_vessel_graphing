@@ -90,6 +90,9 @@ for ii = 1:length(regions)
 end
 
 %% Calculate ratio of sulci/gyri
+% This cannot be calculated for the tortuosity since it's an array of
+% values.
+
 % Cell array of parameters to compute ratio 
 ratio_params = {'length_density','branch_density','fraction_volume'};
 groups = {'ad','cte','nc'};
@@ -121,131 +124,82 @@ for ii = 1:length(ratio_params)
     end
 end
 
+% Save the metrics struct
+metrics_out = fullfile(mpath, 'metrics.mat');
+save(metrics_out, 'metrics','-v7.3');
+
 %% Statistical Hypothesis Testing
 % Trend threshold
 trend = 0.10;
 % Significant Difference threshold
 alpha = 0.05;
 % Include the ratios in the regions
-regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
-            'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri','gm_sulci_gyri'};
+all_regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
+               'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri',...
+               'gm_sulci_gyri'};
 % Calculate stats
-pstats = metrics_stats(metrics, regions, params, groups, alpha, trend,...
-                       mpath, ptable_out);
+pstats = metrics_stats(metrics, all_regions, params, groups, alpha,...
+                        trend, mpath, ptable_out);
+% Save statistics
+stats_fout = fullfile(mpath, 'stats.mat');
+save(stats_fout, 'pstats','-v7.3');
+%% Generate violin plots of tortuosity
+% This section will iterate over each vascular metric and generate a 1xm
+% cell array, where each column contains the vascular metric values for a
+% particular brain region. Then, this section will generate a violin plot
+% for each vascular metric, where the x-axis will represent different brain
+% regions. For each brain region, the AD, CTE, NC will be grouped together
 
-%% Generate histograms/violin plots of tortuosity
-% TODO: generalize a function and call for all tortuosities
+% Load the metrics structure
+metrics = load(metrics_out);
+metrics = metrics.metrics;
 
-%% Box / Whisker Plots
-%{
-%%% total length (microns)
-figure;
-x1 = ad_total_len;
-x2 = cte_total_len;
-x3 = nc_total_len;
-x = [x1; x2; x3];
-g = [zeros(length(x1), 1); ones(length(x2), 1); ones(length(x3), 1).*2];
-b = boxplot(x, g,'Labels',{'AD', 'CTE', 'NC'});
-title('Total Length (\mum)')
-set(gca, 'FontSize', 30)
-set(b,'LineWidth',4)
+% Y-axis labels
+ylabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...
+            'Volume Fraction (a.u.)','Tortuosity (a.u.)'};
+% X-axis labels for groups
+xlabels = {'Volume','Gyri','Sulci','GM','WM','GM Sulci','WM Sulci',...
+               'GM Gyri','WM Gyri'};
 
-%%% length density
-figure;
-x1 = ad_lenden;
-x2 = cte_lenden;
-x3 = nc_lenden;
-x = [x1; x2; x3];
-b = boxplot(x, g,'Labels',{'AD', 'CTE', 'NC'});
-title({'Length Density','total vessel length / metric volume',''})
-set(gca, 'FontSize', 30)
-set(b,'LineWidth',4)
+%%% Iterate over vascular metrics
+for ii = 1:length(params)   
+    % Initialize array to store the values
+    vmetric = [];
 
-%%% length density (AD vs. NC)
-figure;
-x1 = ad_lenden;
-x3 = nc_lenden;
-x = [x1; x3];
-gsub = [zeros(length(x1), 1); ones(length(x3), 1).*2];
-b = boxplot(x, gsub,'Labels',{'AD', 'HC'});
-title('Length Density');
-ylabel('(10^-^7)(\mum^-^2)')
-set(gca, 'FontSize', 80)
-set(b,'LineWidth',4)
+    % Store disease state index (AD, CTE, HC)
+    comp_idx = {};
 
-%%% total vessels
-figure;
-x1 = ad_nves;
-x2 = cte_nves;
-x3 = nc_nves;
-x = [x1; x2; x3];
-g = [zeros(length(x1), 1); ones(length(x2), 1); ones(length(x3), 1).*2];
-b = boxplot(x, g,'Labels',{'AD', 'CTE', 'NC'});
-title('Total Vessels')
-set(gca, 'FontSize', 30)
-set(b,'LineWidth',4)
+    % Store brain region index ()
+    region_idx = {};
 
+    %%% Iterate over brain regions
+    for j = 1:length(regions)
+        % Vertically concatenate the [AD; CTE; NC] into single vert array
+        ad = metrics.(regions{j}).(params{ii}).ad;
+        cte = metrics.(regions{j}).(params{ii}).cte;
+        nc = metrics.(regions{j}).(params{ii}).nc;
+        vmetric = vertcat(vmetric, ad, cte, nc);
+        n_samples = length(ad) + length(cte) + length(nc);
 
-%%% tortuosity (unitless)
-figure;
-x1 = ad_tort;
-x2 = cte_tort;
-x3 = nc_tort;
-x = [x1; x2; x3];
-g = [zeros(length(x1), 1); ones(length(x2), 1); ones(length(x3), 1).*2];
-b = boxplot(x, g,'Labels',{'AD', 'CTE', 'NC'});
-title('Tortuosity (\mum)')
-set(gca, 'FontSize', 30)
-set(b,'LineWidth',4)
+        % Initialize labels for comparisons within each group (AD, CTE, HC)
+        ad = repmat({'AD'},[length(ad),1]);
+        cte = repmat({'CTE'},[length(cte),1]);
+        nc = repmat({'HC'},[length(nc),1]);
+        comp_idx = vertcat(comp_idx, ad, cte, nc);
 
-%%% Branch Density (branches / mm^3)
-figure;
-x1 = ad_bden;
-x2 = cte_bden;
-x3 = nc_bden;
-x = [x1; x2; x3];
-g = [zeros(length(x1), 1); ones(length(x2), 1); ones(length(x3), 1).*2];
-b = boxplot(x, g,'Labels',{'AD', 'CTE', 'NC'});
-title('Branch Density (branches / mm^3)')
-set(gca, 'FontSize', 30)
-set(b,'LineWidth',4)
+        % Initialize label for comparisons between brain regions
+        region_idx = vertcat(region_idx,...
+            repmat(cellstr(xlabels{j}),[n_samples,1]));
+    end
+      
+    %%% Initialize table for violin plots
+    vtable = table(region_idx, comp_idx, vmetric);
 
-%%% Branch Density (CTE vs. NC)
-figure;
-x2 = cte_bden;
-x3 = nc_bden;
-x = [x2; x3];
-gsub = [ones(length(x2), 1); ones(length(x3), 1).*2];
-b = boxplot(x, gsub,'Labels',{'CTE', 'HC'});
-title('Branch Density')
-ylabel('(Branches / mm^3)')
-set(gca, 'FontSize', 50)
-set(b,'LineWidth',4)
-
-%%% Fraction Volume (unitless)
-figure;
-x1 = ad_fvol;
-x2 = cte_fvol;
-x3 = nc_fvol;
-x = [x1; x2; x3];
-g = [zeros(length(x1), 1); ones(length(x2), 1); ones(length(x3), 1).*2];
-b = boxplot(x, g,'Labels',{'AD', 'CTE', 'NC'});
-title('Fraction Volume (Unitless)')
-set(gca, 'FontSize', 30)
-set(b,'LineWidth',4)
-
-%%% Fraction Volume (AD vs. HC)
-figure;
-x1 = ad_fvol;
-x3 = nc_fvol;
-x = [x1; x3];
-gsub = [zeros(length(x1), 1); ones(length(x3), 1).*2];
-b = boxplot(x, gsub,'Labels',{'AD','HC'});
-title('Fraction Volume')
-ylabel('(a.u.)(10^-^3)')
-yticklabels({'0.6', '1.2', '1.8'});
-yticks([0.6, 1.2, 1.8] * 1e-3);
-set(gca, 'FontSize', 80)
-set(b,'LineWidth',4)
-
-%}
+    %%% Call function to generate violin plot
+    % Group each AD/HC/CTE comparison by tissue
+    grpandplot(vtable,"vmetric", yTitle = ylabels{ii},...
+        xFactor="region_idx", cFactor = "comp_idx", xOrder = xlabels,...
+        showXLine = true, showVln = true, showBox = false, showMean=true,...
+        showPnt = false, showNum = false, numYPos = 500, pntSize=5);
+    set(gca, 'FontSize', 20)
+end

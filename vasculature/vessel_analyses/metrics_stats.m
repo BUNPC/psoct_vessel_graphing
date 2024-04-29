@@ -86,7 +86,7 @@ for ii = 1:length(regions)
             close all;
         end
     end
-    %%% Generate a table for the region
+    %% Generate a table of p-values for the region
     % Create cell array for the pairwise comparisons
     Pairs = {'AD vs CTE'; 'AD vs. HC'; 'CTE vs. HC'};
     % Retrieve the p-values for each parameter

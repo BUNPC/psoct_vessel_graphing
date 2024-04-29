@@ -176,6 +176,7 @@ addParameter(p,'vlnEdgeC', [], validColor);
 addParameter(p,'pntAlpha', 1, validPosFrc);
 addParameter(p,'boxAlpha', 0.5, validPosFrc);
 addParameter(p,'vlnAlpha', 0.5, validPosFrc);
+addParameter(p,'showMean', true, validLogical);
 
 % Parse input
 parse(p,data,yCol,varargin{:});
@@ -215,6 +216,7 @@ vlnEdgeC = p.Results.vlnEdgeC;
 pntAlpha = p.Results.pntAlpha;
 boxAlpha = p.Results.boxAlpha;
 vlnAlpha = p.Results.vlnAlpha;
+showMean = p.Results.showMean;
 
 %% 2. Data preprocessing
 
@@ -432,6 +434,13 @@ for i = 1:nTLvl
                     vlnObj(i,j).FaceAlpha = vlnAlpha;
                     if ~isempty(vlnFillC), vlnObj(i,j).FaceColor = vlnFillC; end
                     if ~isempty(vlnEdgeC), vlnObj(i,j).EdgeColor = vlnEdgeC; end
+                    % Plot the average point
+                    if showMean
+                        vmean = mean(yViolin);
+                        hold on;
+                        c = 'black';
+                        swarmchart(xx + xOffset(j), vmean, 'filled', c);
+                    end
                 end
             end
         end

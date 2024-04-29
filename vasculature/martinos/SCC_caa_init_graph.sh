@@ -22,7 +22,7 @@
 #$ -j y
 
 # Batch array
-#$ -t 3
+#$ -t 1-8
 
 echo "Starting task number $SGE_TASK_ID"
 module load matlab/2022b
