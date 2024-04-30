@@ -3,13 +3,11 @@
 % Date Created: Dec. 13, 2023
 %
 %{
-Detailed Description:
-This script will pass several segmentations to the function
-"combine_segs_then_graph" which will then combine the segmentations,
-initialize the graph, remove loops, and save the output.
-
-To Do:
-- finish function "combine_segs_then_graph"
+This script will iterate over a range of sigma values, which correspond to
+the sigma value of the frangi filter. It will combine the segmentations
+from each of these segmentations into a single matrix. Then, it will apply
+a minimum probability threshold and then save it to the specified
+directory.
 %}
 clear; clc; close all;
 
