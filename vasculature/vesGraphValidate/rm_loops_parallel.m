@@ -177,7 +177,7 @@ function [nodes, edges] =...
     e_offset = 0;
 
     % Iterate over subgraphs
-    for ii = 1:length(subgraph_idcs)
+    for ii = 1:length(bins)
         % Extract nodes/edges from subgraph ii
         nodes_sub = subgraphs(ii).nodes;
         edges_sub = subgraphs(ii).edges;
