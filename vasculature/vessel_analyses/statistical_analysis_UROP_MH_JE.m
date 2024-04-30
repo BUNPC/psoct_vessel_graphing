@@ -3,11 +3,32 @@ clear;
 clc;
 close all;
 %% Managing environment and paths
+%{
 % Add path to wokring directory and .mat data struct
 addpath('/Users/jamieedelists/Desktop/spring_UROP_analyses');
 addpath('/Users/jamieedelists/Desktop/spring_UROP_analyses/violin/');
 % Load the data struct
 struct_subs = load('/Users/jamieedelists/Desktop/spring_UROP_analyses/caa_crop300_rmloops_metrics.mat');
+%}
+
+%% Clear workspace & add top-level directory
+% Start in current directory
+mydir  = pwd;
+% Find indices of slashes separating directories
+if ispc
+    idcs = strfind(mydir,'\');
+elseif isunix
+    idcs = strfind(mydir,'/');
+end
+% Truncate path to reach top-level directory (psoct_vessel_graphing)
+topdir = mydir(1:idcs(end-1));
+addpath(genpath(topdir));
+
+% Directory to save outputs
+output_dir = '/projectnb/npbssmic/ns/CAA/metrics/crop300_rmloop';
+
+% Load the data struct
+struct_subs = load('/projectnb/npbssmic/ns/CAA/metrics/caa_crop300_rmloops_metrics.mat');
 %% Sorting each metrics into it's own array
 % Names of the fields corresponding to subjects in the struct for easier indexing
 subjects = fieldnames(struct_subs.metrics);
@@ -39,7 +60,6 @@ kMeans_X = [len_den; branch_den; frac_vol; tort_mean; tort_med; tort_mode]';
 metrics_mat = vertcat(len_den, branch_den, frac_vol, tort_mean,...
                     tort_med, tort_mode);
 % Create box/whisker plot
-output_dir = '/Users/jamieedelists/Desktop/spring_UROP_analyses/new_figures/kmeans1_figures';
 fstring = 'kmeans1_';
 group_box_whisker(metrics_mat, idx, output_dir, fstring)
 %% Extracting principle components (running PCA)
@@ -212,7 +232,3 @@ for ii = 1:size(metrics_mat,1)
     saveas(gca,fout,'png');
 end
 end
-has context menu
-
-
-has context menu

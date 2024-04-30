@@ -23,20 +23,37 @@ addpath(genpath(topdir));
 %% Data Directories and filenames
 % Path to top-level directory
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
-   
-% Volume and graph directories
-voldir = '/dist_corrected/volume/ref/';
-graphdir = ['/dist_corrected/volume/combined_segs/' ...
-            'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
 
-% Metrics output path
-mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
-    'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
+% Additional subfolder when applying minimum voxel count
+vox_min = 'vox_min_100';
+vox_min = false;
+
+if vox_min
+    % Volume and graph directories
+    voldir = '/dist_corrected/volume/ref/';
+    graphdir = ['/dist_corrected/volume/combined_segs/' ...
+                'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
+    graphdir = fullfile(graphdir, vox_min);
+    % Metrics output path
+    mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
+        'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
+    mpath = fullfile(mpath, vox_min);
+else
+    % Volume and graph directories
+    voldir = '/dist_corrected/volume/ref/';
+    graphdir = ['/dist_corrected/volume/combined_segs/' ...
+                'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
+    
+    % Metrics output path
+    mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
+        'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
+end
 
 % Load the metrics struct and extract subject IDs
 metrics = load(fullfile(mpath, 'metrics.mat'));
 metrics = metrics.metrics;
 subids = fields(metrics);
+metrics_out = fullfile(mpath, 'metrics.mat');
 
 % Output filename for saving the p-value table
 ptable_out = 'p_value_table.xls';
@@ -46,9 +63,13 @@ vox_dim = [12, 12, 15];
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
 %% Reorganize data and generate barcharts
-% Region of brain
+% Region of brain (excluding ratios)
 regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
             'gm_gyri','wm_gyri'};
+% Regions of brain (including ratios)
+all_regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
+               'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri',...
+               'gm_sulci_gyri'};
 % Metric
 params = {'length_density','branch_density','fraction_volume','tortuosity'};
 % Title of each bar chart
@@ -125,7 +146,6 @@ for ii = 1:length(ratio_params)
 end
 
 % Save the metrics struct
-metrics_out = fullfile(mpath, 'metrics.mat');
 save(metrics_out, 'metrics','-v7.3');
 
 %% Statistical Hypothesis Testing
@@ -133,10 +153,6 @@ save(metrics_out, 'metrics','-v7.3');
 trend = 0.10;
 % Significant Difference threshold
 alpha = 0.05;
-% Include the ratios in the regions
-all_regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
-               'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri',...
-               'gm_sulci_gyri'};
 % Calculate stats
 pstats = metrics_stats(metrics, all_regions, params, groups, alpha,...
                         trend, mpath, ptable_out);
@@ -160,6 +176,11 @@ ylabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...
 % X-axis labels for groups
 xlabels = {'Volume','Gyri','Sulci','GM','WM','GM Sulci','WM Sulci',...
                'GM Gyri','WM Gyri'};
+% Regions of the brain for calculating ratios
+ratio_regions = {'sulci_gyri','wm_sulci_gyri','gm_sulci_gyri'};
+ratio_ylabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...
+            'Volume Fraction (a.u.)'};
+ratio_xlabels = {'Sulci / Gyri', 'WM Sulci / Gyri', 'GM Sulci / Gyri'};
 
 %%% Iterate over vascular metrics
 for ii = 1:length(params)   
@@ -172,7 +193,7 @@ for ii = 1:length(params)
     % Store brain region index ()
     region_idx = {};
 
-    %%% Iterate over brain regions
+    %% Iterate over brain regions (exclude ratios)
     for j = 1:length(regions)
         % Vertically concatenate the [AD; CTE; NC] into single vert array
         ad = metrics.(regions{j}).(params{ii}).ad;
@@ -191,7 +212,7 @@ for ii = 1:length(params)
         region_idx = vertcat(region_idx,...
             repmat(cellstr(xlabels{j}),[n_samples,1]));
     end
-      
+
     %%% Initialize table for violin plots
     vtable = table(region_idx, comp_idx, vmetric);
 
@@ -201,5 +222,57 @@ for ii = 1:length(params)
         xFactor="region_idx", cFactor = "comp_idx", xOrder = xlabels,...
         showXLine = true, showVln = true, showBox = false, showMean=true,...
         showPnt = false, showNum = false, numYPos = 500, pntSize=5);
-    set(gca, 'FontSize', 20)
+    set(gca, 'FontSize', 30)
+    % Save output
+    fout = fullfile(mpath,append(params{ii},'_violin'));
+    saveas(gcf,fout,'png');
+    close;
+    %% Iterate over brain regions (only ratios)
+    if strcmp(params{ii}, 'tortuosity')
+        continue
+    else
+        % Initialize array to store the values
+        vmetric = [];
+        % Store disease state index (AD, CTE, HC)
+        comp_idx = {};
+        % Store brain region index ()
+        region_idx = {};
+        
+        % Iterate over ratio regions
+        for j = 1:length(ratio_regions)
+            % Vertically concatenate [AD; CTE; NC] into single vert array
+            ad = metrics.(ratio_regions{j}).(params{ii}).ad;
+            cte = metrics.(ratio_regions{j}).(params{ii}).cte;
+            nc = metrics.(ratio_regions{j}).(params{ii}).nc;
+            vmetric = vertcat(vmetric, ad, cte, nc);
+            n_samples = length(ad) + length(cte) + length(nc);
+    
+            % Initialize labels for comparisons within group (AD, CTE, HC)
+            ad = repmat({'AD'},[length(ad),1]);
+            cte = repmat({'CTE'},[length(cte),1]);
+            nc = repmat({'HC'},[length(nc),1]);
+            comp_idx = vertcat(comp_idx, ad, cte, nc);
+    
+            % Initialize label for comparisons between brain regions
+            region_idx = vertcat(region_idx,...
+                repmat(cellstr(ratio_xlabels{j}),[n_samples,1]));
+        end
+    
+        %%% Initialize table for violin plots
+        vtable = table(region_idx, comp_idx, vmetric);
+    
+        %%% Call function to generate violin plot
+        % Group each AD/HC/CTE comparison by tissue
+        grpandplot(vtable,"vmetric", yTitle=ratio_ylabels{ii},...
+            xFactor="region_idx", cFactor="comp_idx",...
+            xOrder = ratio_xlabels, showXLine = true, showVln = true,...
+            showBox = false, showMean=true,...
+            showPnt = false, showNum = false, numYPos = 500, pntSize=5);
+        set(gca, 'FontSize', 30)
+        % Save output
+        fout = fullfile(mpath,append(params{ii},'_ratio_violin'));
+        saveas(gcf,fout,'png');
+        close;
+    end
+
 end

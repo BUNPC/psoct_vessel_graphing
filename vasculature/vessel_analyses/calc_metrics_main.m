@@ -32,7 +32,7 @@ graphdir = ['/dist_corrected/volume/combined_segs/' ...
 
 % Metrics output path
 mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
-    'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
+    'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/vox_min_100'];
 
 % Graph structures to analyze
 graphs = {'seg_refined_masked_rmloop_graph_data.mat',...
@@ -56,7 +56,7 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
 metrics = struct();
 
 %% Iterate through subjects
-for ii = 11:length(subid)
+for ii = 1:length(subid)
     % Specify the subject ID
     sub = subid{ii};
     fprintf('Calculating Metrics for Subject %s\n', sub);

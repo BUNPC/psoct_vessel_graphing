@@ -317,6 +317,7 @@ end
 % if no parent is specified, a new figure will be created.
 if isempty(parent)
     parent=figure;
+    parent.WindowState = 'maximized';
 end
 
 % if there's only layout but no figure, a new figure will be created.
@@ -427,8 +428,9 @@ for i = 1:nTLvl
                     yViolin = ydata{i,j}.(yCol)(:);
                 end                
                 if ~isempty(yViolin)  % don't plot if no data for current x level
-                    vlnObj(i,j) = violin(xx + xOffset(j), yViolin, linecolor=cmap(j,:),...
-                                         scaling=w, withmdn=1, cutoff=0);
+                    vlnObj(i,j) = violin(xx + xOffset(j), yViolin,...
+                        linecolor=cmap(j,:),scaling=w, withmdn=1,...
+                        cutoff=0,linewidth=3);
                     vlnObj(i,j).FaceColor = cmap(j,:);
                     vlnObj(i,j).EdgeColor = cmap(j,:);
                     vlnObj(i,j).FaceAlpha = vlnAlpha;
