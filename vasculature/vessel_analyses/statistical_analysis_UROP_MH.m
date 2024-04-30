@@ -4,16 +4,16 @@ clc;
 close all;
 
 %% Managing environment and paths
-
+%{
 % Add path to wokring directory and .mat data struct
 addpath('/Users/jamieedelists/Desktop/spring_UROP_analyses');
 addpath('/Users/jamieedelists/Desktop/spring_UROP_analyses/violin/');
 
 % Load the data struct
 struct_subs = load('/Users/jamieedelists/Desktop/spring_UROP_analyses/caa_loops_metrics.mat');
-
+%}
 %% Clear workspace & add top-level directory
-%{
+
 clear; clc; close all;
 
 % Start in current directory
@@ -27,8 +27,13 @@ end
 % Truncate path to reach top-level directory (psoct_vessel_graphing)
 topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
+
+% Directory to save outputs
+output_dir = '/projectnb/npbssmic/ns/CAA/metrics/crop300_rmloop';
+
 % Load the data struct
-struct_subs = load('/projectnb/npbssmic/ns/CAA/metrics/caa_loops_metrics.mat');
+struct_subs = load('/projectnb/npbssmic/ns/CAA/metrics/caa_crop300_rmloops_metrics.mat');
+
 %}
 %% Sorting each metrics into it's own array
 
@@ -68,7 +73,8 @@ kMeans_X = [len_den; branch_den; frac_vol; tort_mean; tort_med; tort_mode]';
 metrics_mat = vertcat(len_den, branch_den, frac_vol, tort_mean,...
                     tort_med, tort_mode);
 % Create box/whisker plot
-group_box_whisker(metrics_mat, idx)
+fstring = 'kmeans1_';
+group_box_whisker(metrics_mat, idx, output_dir, fstring)
 
 
 %% Extracting principle components (running PCA)
@@ -80,7 +86,7 @@ group_box_whisker(metrics_mat, idx)
 % Find components that explain at least 85% of the variance
 explained_sum = cumsum(explained);
 % Find components that explain at least (threshold)% of the variance
-threshold = 95;
+threshold = 85;
 numComponents = find(explained_sum >= threshold, 1, 'first');
 
 % Reduce data dimensions based on the number of principal componets (first
@@ -92,7 +98,8 @@ k = 3; % Number of clusters
 [idx2, C2] = kmeans(reducedData, k);
 
 %% Create box/whisker plot with the second k-Means clustering
-group_box_whisker(metrics_mat, idx2)
+fstring = 'kmeans2_';
+group_box_whisker(metrics_mat, idx2, output_dir,fstring)
 
 %% Graphing the kMeans clusters of principal components (NEEDS FIXING WITH GRAPH)
 % Display the results
@@ -190,7 +197,7 @@ set(gca, 'XTick', 1:numel(subjects), 'XTickLabel', subjects);
 
 %% Function to create a box/whisker plot
 
-function group_box_whisker(metrics_mat, idx)
+function group_box_whisker(metrics_mat, idx, output_dir, fstring)
 % Generate a box/whisker plot for each metric. Include each group on the
 % x-axis.
 % INPUTS:
@@ -203,6 +210,8 @@ function group_box_whisker(metrics_mat, idx)
 %       Row 6 = tortuosity mode
 %   idx (integer array): grouping index for each sample (column in
 %               metrics_mat)
+%   output_dir (string): output filepath
+%   fstring (string): prefix for saving the figure
 
 % Find indices in matrix corresponding to each group
 g1_idx = idx==1;
@@ -218,6 +227,8 @@ g3 = metrics_mat(:,g3_idx);
 t_array = {'Length Density (\mum^-^2)', 'Branch Density (\mum^-^3)',...
     'Volume Fraction (a.u.)','Tortuosity Mean (a.u.)',...
     'Tortuosity Median (a.u.)','Tortuosity Mode (a.u.)'};
+fig_array = {'length_density','branch_density', 'volume_fraction',...
+    'tortuosity_mean','tortuosity_median','tortuosity_mode'};
 
 % Iterate through each metric and generate bar chart
 for ii = 1:size(metrics_mat,1)
@@ -225,14 +236,19 @@ for ii = 1:size(metrics_mat,1)
     x1 = g1(ii,:);
     x2 = g2(ii,:);
     x3 = g3(ii,:);
-    % Create barchart
-    figure;
+    % Create box/whisker figure
+    parent=figure;
+    parent.WindowState = 'maximized';
     x = [x1'; x2'; x3'];
     g = [zeros(length(x1), 1); ones(length(x2), 1); ones(length(x3), 1).*2];
     b = boxplot(x, g,'Labels',{'Group 1', 'Group 2', 'Group 3'});
     title(t_array{ii})
     set(gca, 'FontSize', 30)
     set(b,'LineWidth',4)
+    % Save the output
+    fig_name = append(fstring, fig_array{ii});
+    fout = fullfile(output_dir, fig_name);
+    saveas(gca,fout,'png');
 end
 
 end
