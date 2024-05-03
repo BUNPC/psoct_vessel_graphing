@@ -1,4 +1,4 @@
-function [graph] = seg_to_graph(angio, vox_dim)
+function [graph, skeleton] = seg_to_graph(angio, vox_dim)
 %seg_to_graph Convert the vessel segments to a graph (nodes + vertices)
 % This function performs the following:
 %   1) Create binary vessel mask (logical)
@@ -22,9 +22,9 @@ vessel_mask = logical(angio);
 
 %% Create graph from binary vessel mask
 % Reduce 3-D binary volume to a curve skeleton
-vessel_skl = bwskel(vessel_mask,'MinBranchLength',1);
+skeleton = bwskel(vessel_mask,'MinBranchLength',1);
 % Compute graph from skeleton
-vessel_graph = fun_skeleton_to_graph(vessel_skl);
+vessel_graph = fun_skeleton_to_graph(skeleton);
 
 %% Count the number of edges
 % Size of the angiogram. It will help to convert indeces to subscripts

@@ -9,7 +9,7 @@ function seg_graph_init(seg, vox_dim, fullpath, fname_seg, viz, rmloop_bool)
 %       rmloop_bool (bool): true = remove loops from graph
 
 %% Convert segmentation to graph (nodes and edges)
-graph = seg_to_graph(seg, vox_dim);
+[graph, skeleton] = seg_to_graph(seg, vox_dim);
 
 %% Remove loops from graph
 % Move to mean minimum voxel intensity
@@ -23,7 +23,8 @@ mv_iter = 1;
 
 if rmloop_bool
     % Call function to remove loops
-    [nodes_rm, edges_rm] = rm_loops_parallel(graph.nodes, graph.edges, seg, delta, ...
+    [nodes_rm, edges_rm] =...
+        rm_loops_parallel(graph.nodes, graph.edges, seg, delta, ...
                                     v_min, mv_iter, viz);
     % Update graph with nodes and edges
     graph.nodes = nodes_rm;
@@ -49,4 +50,12 @@ else
 end
 fout = fullfile(fullpath, fname_graph);
 save(fout,'Data', '-v7.3');
+
+%%% Save the skeleton (prior to loop removal)
+% Create filename
+fname_skeleton = strcat(fname_seg, '_skeleton.mat');
+% Append filename to output directory
+fout = fullfile(fullpath, fname_skeleton);
+save(fout,'skeleton', '-v7.3');
+
 end

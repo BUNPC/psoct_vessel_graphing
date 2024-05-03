@@ -84,7 +84,7 @@ vox_dim = [20, 20, 20];
 viz = false;
 
 % Boolean for removing loops from graph
-rmloop_bool = 1;
+rmloop_bool = 0;
 
 %%% Create a graph of the segmentation
 seg_graph_init(seg, vox_dim, fullpath, fname, viz, rmloop_bool); 
