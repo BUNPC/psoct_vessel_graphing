@@ -145,8 +145,8 @@ for ii = 1:length(ratio_params)
     end
 end
 
-% Save the metrics struct
-save(metrics_out, 'metrics','-v7.3');
+% Save the updated metrics struct
+save(metrics_out, 'metrics_reorg','-v7.3');
 
 %% Statistical Hypothesis Testing
 % Trend threshold
