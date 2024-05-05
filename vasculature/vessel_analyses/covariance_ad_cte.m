@@ -162,13 +162,3 @@ for ii = 1:length(params)
     fout = fullfile(mpath, fout);
     saveas(gca,fout,'png');
 end
-
-
-
-
-
-
-
-
-
-
