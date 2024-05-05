@@ -1,15 +1,13 @@
 %% Register the OCT images with the pathological staining
 % Outline:
-% - co-register staining (AB & p-taue) with OCT
-% - create heat map of staining intensity
+% - co-register staining (AB or p-tau) with OCT
+% - create heat map of staining intensity (A-beta or p-tau)
 % - create heat map of OCT vascular metrics
 % - perform regression analysis between staining & vascular metric
 
-clear; clc; close all;
-
 %% Add top-level directory of code repository to path
 % This allows Matlab to find the functions in the project folders
-
+clear; clc; close all;
 % Start in current directory
 mydir  = pwd;
 % Find indices of slashes separating directories
@@ -24,24 +22,15 @@ addpath(genpath(topdir));
 
 %% Initialize data path for linux or personal machine (debugging)
 
-%%% Local machine
-if ispc
-    dpath = ['C:\Users\mack\Documents\BU\Boas_Lab\psoct_data_and_figures'...
-            '\test_data\Ann_Mckee_samples_10T\'];
-%%% Computing cluster (SCC)
-elseif isunix
-    % Path to top-level directory
-    dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
-    ptau_path = '/projectnb/npbssmic/pantinew/tau_amyloid_images/AT8/';
-    ab_path = '/projectnb/npbssmic/pantinew/tau_amyloid_images/Ab/';
-    % Subfolder of OCT images
-    refdir = '/dist_corrected/volume/';
-    % Subfolder of graph data
-    subdir = ['/dist_corrected/volume/combined_segs/' ...
-        'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
-end
-
-
+% Path to top-level directory
+dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
+ptau_path = '/projectnb/npbssmic/pantinew/tau_amyloid_images/AT8/';
+ab_path = '/projectnb/npbssmic/pantinew/tau_amyloid_images/Ab/';
+% Subfolder of OCT images
+refdir = '/dist_corrected/volume/';
+% Subfolder of graph data
+subdir = ['/dist_corrected/volume/combined_segs/' ...
+    'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
 
 % Filename to parse (this will be the same for each subject)
 seg_name = 'seg_refined_masked.tif';
@@ -58,7 +47,7 @@ graph_name = 'seg_refined_masked_graph_data.mat';
 %          'NC_21499','NC_301181'};
 subid = {'CTE_6489'};
 
-%%% Staining slice number
+%% Staining slice number
 pathology = struct();
 pathology.(subid{1}).ab = 14;
 pathology.(subid{1}).ptau = 8;
