@@ -32,14 +32,13 @@ if ~isempty(varargin)
 else
     nLst = 1:size(nodes,1);
 end
-hwait = waitbar(0,'Moving nodes towards mean of neighboring nodes');
+
 dbstop if error
 %% Iterate over nodes
 for ii = 1:length(nLst)
     % Retrieve node index
     nidx = nLst(ii);
-    waitbar(ii/length(nLst),hwait)
-    
+   
     %%%% Find edges containing current node index
     eLst = find(im.edges(:,1)==nidx | im.edges(:,2)==nidx);
     
@@ -68,5 +67,4 @@ for ii = 1:length(nLst)
     end
 end
 im.nodes = nodes;
-close(hwait)
 end
