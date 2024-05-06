@@ -81,7 +81,7 @@ vol_name = 'ref';
 voln_name = 'ref_4ds_norm_inv';
 
 %% Iterate through subjects. Create and apply mask_tiss.
-parfor (ii = 3:length(subid),NSLOTS)
+parfor (ii = 1:length(subid),NSLOTS)
 % for ii = 2:length(subid)
     %%% Debugging information
     fprintf('\n---------Starting Subject %s---------\n',subid{ii})
