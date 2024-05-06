@@ -42,8 +42,16 @@ function im = nodeGrps_vesSegment(nodePos, nodeEdges, vox_dim)
 %% nB = number of bifurcations at each segment
 nB = zeros(size(nodePos,1),1);
 nN = size(nodePos,1);
-for ii=1:nN
-   nB(ii) = length(find(nodeEdges(:,1)==ii | nodeEdges(:,2)==ii));
+% If the nodeEdges is an array of edges
+if size(nodeEdges,2) > 1
+    for ii=1:nN
+       nB(ii) = length(find(nodeEdges(:,1)==ii | nodeEdges(:,2)==ii));
+    end
+% Otherwise it contains just one edge
+else
+    % Set both bifurcations to equal 1
+    nB(1) = 1;
+    nB(2) = 1;
 end
 
 %% create nodePos_um variable, to have positions in um
