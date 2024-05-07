@@ -107,11 +107,14 @@ for ii = 1:length(params)
     covariance.(met).nc = c(1,2);
 
     %%% Calculate correlation between age/metric for each group
-    ad_corr = corrcoef(x_ad, y_ad);
+    % AD
+    [ad_corr, ad_p] = corrcoef(x_ad, y_ad);
     correlation.(met).ad = ad_corr(1,2);
-    cte_corr = corrcoef(x_cte, y_cte);
+    % CTE
+    [cte_corr, cte_p] = corrcoef(x_cte, y_cte);
     correlation.(met).cte = cte_corr(1,2);
-    nc_corr = corrcoef(x_nc, y_nc);
+    % HC
+    [nc_corr, nc_p] = corrcoef(x_nc, y_nc);
     correlation.(met).nc = nc_corr(1,2);
 
     %%% Create text string for reporting covariance
@@ -121,44 +124,68 @@ for ii = 1:length(params)
     cov_str = {'Covariances'; ad_cov_str; cte_cov_str; nc_cov_str};
 
     %%% Create text string for reporting correlation
-    ad_corr_str = append('AD = ', num2str(correlation.(met).ad));
-    cte_corr_str = append('CTE = ', num2str(correlation.(met).cte));
-    nc_corr_str = append('NC = ', num2str(correlation.(met).nc));
+    ad_corr_str = append('AD = ', num2str(correlation.(met).ad),...
+        '. p = ', num2str(ad_p(1,2)));
+    cte_corr_str = append('CTE = ', num2str(correlation.(met).cte),...
+        '. p = ', num2str(cte_p(1,2)));
+    nc_corr_str = append('NC = ', num2str(correlation.(met).nc),...
+        '. p = ', num2str(nc_p(1,2)));
     corr_str = {'Correlations'; ad_corr_str; cte_corr_str; nc_corr_str};
 
-    %%% Scatter plot for metric
+    %% Scatter Plots of Covariance and Correlation
+
+    %%% Overlay of scatter plots
     % Initialize the scatter plot
     fh = figure();
     fh.WindowState = 'maximized';
-    % Scatter plots for AD, CTE, NC
-    s1 = scatter(x_ad, y_ad, marker_size,'square','filled'); hold on;
-    s2 = scatter(x_cte, y_cte, marker_size,'o','filled');
-    s3 = scatter(x_nc, y_nc, marker_size,'diamond','filled');
-    
-    %%% Add least-squares line
-    h = lsline;
-    % The colors are not mapped 1:1, so manually adjust
-    h(1).Color = s3.CData; h(1).LineWidth = 3;
-    h(2).Color = s2.CData; h(2).LineWidth = 3;
-    h(3).Color = s1.CData; h(3).LineWidth = 3;
-    
-    %%% Textbox with covariance and correlation
+    % Overlay scatter plots for AD, CTE, NC
+    scatter(x_ad, y_ad, marker_size,'square','b','filled'); hold on;
+    scatter(x_cte, y_cte, marker_size,'o','r','filled');
+    scatter(x_nc, y_nc, marker_size,'diamond','k','filled');
+    % Textbox with covariance and correlation
     dim = [.2 .5 .3 .3];
     annotation('textbox',dim, 'String',cov_str,'FitBoxToText','on',...
         'FontSize',f_size);
     dim = [.35 .5 .3 .3];
     annotation('textbox',dim, 'String',corr_str,'FitBoxToText','on',...
         'FontSize',f_size);
-    
-    %%% Format the figure
+    % Format the figure
     xlabel('Age (years)')
     ylabel(ylabels{ii})
     legend({'AD', 'CTE', 'NC'})
     title(fig_titles{ii})
     set(gca, 'FontSize', f_size)
-
-    %%% Save the figure
+    % Save the figure
     fout = append('cov_corr_',met);
+    fout = fullfile(mpath, fout);
+    saveas(gca,fout,'png');
+
+    %%% Create subplots and overlay with least squares fitted line
+    fh = figure();
+    fh.WindowState = 'maximized';
+    
+    % Scatter plots of values for AD, CTE, HC
+    ax1 = subplot(3,1,1);
+    s1 = scatter(ax1, x_ad, y_ad, marker_size,'square','b','filled');
+    title('AD'); set(gca, 'FontSize', f_size)
+    ax2 = subplot(3,1,2);
+    s2 = scatter(ax2, x_cte, y_cte, marker_size,'o','r','filled');
+    ylabel(ylabels{ii})
+    title('CTE'); set(gca, 'FontSize', f_size)
+    ax3 = subplot(3,1,3);
+    s3 = scatter(ax3, x_nc, y_nc, marker_size,'diamond','k','filled');
+    title('HC');
+    
+    % Overlay LS line for each group
+    h = lsline(ax1); h.LineWidth = 3; h.Color = s1.CData;
+    h = lsline(ax2); h.LineWidth = 3; h.Color = s2.CData;
+    h = lsline(ax3); h.LineWidth = 3; h.Color = s3.CData;
+    
+    % Format the figure
+    xlabel('Age (years)')
+    set(gca, 'FontSize', f_size)
+    % Save the figure
+    fout = append('cov_corr_lsline_',met);
     fout = fullfile(mpath, fout);
     saveas(gca,fout,'png');
 end
