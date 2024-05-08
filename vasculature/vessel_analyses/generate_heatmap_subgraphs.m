@@ -18,20 +18,9 @@ end
 % (psoct_human_brain\vasculature\vesSegment)
 topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
-
-%% Initialize paralell pool
-% Set # threads = # cores for job
+% Set maximum number of threads equal to number of threads for script
 NSLOTS = str2num(getenv('NSLOTS'));
 maxNumCompThreads(NSLOTS);
-% Check to see if we already have a parpool, if not create one with
-% our desired parameters
-% poolobj = gcp('nocreate');
-% if isempty(poolobj)
-%     myCluster=parcluster('local');
-%     % Ensure multiple parpool jobs don't overwrite other's temp files
-%     myCluster.JobStorageLocation = getenv('TMPDIR');
-%     poolobj = parpool(myCluster, NSLOTS);
-% end
 
 %% Initialize subject ID lists
 %%% All subjects to analyze
@@ -67,6 +56,8 @@ mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
 %%% Filenames
 % Masked combined segmentations (.MAT)
 seg_name = 'seg_refined_masked.mat';
+% Graph (without loops) from masked segmentation
+graph_name = 'seg_refined_masked_rmloop_graph_data.mat';
 
 %%% Subvolume parameters
 % Size of each cube (cubic microns)
@@ -79,21 +70,29 @@ n_x = floor(cube_side ./ vox(1));
 n_y = floor(cube_side ./ vox(2));
 n_z = floor(cube_side ./ vox(3));
 
-%% Generate grid for each subject
-% TODO:
-% - Calculate branch density (from entire graph)
-% - Overlay tissue mask on imagesc of metrics
-
 %%% Struct for storing heat map
 heatmap = struct();
+
+%% Generate grid - average length density, branch density, volume fraction
 
 %%% Iterate over each subject
 for ii = 1:length(subid)
     %% Generate Subvolumes
-    % Load masked segmentation
-    masked_seg = fullfile(dpath,subid{ii},subdir,segdir,seg_name);
-    seg = load(masked_seg);
-    seg = seg.seg;  
+    %%% Load Data struct containing graph and angio (masked segmentation)
+    graph = fullfile(dpath,subid{ii},subdir,segdir,graph_name);
+    graph = load(graph);
+    % Separate segmentation (angio) and the graph
+    seg = graph.Data.angio;
+    graph = graph.Data.Graph;   
+    nodes = graph.nodes;
+
+    %%% Load tissue mask
+    mask = fullfile(dpath,subid{ii},mdir,'mask_tiss.mat');
+    mask = load(mask);
+    mask = mask.mask_tiss;
+    
+    %%% Create array of end node positions
+    end_node_pos = nodes(graph.endNodes,:);
 
     % Calculate number of cubes in x, y, z
     Nx = ceil(size(seg,1) ./ n_x);
@@ -108,14 +107,18 @@ for ii = 1:length(subid)
 
     %% Iterate over the segmentation
     % Initialize the volume fraction heat map matrix 
-    vf_mat = zeros(size(seg,1), size(seg,2), Nz);
-    ld_mat = zeros(size(seg,1), size(seg,2), Nz);
+    vf_mat = zeros(size(seg,1), size(seg,2), size(seg,3));
+    ld_mat = zeros(size(seg,1), size(seg,2), size(seg,3));
+    bd_mat = zeros(size(seg,1), size(seg,2), Nz);
+    % Index to track the branch density matrix depth
+    z_bd = 0;
     % Calculate the size of each cube (in voxels)
     cube_vol_vox = n_x * n_y * n_z;
     cube_vol_um = cube_vol_vox * vox(1) * vox(2) * vox(3);
     
     % Iterate over the z-axis
     for z = 1:n_z:size(seg,3)
+        z_bd = z_bd + 1;
         % Iterate over rows
         for x = 1:n_x:size(seg,1)
             % Iterate over columns
@@ -137,12 +140,25 @@ for ii = 1:length(subid)
                 vf = sum(cube(:)) ./ cube_vol_vox;
                 % Assign to the vf matrix
                 vf_mat((x:xf), (y:yf), (z:zf)) = vf;
-                
+
+                %% Branch Density
+                % Find branch nodes within the bounds of the cube
+                idx = find(...
+                    x <= end_node_pos(:,2) &  end_node_pos(:,2) < xf &...
+                    y <= end_node_pos(:,1) &  end_node_pos(:,1) < yf &...
+                    z <= end_node_pos(:,3) &  end_node_pos(:,3) < zf);
+                % Extract number of branch points for each end node in cube
+                nb = sum(graph.nB(idx));
+                % Calculate branch density
+                bd = nb ./ cube_vol_um;
+                % Add branch density to the heatmap matrix
+                bd_mat((x:xf), (y:yf), z_bd) = bd;
+
                 %% Calculate length density if cube has segmentation
                 % Check for segmentation within cube
                 if sum(cube(:)) > 1
                     %%% Create graph with subvolume (cube)
-                    [graph, ~] = seg_to_graph(cube, vox);
+                    [g, ~] = seg_to_graph(cube, vox);
                     % Move to mean minimum voxel intensity
                     v_min = 0.99;
                     % initial search radius in down sample function (voxels)
@@ -153,11 +169,11 @@ for ii = 1:length(subid)
                     viz = false;
                     % Call remove loops
                     [nodes_rm, edges_rm] =...
-                        rm_loops_parallel(graph.nodes, graph.edges, cube,...
+                        rm_loops_parallel(g.nodes, g.edges, cube,...
                                           delta, v_min, mv_iter, viz);
                     % Update graph with nodes and edges
-                    graph.nodes = nodes_rm;
-                    graph.edges = edges_rm;
+                    g.nodes = nodes_rm;
+                    g.edges = edges_rm;
                     
                     %%% If there is only 1 edge, then skip metadata. There
                     % is a bug in the graphing code that raises an error
@@ -166,7 +182,7 @@ for ii = 1:length(subid)
                     % distance of the lone edge.
                     if size(edges_rm,1) > 1
                         % Compute the graph metadata
-                        [Data] = init_graph(graph);
+                        [Data] = init_graph(g);
         
                         %%% Calculate length density with subvolume (cube)
                         seglen_um = Data.Graph.segInfo.segLen_um;
@@ -211,96 +227,226 @@ for ii = 1:length(subid)
     sub = subid{ii};
     heatmap.(sub).vf = heatmap_vf;
     heatmap.(sub).ld = heatmap_ld;
-
-
-    %% Older method for segmenting into cube
-    %{
-    %%% Calculate number of cubes in x, y, z
-    rem_x = rem(size(seg,1), n_x);
-    rem_y = rem(size(seg,2), n_y);
-    rem_z = rem(size(seg,3), n_z);
-
-    %%% Pad segmentation in X,Y to enable whole number of cubes
-    pad_x = n_x - rem_x;
-    pad_y = n_y - rem_y;
-    seg = cat(1, seg, zeros(pad_x, size(seg,2), size(seg,3)));
-    seg = cat(2, seg, zeros(size(seg,1), pad_y, size(seg,3)));
+    heatmap.(sub).bd = bd_mat;
+    sprintf('\nFinished subject %s\n',sub)
     
-    %%% Truncate the z-dimension to enable whole number of cubes
-    % Find number of cubes in z dimension
-    N_z = floor(size(seg,3) ./ n_z);
-    z_idx = N_z * n_z;
-    seg_cubes = seg(:,:,1:z_idx);
-    % Place remaining z-dimension into separate matrix
-    seg_cubes_rem = seg(:,:,(z_idx+1):end);
-
-    %%% Divide into cubes of [n_x, n_y, n_z] voxels
-    seg_cubes = reshape(logical(seg_cubes), n_x, n_y, n_z, []);
-    seg_cubes_rem = reshape(logical(seg_cubes_rem), n_x, n_y, rem_z, []);
-
-    %% Calculate volume fraction for each subvolume
-    
-    % Initialize matrix to store volume fraction
-    x_subvol = size(seg_cubes,1);
-    y_subvol = size(seg_cubes,2);
-    z_subvol = size(seg_cubes,3);
-    n_subvol = size(seg_cubes,4);
-    vf_subvol = zeros(x_subvol, y_subvol, z_subvol, n_subvol);
-
-    % Calculate the size of each cube (in voxels)
-    cube_vol = size(seg_cubes,1) .* size(seg_cubes,2) .* size(seg_cubes,3);
-
-    % Iterate over each cube
-    for j = 1:size(seg_cubes,4)
-        % Take j_th cube
-        cube = seg_cubes(:,:,:,j);
-        % Calculate volume fraction of cube
-        vf = sum(cube(:)) ./ cube_vol;
-        % Add volume fraction to the matrix
-        vf_subvol(:,:,:,j) = vf;
+    %% Take maximum intensity projection of tissue mask  
+    %%% Check to see if the mask matrix needs to be truncated
+    if size(mask,1) > size(seg,1)
+        mask = mask(1:size(seg,1),:,:);
+    end
+    if size(mask,2) > size(seg,2)
+        mask = mask(:,1:size(seg,2),:);
     end
 
-    % Reshape cubes back into matrix
-    dim = [size(seg,1), size(seg,2), z_idx];
-    vf_subvol = reshape(vf_subvol, dim);
-    % Truncate to remove zero padding
-    vf_subvol = vf_subvol(1:(end-pad_x), 1:(end-pad_y), :);
-    %}
 
+    % Initialize masks matrix
+    masks = zeros(size(seg,1), size(seg,2), Nz);
+
+    % Initialize zmin and zmax to index the tissue mask depths
+    zmin = 1;
+    zmax = zmin + n_z - 1;
+    % Iterate over heatmap depths
+    for z = 1:Nz
+        % Take MIP
+        masks(:,:,z) = max(mask(:,:,zmin:zmax),[],3);
+        % Calculate z depth bounds for tissue mask
+        zmin = zmin + n_z;
+        zmax = min([(zmax + n_z), size(seg,3)]);
+    end
+    
+    % Add mask to heatmap struct
+    heatmap.(sub).mask = masks;
+
+    %% Plot a figure for each frame of heatmap
+    % Path to output heatmaps
+    heatmap_out = fullfile(mpath,'heatmaps',sub);
+    if ~isfolder(heatmap_out)
+        mkdir(heatmap_out);
+    end
+
+    % Iterate over depths in volume fraction heat map
+    plot_save_heatmap(Nz, heatmap_vf, masks,'Volume Fraction',...
+        '(a.u.)', heatmap_out,'heatmap_vf')
+    % Iterate over depths in length density heat map
+    plot_save_heatmap(Nz, heatmap_ld, masks,'Length Density',...
+        'Length (\mu) / Volume (\mu^3)',heatmap_out,'heatmap_ld')
+    % Iterate over depths in branch density heat map
+    plot_save_heatmap(Nz, bd_mat, masks,'Branch Density',...
+        'Branches / Volume (\mu^3)',heatmap_out,'heatmap_bd')
 end
 
-% Save the heatmap
+
+%% Save the heatmap
 heat_out = fullfile(mpath, 'heatmap.mat');
 save(heat_out,'heatmap','-v7.3');
 
+%% Generate Heat Maps
+% Individually generate a heat map for each subject. The colorbar scales
+% are not normalied to one another.
+
+% Load Heat map
+heatmap = load(fullfile(mpath, 'heatmap.mat'));
+heatmap = heatmap.heatmap;
+% Iterate over subject ID list
+for ii = 1:length(subid)
+    %%% Load the heatmap for the subject
+    sub = subid{ii};
+    heatmap_vf = heatmap.(sub).vf;
+    heatmap_ld = heatmap.(sub).ld;
+    heatmap_bd = heatmap.(sub).bd;
+    masks = heatmap.(sub).mask;
+
+    %%% Output filepath
+    heatmap_out = fullfile(mpath,'heatmaps',sub);
+    if ~isfolder(heatmap_out)
+        mkdir(heatmap_out);
+    end
+
+    % Iterate over depths in volume fraction heat map
+    plot_save_heatmap(Nz, heatmap_vf,[],masks,'Volume Fraction',...
+        '(a.u.)', heatmap_out,'heatmap_vf')
+    % Iterate over depths in length density heat map
+    plot_save_heatmap(Nz, heatmap_ld,[],masks,'Length Density',...
+        'Length (\mu) / Volume (\mu^3)',heatmap_out,'heatmap_ld')
+    % Iterate over depths in branch density heat map
+    plot_save_heatmap(Nz, heatmap_bd,[],masks,'Branch Density',...
+        'Branches / Volume (\mu^3)',heatmap_out,'heatmap_bd')
+end
+
+%% Genearte heat maps - normalized across subjects
+% Iterate over each metric, choose one depth from each subject, normalize
+% the colorbar across all subjects for this metric.
+
+% Load Heat map
+heatmap = load(fullfile(mpath, 'heatmap.mat'));
+heatmap = heatmap.heatmap;
+
+% Vascular metrics (volume fraction, length density, branch density)
+metrics = {'vf','ld','bd'};
+
+%%% Identify minimum / maximum of each metric
+% Initialize the minimum values
+vf_min = min(heatmap.(subid{1}).vf(:));
+ld_min = min(heatmap.(subid{1}).ld(:));
+bd_min = min(heatmap.(subid{1}).bd(:));
+% Initialize the maximum values
+vf_max = max(heatmap.(subid{1}).vf(:));
+ld_max = max(heatmap.(subid{1}).ld(:));
+bd_max = max(heatmap.(subid{1}).bd(:));
+% Iterate over subject ID list
+for ii=1:length(subid)
+    % Volume fraction
+    vf_min = min(vf_min, min(heatmap.(subid{ii}).vf(:)));
+    vf_max = max(vf_max, max(heatmap.(subid{ii}).vf(:)));
+    % Length Density
+    ld_min = min(ld_min, min(heatmap.(subid{ii}).ld(:)));
+    ld_max = max(ld_max, max(heatmap.(subid{ii}).ld(:)));
+    % Branch Density
+    bd_min = min(bd_min, min(heatmap.(subid{ii}).bd(:)));
+    bd_max = max(bd_max, max(heatmap.(subid{ii}).bd(:)));
+end
+
+%%% Generate normalized figures
+% Set number of depths equal to 1
+Nz = 1;
+
+%% Iterate over subject ID list
+for ii = 1:length(subid)
+    %%% Load the heatmap for the subject
+    sub = subid{ii};
+    heatmap_vf = heatmap.(sub).vf;
+    heatmap_ld = heatmap.(sub).ld;
+    heatmap_bd = heatmap.(sub).bd;
+    masks = heatmap.(sub).mask;
+
+    %%% Output filepath for figures
+    heatmap_out = fullfile(mpath,'heatmaps',sub);
+    if ~isfolder(heatmap_out)
+        mkdir(heatmap_out);
+    end
+
+    %%% Plot first depth for each heatmap
+    plot_save_heatmap(1, heatmap_vf, [vf_min, vf_max], masks,...
+        'Volume Fraction','(a.u.)',...
+        heatmap_out,'rescaled_heatmap_vf')
+    plot_save_heatmap(1, heatmap_ld, [ld_min, ld_max], masks,...
+        'Length Density','Length (\mu) / Volume (\mu^3)',...
+        heatmap_out,'rescaled_heatmap_ld')
+    plot_save_heatmap(1, heatmap_bd, [bd_min, bd_max], masks,...
+        'Branch Density','Branches / Volume (\mu^3)',...
+        heatmap_out,'rescaled_heatmap_bd')
+end
+
+
+
+
 %% Plot and save the heat maps
-function plot_save_heatmap(Nframes, heatmap, tstr, dpath, fname)
+function plot_save_heatmap(Ndepths, heatmaps, colorbar_range, masks,...
+    tstr, ystr, dpath, fname)
 % PLOT_SAVE_HEATMAP use imagesc and set background = 0
 % INPUT
-%   Nframes (int): number of frames in z dimension
-%   heatmap (double): heatmap of vascular metric
+%   Ndepths (int): number of depths in z dimension
+%   heatmaps (double matrix): heatmaps of vascular metric
+%   colorbar_range (double array): [min, max]
+%   masks (double): tissue mask (1=tissue, 0=other)
 %   tstr (string): figure title
+%   ystr (string): colorbar label
 %   dpath (string): data directory path
 %   fname (string): name of figure to save
 
+fontsize = 40;
+
 %%% Iterate over frames in z dimension
-for j = 1:length(Nframes)
-    % Take the j_th frame from the length density
-    ld = heatmap(:,:,j);
-    cmap_min = min(ld(ld(:)>0));
-    cmap_max = max(ld(:));
-    imagesc(ld);
+for d = 1:Ndepths
+    %%% Heatmap of j_th frame from the length density
+    fh = figure();
+    fh.WindowState = 'maximized';
+    heatmap = heatmaps(:,:,d);
+    h = imagesc(heatmap);
+
+    %%% Initialize colorbar
+    % If the colorbar_range is passed in, then extract min & max
+    if exist('colorbar_range', 'var')
+        cmap_min = colorbar_range(1);
+        cmap_max = colorbar_range(2);
+    % Otherwise, set limits from the current heatmap
+    else
+        cmap_min = min(heatmap(heatmap(:)>0));
+        cmap_max = max(heatmap(:));
+    end
+    % Initialize the colormap limits
     cmap = jet(256);
-    colormap(cmap);
     clim(gca, [cmap_min, cmap_max]);
-    % Make value 0 black
-    cmap(1,:) = [0,0,0];
+    % Initialize colormap and colorbar
     colormap(cmap);
-    colorbar;
+    c = colorbar;
+
+    %%% Find values equal to zero in heatmap
+    % Take inverse to mask out the zero pixels
+    alpha_mask = double(masks(:,:,d));
+    set(h, 'AlphaData', alpha_mask);
+
+    %%% Configure figure parameters
+    % Update title string with depth
+    title_str = append(tstr, ' Depth ', num2str(d));
+    title(title_str);
+    set(gca, 'FontSize', fontsize);
+    % Label the colorbar
+    yh = ylabel(c, ystr,"FontSize",fontsize,'Rotation',270);
+    % Offset colorbar label to the right
+    yh.Position(1) = yh.Position(1) + 0.2;
+    % Increase fontsize of colorbar
+    c.FontSize = 40;
+    % Remove x and y tick labels
+    set(gca,'Yticklabel',[]);
+    set(gca,'Xticklabel',[]);
     
     %%% Save figure as PNG
-    fout = fullfile(dpath, fname);
+    fout = append(fname, '_', num2str(d));
+    fout = fullfile(dpath, fout);
     saveas(gca, fout,'png');
+    close;
 
 end
 end
