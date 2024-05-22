@@ -95,7 +95,4 @@ h.OverlayAlphamap = 0.1;
 % Make overlay gray
 gray = repmat([0.5, 0.5, 0.5], [256,1]);
 h.OverlayColormap = gray;
-
-pause(0.1)
-
 end

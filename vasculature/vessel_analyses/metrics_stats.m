@@ -1,6 +1,6 @@
 function [pstats] = metrics_stats(metrics, regions, params, groups,...
                         alpha, trend, dout, fname)
-%METRICS_ANOVA perform ANOVA on the subset of metrics
+%METRICS_ANOVA perform Kruskal-Wallis on the subset of metrics
 %   Parse the "metrics" struct, separate each into its constituent vascular
 %   metrics. Given the small sample size, it is unlikely that any of these
 %   samples follow a normal distribution. Therefore, the kruskal-wallis
