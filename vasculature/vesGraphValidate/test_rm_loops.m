@@ -170,7 +170,7 @@ s = edges(:,1); % source node
 t = edges(:,2); % target node
 % Create standard Matlab g
 g_mat = graph(s, t);
-% Find the nodes and edges belonging to loops
+%% Find the nodes and edges belonging to loops
 [cnodes, cedges] = allcycles(g_mat);
 cnodes = unique(horzcat(cnodes{:}));
 cnodes = cnodes';

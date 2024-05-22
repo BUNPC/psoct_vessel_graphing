@@ -64,6 +64,7 @@ end
 
 %%% Remap node indices in edges with the re-indexed values
 % This command will replace the value edso(k) with nre(k) in edges
-edges_re = changem(edges, nre, edso);
+mymap(edso) = nre;
+edges_re = mymap(edges);
 
 end

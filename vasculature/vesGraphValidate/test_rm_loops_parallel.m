@@ -220,41 +220,41 @@ viz = false;
     rm_loops_parallel(nodes, edges, vol, delta, v_min, mv_iter, viz);
 
 %% Visualize Results and Save
-
-%%% Overlay the result with the segmentation
-% Assign nodes/edges to graph for creating skeleton
-g.nodes = node_rm;
-g.edges = edges_rm;
-
-%%% Parameters to convert graph to 3D skeleton
-% Load segmentation stack
-seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
-%  sz =  the size of output volume. The order is [ y x z ]
-sz = size(seg);
-%  res = resolution of the nifti image [y,x,z] centimeters
-res = [0.0012, 0.0012, 0.0015];
-%  ds_flag = 1 or 0. (1=downsampled. 0=no-downsampled)
-ds_flag = 1;
-%  save_flag = to save the skeleton or not
-save_flag = 0;
-% Create skeleton of graph
-[skel] = sk3D(sz, g, 'foo', res, ds_flag, save_flag);
-% Save output skeleton
-segmat2tif(skel, skel_out);
-
-% Overlay skeleton with segmentation
-if visual
-    % Display graph with all nodes green
-    nidx = 1:size(node_rm,1);
-    visualize_graph(node_rm, edges_rm, 'Graph After Loop Removal',nidx);
+if viz
+    %%% Overlay the result with the segmentation
+    % Assign nodes/edges to graph for creating skeleton
+    g.nodes = node_rm;
+    g.edges = edges_rm;
+    
+    %%% Parameters to convert graph to 3D skeleton
+    % Load segmentation stack
+    seg = TIFF2MAT(fullfile(dpath, subid, subdir, sigdir, seg_name));
+    %  sz =  the size of output volume. The order is [ y x z ]
+    sz = size(seg);
+    %  res = resolution of the nifti image [y,x,z] centimeters
+    res = [0.0012, 0.0012, 0.0015];
+    %  ds_flag = 1 or 0. (1=downsampled. 0=no-downsampled)
+    ds_flag = 1;
+    %  save_flag = to save the skeleton or not
+    save_flag = 0;
+    % Create skeleton of graph
+    [skel] = sk3D(sz, g, 'foo', res, ds_flag, save_flag);
+    % Save output skeleton
+    segmat2tif(skel, skel_out);
+    
     % Overlay skeleton with segmentation
-    fig_title = 'Loops Removed';
-    graph_seg_overlay(fig_title, skel, seg)
+    if visual
+        % Display graph with all nodes green
+        nidx = 1:size(node_rm,1);
+        visualize_graph(node_rm, edges_rm, 'Graph After Loop Removal',nidx);
+        % Overlay skeleton with segmentation
+        fig_title = 'Loops Removed';
+        graph_seg_overlay(fig_title, skel, seg)
+    end
+    
+    %%% Save outputed graph
+    save(fullfile(dpath, subid, subdir, sigdir, gdata_out),'g','-v7.3');
 end
-
-%%% Save outputed graph
-save(fullfile(dpath, subid, subdir, sigdir, gdata_out),'g','-v7.3');
-
 %% Overlay graph and segmentation
 function graph_seg_overlay(fig_title, skel, seg)
 %graph_seg_overlay Overlay the graph and segmentation to visually verify
