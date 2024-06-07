@@ -58,7 +58,8 @@ elseif isunix
              'NC_6047', 'NC_6839',...
              'NC_6974', 'NC_7597',...
              'NC_8095', 'NC_8653',...
-             'NC_21499','NC_301181'};
+             'NC_21499'};
+    subid = {'NC_8095'};
     
     %%% Gaussian sigma arrays:
     % Small vessel sigma array = [1, 3, 5]
@@ -74,13 +75,13 @@ elseif isunix
     if size(sigmas,1) > 1
         % Fill sub_sigma cell array with each sigma array for each subject
         for i = 1:size(sigmas,1):nrow
-            sub_sigma{i,1} = subid{idx};
-            sub_sigma{(i+1),1} = subid{idx};
-            sub_sigma{(i+2),1} = subid{idx};
-            idx = idx + 1;
             for j = 1:nsigma
+                % Assign subject ID
+                sub_sigma{(i+j-1),1} = subid{idx};
+                % Assign sigmas
                 sub_sigma{(i+j-1),2} = sigmas(j,:);
             end
+            idx = idx + 1;
         end
     else
         for i = 1:nrow
@@ -100,7 +101,7 @@ elseif isunix
         [subid, gsigma] = sub_sigma{batch_idx, :};
     % Otherwise, set the Gaussian sigma manually
     elseif strcmp(batch_idx,'undefined')
-        subid = 'NC_7597';
+        subid = 'NC_8095';
         gsigma = [5,7,9];
     end
 end

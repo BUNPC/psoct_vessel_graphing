@@ -23,25 +23,20 @@ function [pstats] = metrics_stats(metrics, regions, params, groups,...
 %       groups (cell array): groups to compare (ad, cte, nc)
 %       alpha (double): threshold for kruskal-wallis significance
 %       trend (double): threshold for a trend
+%       ntests (uint): number of comparisons. this is used for multiple
+%                       comparisons corrections
 %       dout (string): directory to save table
 %       fname (string): filename to save table
 %   OUTPUTS:
 %       stats (struct): contains p-value and test decision for either ANOVA
 %           or kurskal-wallis test for each parameter from each region.
 %               p-value: stats.[region].[parameter].p
-%               test decision: stats.[region].[parameter].h
+%
+% TODO: update the p-value and table below
 %
 %% Initialize workspace
 % Struct for storing statistical results
 pstats = struct();
-%%% Calculate the bonferroni-corrected significance level
-n = size(groups,2);
-syms k
-% Find the sum of the series k from k = 1 to (N groups - 1)
-m = double(symsum(k,k,1,n-1));
-
-% bonferroni correction
-alpha = alpha ./ m;
 
 %% Iterate over tissue regions
 for ii = 1:length(regions)
@@ -58,37 +53,125 @@ for ii = 1:length(regions)
             nc = metrics.(regions{ii}).(params{j}).nc;        
             
             %%% pair-wise comparisons
-            p = zeros(3,1);
-            h = zeros(3,1);
+            p = zeros(2,1);
             % Use kolmogorov-smirnov test for tortuosity distributions
             if strcmp(params{j},'tortuosity')
-                [h(1),p(1)] = kstest2(ad, cte,'Alpha',alpha);
-                [h(2),p(2)] = kstest2(ad, nc,'Alpha',alpha);
-                [h(3),p(3)] = kstest2(cte, nc,'Alpha',alpha);
+                [~,p(1)] = kstest2(ad, nc,'Alpha',alpha);
+                [~,p(2)] = kstest2(cte, nc,'Alpha',alpha);
             % Use Wilcoxon rank sum test for all others
             else
-                [p(1), h(1)] = ranksum(ad, cte, 'alpha', alpha);
-                [p(2), h(2)] = ranksum(ad, nc, 'alpha', alpha);
-                [p(3), h(3)] = ranksum(cte, nc, 'alpha', alpha);
+                % Create labels for each vector of [experimental; control]
+                [nc_group{1:size(nc)}] = deal('nc');
+                [ad_group{1:size(ad)}] = deal('ad');
+                [cte_group{1:size(cte)}] = deal('cte');
+                group = [ad_group, cte_group, nc_group]';
+                % Concatenate the experimental & control into vector
+                ad_cte_nc = [ad; cte; nc];
+                % Call the Kruskal Wallis Test
+                [~,~,stats] = kruskalwallis(ad_cte_nc, group);
+                % Multiple Comparisons w/ Dunnett correction
+                [results,~,~,~] = multcompare(stats,...
+                    'ControlGroup',3,...
+                    'CriticalValueType','dunnett');
+                % Extract the p-values for each comparison
+                p(1) = results(1,6);
+                p(2) = results(2,6);
             end
-            % Print region/parameter for p-values below alpha/threshold
-            if any(h)
-                fprintf('Significant difference within the %s for %s\n',...
-                        regions{ii}, params{j})
-            elseif any(p < trend)
-                fprintf('Trend within the %s for %s\n',...
-                        regions{ii}, params{j})
+            
+            %%% experimental/healthy comparisons for statistic
+            ad_mean_tf = mean(ad) < mean(nc);
+            ad_med_tf = median(ad) < median(nc);
+            cte_mean_tf = mean(cte) < mean(nc);
+            cte_med_tf = median(cte) < median(nc);
+
+            %%% print region/parameter/inequal. for significance/trend
+            % AD Significance
+            if p(1) < alpha
+                % AD Mean
+                if ad_mean_tf == 1
+                    fprintf('SIG: mean(ad) < mean(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                else
+                    fprintf('SIG: mean(ad) > mean(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                end
+                % AD Median
+                if ad_med_tf == 1
+                    fprintf('SIG: median(ad) < median(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                else
+                    fprintf('SIG: median(ad) > median(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                end
             end
+            % AD Trend
+            if (alpha < p(1)) && (p(1) < trend)
+                % AD Mean
+                if ad_mean_tf == 1
+                    fprintf('TREND: mean(ad) < mean(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                else
+                    fprintf('TREND: mean(ad) > mean(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                end
+                % AD Median
+                if ad_med_tf == 1
+                    fprintf('TREND: median(ad) < median(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                elseif ad_med_tf == 0
+                    fprintf('TREND: median(ad) > median(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                end
+            end
+            % CTE Significance
+            if p(2) < alpha
+                % AD Mean
+                if cte_mean_tf == 1
+                    fprintf('SIG: mean(cte) < mean(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                else
+                    fprintf('SIG: mean(cte) > mean(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                end
+                % AD Median
+                if ad_med_tf == 1
+                    fprintf('SIG: median(cte) < median(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                else
+                    fprintf('SIG: median(cte) > median(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                end
+            end
+            % CTE Trend
+            if (alpha < p(2)) && (p(2) < trend)
+                % CTE Mean
+                if cte_mean_tf == 1
+                    fprintf('TREND: mean(cte) < mean(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                else
+                    fprintf('TREND: mean(cte) > mean(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                end
+                % CTE Median
+                if cte_med_tf == 1
+                    fprintf('TREND: median(cte) < median(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                else
+                    fprintf('TREND: median(cte) > median(nc) for %s, %s\n',...
+                            regions{ii}, params{j})
+                end
+            end
+
+
             % Save the p-value for each comparison
-            pstats.(regions{ii}).(params{j}).p.ad_cte = p(1);
-            pstats.(regions{ii}).(params{j}).p.ad_nc = p(2);
-            pstats.(regions{ii}).(params{j}).p.cte_nc = p(3);
+            pstats.(regions{ii}).(params{j}).p.ad_nc = p(1);
+            pstats.(regions{ii}).(params{j}).p.cte_nc = p(2);
             close all;
         end
     end
     %% Generate a table of p-values for the region
     % Create cell array for the pairwise comparisons
-    Pairs = {'AD vs CTE'; 'AD vs. HC'; 'CTE vs. HC'};
+    Pairs = {'AD vs. HC'; 'CTE vs. HC'};
     % Retrieve the p-values for each parameter
     LengthDensity = cell2mat(struct2cell(pstats.(regions{ii}).(params{1}).p));
     BranchDensity = cell2mat(struct2cell(pstats.(regions{ii}).(params{2}).p));
@@ -97,13 +180,13 @@ for ii = 1:length(regions)
     if contains(regions{ii},'sulci_')
         % Create the p-value table
         ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
-            VolumeFraction);
+                            VolumeFraction);
     else
         % Create tortuosity array
         Tortuosity = cell2mat(struct2cell(pstats.(regions{ii}).(params{4}).p));
         % Create the p-value table
         ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
-            VolumeFraction, Tortuosity);
+                            VolumeFraction, Tortuosity);
     end    
     
     %%% Save table to CSV on a specific sheet

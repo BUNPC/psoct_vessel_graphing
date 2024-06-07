@@ -45,7 +45,7 @@ maxNumCompThreads(n_cores);
 
 %% Debugging Variables
 % Debugging figures visualization
-viz = false;
+viz = true;
 % Boolean to load in the cleaned tissue masks
 tmask_bool = true;
 
@@ -56,22 +56,24 @@ subid = {'AD_10382', 'AD_20832', 'AD_20969',...
          'CTE_6489', 'CTE_6912',...
          'CTE_7019', 'CTE_7126','CTE_8572',...
          'NC_6839',  'NC_6974', 'NC_8653',...
-         'NC_21499', 'NC_301181'};
+         'NC_21499', 'NC_8095'};
 
 %%% Number of scattering maps (mus_#.tif) per volume
 % Note, the scattering maps for CTE_8572 must be generated
 nmus = [17,15,22,15,20,...
         22,10,18,18,21,...
-        16,20,15,15,24];
+        16,20,15,15,15];
 % white matter intensity threshold for each subject
 threshold = [110,110,75,75,110,...
              110,110,110,110,80,...
-             70,110,110,70,110];
+             70,110,110,70,70];
 % Number of frames in z-dimension per physical slice
-nstack = 11;
+nstacks = [11,11,11,11,11,...
+          11,11,11,11,11,...
+          11,11,11,11,18];
 % Number of frames in z-dimension per volume. This is dependent on the
 % number of mus maps that were processed for each tissue volume.
-zmax = nmus .* nstack;
+zmax = nmus .* nstacks;
 
 % Create dictionary to store last image in stack
 regstruct = struct;
@@ -81,7 +83,7 @@ for ii = 1:length(subid)
 end
 
 %% Create white mask for subjects
-for ii = 1:length(subid)
+for ii = 15:length(subid)
     %%% Debugging information
     fprintf('\n---------Starting Subject %s---------\n',subid{ii})
 
@@ -99,6 +101,8 @@ for ii = 1:length(subid)
     sid = char(subid{ii});
     % Retrieve the last slice #
     zmax = regstruct.(sid).zmax;
+    % Retrieve the number of slices per physical stack
+    nstack = nstacks(ii);
     
     %%% Initialize matrices for storing masks
     mask_wm = false(size(ref,1),size(ref,2),zmax);
@@ -188,19 +192,24 @@ for ii = 1:length(subid)
         mask_wm = logical(mask_wm(:,:,1:zmax));
     end
 
-    %%% Replace automated tissue mask with the cleaned tissue mask
+    %% Replace automated tissue mask with the cleaned tissue mask
     if tmask_bool
         mask_tiss = fullfile(dpath,sid,subdir,'maskec.nii');
-        % Load tissue mask and truncate to match dimensions of mask
+        % Load tissue mask and convert to logical
         mask_tiss = MRIread(mask_tiss,0,1);
-        mask_tiss = mask_tiss.vol;
-        mask_tiss = logical(mask_tiss(:,:,1:zmax));
+        mask_tiss = logical(mask_tiss.vol);
+        %%% Truncate dimensions of all three masks to match
+        xmax = min(size(mask_wm,1), size(mask_tiss,1));
+        ymax = min(size(mask_wm,2), size(mask_tiss,2));
+        zmax = min(zmax, size(mask_tiss,3));
+        mask_tiss = mask_tiss(1:xmax,1:ymax,1:zmax);
+        mask_wm = mask_wm(1:xmax,1:ymax,1:zmax);
         % Bitwise operation to generate GM
-        mask_gm = bsxfun(@times,mask_tiss ,cast(~mask_wm,'like',mask_tiss));
+        mask_gm = mask_tiss .* ~mask_wm;
         mask_gm = logical(mask_gm);
     end
    
-    %%% Save the output
+    %% Save the output
     % Create the folder to store the masks
     if ~isfolder(mdir)
         mkdir(mdir);

@@ -30,6 +30,7 @@ addpath(genpath(topdir));
 % Set # threads = # cores for job
 NSLOTS = str2num(getenv('NSLOTS'));
 maxNumCompThreads(NSLOTS);
+%{
 % Check to see if we already have a parpool, if not create one with
 % our desired parameters
 poolobj = gcp('nocreate');
@@ -39,23 +40,24 @@ if isempty(poolobj)
     myCluster.JobStorageLocation = getenv('TMPDIR');
     poolobj = parpool(myCluster, NSLOTS);
 end
-
+%}
 %% Initialize subject ID lists
 %%% All subjects to analyze
 subid = {'AD_10382', 'AD_20832', 'AD_20969','AD_21354', 'AD_21424',...
          'CTE_6489', 'CTE_6912','CTE_7019','CTE_7126',...
-         'NC_6839',  'NC_6974', 'NC_8653','NC_21499', 'NC_301181'};
+         'NC_6839',  'NC_6974', 'NC_8653','NC_21499', 'NC_8095'};
 
 %%% stacks that require truncating
 % Last depth to retain for each stack
 zmins = [187, 165, 242, 165, 220,...
         242, 110, 198, 198,...
-        176, 198, 165, 165, 220];
+        176, 198, 165, 165, 264];
 % Create dictionary to store last image in stack
 d = dictionary(subid, zmins);
 
 %%% Minimum number of voxels to retain a segmentations
-vox_min = 100;
+vox_min = false;
+% vox_min = 50;
 
 %% Initialize directories and filenames
 
@@ -68,7 +70,11 @@ subdir = '/dist_corrected/volume';
 subdir1 = '/dist_corrected/volume/ref';
 % Combined segmentation subfolder
 segdir = '/combined_segs/gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/';
-segdir2 = append('vox_min_',num2str(vox_min));
+% Create a subdirectory if thresholding the minimum number of voxels in a
+% group
+if vox_min
+    segdir2 = append('vox_min_',num2str(vox_min));
+end
 % Mask subfolder
 mdir = '/dist_corrected/volume/ref/masks';
 
@@ -81,8 +87,8 @@ vol_name = 'ref';
 voln_name = 'ref_4ds_norm_inv';
 
 %% Iterate through subjects. Create and apply mask_tiss.
-parfor (ii = 1:length(subid),NSLOTS)
-% for ii = 2:length(subid)
+% parfor (ii = 1:length(subid),NSLOTS)
+for ii = 14:length(subid)
     %%% Debugging information
     fprintf('\n---------Starting Subject %s---------\n',subid{ii})
 
@@ -99,8 +105,10 @@ parfor (ii = 1:length(subid),NSLOTS)
     %%% Import combined segmentation file
     fpath = fullfile(dpath, subid{ii}, subdir, segdir, 'seg.mat');
     seg = import_volume(fpath);
-    % Remove the components with fewer than 100 voxels in connectivity
-    seg = rm_short_vessels(seg, vox_min);
+    % Remove the components with fewer than N voxels in connectivity
+    if vox_min
+        seg = rm_short_vessels(seg, vox_min);
+    end
 
     %%% Import tissue mask
     fpath = fullfile(dpath, subid{ii}, mdir, 'mask_tiss.mat');
@@ -237,7 +245,11 @@ parfor (ii = 1:length(subid),NSLOTS)
         fprintf('Saving overlays and masked volumes for subject %s\n',sid)
 
         % Create the full path to output overlays
-        masked_seg_output = fullfile(dpath,subid{ii},subdir,segdir,segdir2);
+        if vox_min
+            masked_seg_output = fullfile(dpath,subid{ii},subdir,segdir,segdir2);
+        else
+            masked_seg_output = fullfile(dpath,subid{ii},subdir,segdir);
+        end
         if ~exist(masked_seg_output,'dir')
             mkdir(masked_seg_output)
         end
@@ -264,7 +276,7 @@ parfor (ii = 1:length(subid),NSLOTS)
         overlay_vol_seg(volnm_gyri, segm_gyri, 'magenta', fout, false);
         
         %% Save masked volumes (without segmentation)
-        %{
+        fprintf('Saving masked volumes as .TIF for subject %s\n',sid)
         %%% Masked non-normalized volume (volm)
         % Entire volume
         volm_out = fullfile(dpath, subid{ii}, mdir,...
@@ -310,58 +322,46 @@ parfor (ii = 1:length(subid),NSLOTS)
         segmat2tif(volnm_gyri, vol_gyri_out);
         %}
         %% Save masked segmentation as .MAT
-        % Create the full path to output overlays
-        masked_seg_output = fullfile(dpath,subid{ii},subdir,segdir,segdir2);
-        if ~exist(masked_seg_output,'dir')
-            mkdir(masked_seg_output)
-        end
-        
+        fprintf('Saving masked segmentations as .MAT for subject %s\n',sid)      
         % Entire volume
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_refined_masked.mat'));
         save_seg(segm, fout);
-
         % White matter
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_wm_refined_masked.mat'));
         save_seg(segm_wm, fout);
-
         % Gray matter
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_gm_refined_masked.mat'));
         save_seg(segm_gm, fout);
-
         % Sulci
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_sulci_refined_masked.mat'));
         save_seg(segm_sulci, fout);
-
         % Sulci - WM
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_wm_sulci_refined_masked.mat'));
         save_seg(segm_wm_sulci, fout);
-
         % Sulci - GM
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_gm_sulci_refined_masked.mat'));
         save_seg(segm_gm_sulci, fout);
-
         % Gyri
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_gyri_refined_masked.mat'));
         save_seg(segm_gyri, fout);
-
         % Gyri - WM
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_wm_gyri_refined_masked.mat'));
         save_seg(segm_wm_gyri, fout);
-
         % Gyri - GM
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_gm_gyri_refined_masked.mat'));
         save_seg(segm_gm_gyri, fout);
 
-        %% Convert masked segmentation as TIF
+        %% Convert masked segmentation to TIF
+        fprintf('Converting masked segmentations to .TIF for subject %s\n',sid)
         % Entire volume
         fout = fullfile(masked_seg_output,...
                         strcat(seg_name,'_refined_masked.tif'));
@@ -407,8 +407,6 @@ parfor (ii = 1:length(subid),NSLOTS)
                         strcat(seg_name,'_gm_gyri_refined_masked.tif'));
         segmat2tif(uint8(rescale(segm_gm_gyri,0,255)), fout);
 
-        fprintf('\n---------Finished Subject %s---------\n',subid{ii})
-
         %% Clear Variables to save memory
         volnm_wm =          [];
         volnm_gm =          [];
@@ -426,7 +424,7 @@ parfor (ii = 1:length(subid),NSLOTS)
         segm_wm_gyri =  [];
         segm_gm_sulci = [];
         segm_gm_gyri =  [];
-    
+        fprintf('\n---------Finished Subject %s---------\n',subid{ii})
     catch
         %%% catch where mask failed, if different data type
         fprintf('failed to apply mask to subject %s\n',sid)
@@ -437,12 +435,16 @@ end
 fprintf('---------Finished Masking all Subjects---------\n')
 
 %% Convert segmentation to graph
-for ii = 1:length(subid)
+for ii = 14:length(subid)
     fprintf('---------Graphing Subject %s---------\n',subid{ii})
     % Voxel dimensions
     vox_dim = [12, 12, 15];
     % Full filepath to save output
-    fullpath = fullfile(dpath, subid{ii}, subdir, segdir, segdir2);
+    if vox_min
+        fullpath = fullfile(dpath, subid{ii}, subdir, segdir, segdir2);
+    else
+        fullpath = fullfile(dpath, subid{ii}, subdir, segdir);
+    end
     % Boolean to view the loop removal debugging plots
     viz = false;
     % Boolean to remove the loops

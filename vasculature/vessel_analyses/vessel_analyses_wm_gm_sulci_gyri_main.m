@@ -25,7 +25,7 @@ addpath(genpath(topdir));
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
 
 % Additional subfolder when applying minimum voxel count
-vox_min = 'vox_min_100';
+% vox_min = 'vox_min_50';
 vox_min = false;
 
 if vox_min
@@ -49,6 +49,7 @@ else
         'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
 end
 
+%% Import the metrics struct from the last script
 % Load the metrics struct and extract subject IDs
 metrics = load(fullfile(mpath, 'metrics.mat'));
 metrics = metrics.metrics;
@@ -62,7 +63,6 @@ ptable_out = 'p_value_table.xls';
 vox_dim = [12, 12, 15];
 vox_vol = vox_dim(1) .* vox_dim(2) .* vox_dim(3);
 
-%% Reorganize data and generate barcharts
 % Region of brain (excluding ratios)
 regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
             'gm_gyri','wm_gyri'};
@@ -70,6 +70,13 @@ regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
 all_regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
                'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri',...
                'gm_sulci_gyri'};
+
+%% Reorganize data and generate barcharts
+% This script will reorganize the metrics struct by taking the region from
+% each subject and combining them into a single substruct (e.g. taking the
+% "tiss" region from each subject and creating a substruct named
+% "metrics.tiss". This section can be skipped if it was already run.
+
 % Metric
 params = {'length_density','branch_density','fraction_volume','tortuosity'};
 % Title of each bar chart
@@ -145,9 +152,6 @@ for ii = 1:length(ratio_params)
     end
 end
 
-% Save the updated metrics struct
-save(metrics_out, 'metrics_reorg','-v7.3');
-
 %% Statistical Hypothesis Testing
 % Trend threshold
 trend = 0.10;
@@ -165,10 +169,6 @@ save(stats_fout, 'pstats','-v7.3');
 % particular brain region. Then, this section will generate a violin plot
 % for each vascular metric, where the x-axis will represent different brain
 % regions. For each brain region, the AD, CTE, NC will be grouped together
-
-% Load the metrics structure
-metrics = load(metrics_out);
-metrics = metrics.metrics;
 
 % Y-axis labels
 ylabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...

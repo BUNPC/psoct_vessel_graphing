@@ -42,13 +42,10 @@ elseif isunix
 end
 
 % Subject IDs
-% subid = {'AD_10382', 'AD_20832', 'AD_20969','AD_21354', 'AD_21424',...
-%          'CTE_6489','CTE_6912','CTE_7019','CTE_7126','CTE_8572',...
-%          'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
-
 subid = {'AD_20832', 'AD_20969','AD_21354', 'AD_21424',...
          'CTE_6489','CTE_6912','CTE_7019','CTE_7126','CTE_8572',...
-         'NC_6839','NC_6974','NC_8653','NC_21499','NC_301181'};
+         'NC_6839','NC_6974','NC_8653','NC_21499','NC_8095'};
+subid = {'NC_8095'};
 
 % Volume filename
 volname = 'ref_4ds_norm_inv.tif';

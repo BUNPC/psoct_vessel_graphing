@@ -33,6 +33,8 @@ graphdir = ['/dist_corrected/volume/combined_segs/' ...
 % Metrics output path
 mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
     'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
+% mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
+%     'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/vox_min_50/'];
 
 % Graph structures to analyze
 graphs = {'seg_refined_masked_rmloop_graph_data.mat',...
@@ -51,7 +53,7 @@ masks = {'mask_tiss.mat','mask_gyri','mask_sulci','mask_gm','mask_wm'};
 % IDs of each subject
 subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
          'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126',...
-         'NC_6839',  'NC_6974',  'NC_8653',  'NC_21499', 'NC_301181'};
+         'NC_6839',  'NC_6974',  'NC_8653',  'NC_21499', 'NC_8095'};
 
 % Initialize dictionary to store ages
 age = dictionary();
@@ -68,7 +70,7 @@ age('NC_6839') = 71;
 age('NC_6974') = 73;
 age('NC_8653') = 80;
 age('NC_21499') = 88;
-age('NC_301181') = 59;
+age('NC_8095') = 67;
 
 % Creating struct for storing all of the metrics for each subject
 metrics = struct();
@@ -115,13 +117,13 @@ for ii = 1:length(subid)
     masks.wm_gyri = masks.wm .* masks.gyri;
 
     %% Iterate through each graph for each subject
+    f = fields(masks);
     for j=1:9
         % Load the graph
         data = load(fullfile(dpath, sub, graphdir, graphs{j}));
         data = data.Data;
         
         % Load the respective mask for this iteration
-        f = fields(masks);
         mask = masks.(f{j});
         
         % Call metric functions
@@ -145,5 +147,4 @@ for ii = 1:length(subid)
 end
 
 %% Save output (maybe)
-
 save(fullfile(mpath, 'metrics.mat'), 'metrics');
