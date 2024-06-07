@@ -26,7 +26,7 @@ elseif isunix
     idcs = strfind(mydir,'/');
 end
 % Truncate path to reach top-level directory (psoct_vessel_graphing)
-topdir = mydir(1:idcs(end));
+topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
 %%% Set maximum number of cores
@@ -104,9 +104,7 @@ elseif ispc
                 700, 1429, 1000, 1581, 1, 592];
     % EPVS figure titles
     epvs_tit = {'CAA 17 Occipital','CAA 22 Frontal', 'CAA 22 Occipital',...
-        'CAA 25 Occipital', 'CAA 26 Occipital'};
-    
-    
+        'CAA 25 Occipital', 'CAA 26 Occipital'}; 
 end
 
 %% Create 3D overlays (EPVS + epvs_skel, EPVS + vasculature)
@@ -163,7 +161,7 @@ end
 %}
 
 %% 2D overlays
-
+%{
 %%% OCT, vessel segmentation, vessel skeleton
 for ii=3:length(subids)
     % import segmentation
@@ -218,33 +216,213 @@ for ii = 1:length(epvs_dir)
     fout = fullfile(dpath, subids{ii}, subdir, 'oct_epvs_skel.tif');
     overlay_vol_seg(vol, epvs_skel, 'magenta', fout, false)
 end
+%}
 
+%% Generate skeletons/graphs of cropped volumes
+% Use cropped regions of subjects CAA22-occipital and CAA22-frontal.
+% Compare metrics (length density, branch density, tortuosity) from the
+% skeleton of the EPVS and vascular segmentation
+%{
+%%% CAA 22 Occipital (cropped 350x350xZ voxels)
+caa22_path = fullfile(dpath,'caa22/occipital/segmentations/');
+seg = fullfile(caa22_path,'caa22-occipital_vessels-masked_crop_350.tif');
+seg = logical(TIFF2MAT(seg));
+epvs = fullfile(caa22_path,'epvs_crop_350.tif');
+epvs = logical(TIFF2MAT(epvs));
 
-%% Compare metrics before/after loop removal
-% length density, branch density, tortuosity
-
-%%% metrics of segmentation with loops
-% Load the segmentation of the cropped segmentation
-seg = fullfile(dpath, subids{1}, subdir, 'caa6-frontal_vessels-masked_crop_300.tif');
-seg = TIFF2MAT(seg);
-seg = logical(seg);
-
-% Create graph and skeleton (with loops)
-fout = fullfile(dpath, subids{1}, subdir);
-fname_out = 'caa6_frontal_crop';
+% VESSELS & EPVS: create graph and skeleton (with loops)
 viz = false;
 rm_loop = false;
-seg_graph_init(seg,[20,20,20],fout,fname_out,viz,rm_loop);
+vessel_fname = 'caa22_occipital_vessels_crop_350';
+seg_graph_init(seg,[20,20,20],caa22_path,vessel_fname,viz,rm_loop);
+epvs_fname = 'caa22_occipital_epvs_crop_350';
+seg_graph_init(epvs,[20,20,20],caa22_path,epvs_fname,viz,rm_loop);
 
-% Calculate metrics
+% VESSELS & EPVS: create graph (remove loops)
+% note that the saved file with have "rm_loops" in the name, which will
+% distinguish it from the former file
+rm_loop = true;
+seg_graph_init(seg,[20,20,20],caa22_path,vessel_fname,viz,rm_loop);
+seg_graph_init(epvs,[20,20,20],caa22_path,epvs_fname,viz,rm_loop);
+%}
 
-% Create graph and skeleton (without loops)
-[graph, skel] = seg_to_graph(seg, [20,20,20]);
-[nodes, edges] = rm_loops(graph.nodes, graph.edges, seg, 6, 0.99, 1, false);
-graph.nodes = nodes;
-graph.edges = edges;
-Data = init_graph(graph);
+%%% CAA 22 Frontal (cropped 350x350xZ voxels)
+%{
+caa22_path = fullfile(dpath,'caa22/frontal/segmentations/');
+seg = fullfile(caa22_path,'caa22-frontal_vessels-masked_crop_350.tif');
+seg = logical(TIFF2MAT(seg));
+epvs = fullfile(caa22_path,'epvs_min15vox_crop_350.tif');
+epvs = logical(TIFF2MAT(epvs));
 
+% VESSELS & EPVS: create graph and skeleton (with loops)
+viz = false;
+rm_loop = false;
+vessel_fname = 'caa22-frontal_vessels-masked_crop_350';
+seg_graph_init(seg,[20,20,20],caa22_path,vessel_fname,viz,rm_loop);
+epvs_fname = 'caa22_frontal_epvs_min15vox_crop_350';
+seg_graph_init(epvs,[20,20,20],caa22_path,epvs_fname,viz,rm_loop);
+
+% VESSELS & EPVS: create graph (remove loops)
+% note that the saved file with have "rm_loops" in the name, which will
+% distinguish it from the former file
+rm_loop = true;
+seg_graph_init(seg,[20,20,20],caa22_path,vessel_fname,viz,rm_loop);
+seg_graph_init(epvs,[20,20,20],caa22_path,epvs_fname,viz,rm_loop);
+%}
+
+%% Compare metrics before/after loop removal
+% Use cropped regions of subjects CAA22-occipital and CAA22-frontal.
+% Compare metrics (length density, branch density, tortuosity) from the
+% skeleton of the EPVS and vascular segmentation
+
+%%% File paths
+caa22_occ_path = fullfile(dpath,'caa22/occipital/segmentations/');
+caa22_occ_vasc_loops_fpath = 'caa22_occipital_vessels_crop_350_graph_data.mat';
+caa22_occ_epvs_loops_fpath = 'caa22_occipital_epvs_crop_350_graph_data.mat';
+caa22_occ_vasc_fpath = 'caa22_occipital_vessels_crop_350_rmloop_graph_data.mat';
+caa22_occ_epvs_fpath = 'caa22_occipital_epvs_crop_350_rmloop_graph_data.mat';
+
+%%% CAA 22 Occipital (with loops)
+% Tissue Mask Crop
+caa22_occ_mask_crop_350 = fullfile(caa22_occ_path, 'caa22_occipital_mask_edited_crop_350.tif');
+caa22_occ_mask_crop_350 = TIFF2MAT(caa22_occ_mask_crop_350);
+% Vessel Segmentation
+caa22_occ_seg_loops = load(fullfile(caa22_occ_path, caa22_occ_vasc_loops_fpath));
+caa22_occ_seg_angio = caa22_occ_seg_loops.Data.angio;
+caa22_occ_seg_loops = caa22_occ_seg_loops.Data;
+% EPVS Segmentation
+caa22_occ_epvs_loops = load(fullfile(caa22_occ_path, caa22_occ_epvs_loops_fpath));
+caa22_occ_epvs_angio = caa22_occ_epvs_loops.Data.angio;
+caa22_occ_epvs_loops = caa22_occ_epvs_loops.Data;
+% Calculate metrics (vasculature)
+caa22_occ = struct();
+caa22_occ.ves.loops.bd = branch_density(caa22_occ_seg_loops, caa22_occ_mask_crop_350);
+caa22_occ.ves.loops.tort = calc_tortuosity(caa22_occ_seg_loops);
+caa22_occ.ves.loops.mean_tort = mean(caa22_occ.ves.loops.tort);
+caa22_occ.ves.loops.std_tort = std(caa22_occ.ves.loops.tort);
+caa22_occ.ves.loops.ld = length_density(caa22_occ_seg_loops, caa22_occ_mask_crop_350);
+% Calculate metrics (epvs)
+caa22_occ.epvs.loops.bd = branch_density(caa22_occ_epvs_loops, caa22_occ_mask_crop_350);
+caa22_occ.epvs.loops.tort = calc_tortuosity(caa22_occ_epvs_loops);
+caa22_occ.epvs.loops.mean_tort = mean(caa22_occ.epvs.loops.tort);
+caa22_occ.epvs.loops.std_tort = std(caa22_occ.epvs.loops.tort);
+caa22_occ.epvs.loops.ld = length_density(caa22_occ_epvs_loops, caa22_occ_mask_crop_350);
+% Overlays: skeleton and segmentation (vessels and EPVS with loops)
+ves_skel = bwskel(caa22_occ_seg_angio,'MinBranchLength',25);
+volshow_overlay(ves_skel, caa22_occ_seg_angio,'CAA22-Occi Vessel + Skeleton (min branch 25)')
+epvs_skel = bwskel(caa22_occ_epvs_angio,'MinBranchLength',25);
+volshow_overlay(epvs_skel, caa22_occ_epvs_angio,'CAA22-Occi Vessel + Skeleton (min branch 25)')
+volshow_overlay(ves_skel(1:100,1:100,1:100),...
+                caa22_occ_seg_angio(1:100,1:100,1:100),...
+                'CAA22-Occi Vessel + Skeleton (min branch 25)')
+
+%%% CAA 22 Occipital (without loops)
+% Vessel Segmentation
+caa22_occ_seg = load(fullfile(caa22_occ_path, caa22_occ_vasc_fpath));
+caa22_occ_seg = caa22_occ_seg.Data;
+% EPVS Segmentation
+caa22_occ_epvs = load(fullfile(caa22_occ_path, caa22_occ_epvs_fpath));
+caa22_occ_epvs = caa22_occ_epvs.Data;
+% Calculate metrics (vasculature)
+caa22_occ.ves.noloops.bd = branch_density(caa22_occ_seg, caa22_occ_mask_crop_350);
+caa22_occ.ves.noloops.tort = calc_tortuosity(caa22_occ_seg);
+caa22_occ.ves.noloops.mean_tort = mean(caa22_occ.ves.noloops.tort);
+caa22_occ.ves.noloops.std_tort = std(caa22_occ.ves.noloops.tort);
+caa22_occ.ves.noloops.ld = length_density(caa22_occ_seg, caa22_occ_mask_crop_350);
+% Calculate metrics (epvs)
+caa22_occ.epvs.noloops.bd = branch_density(caa22_occ_epvs, caa22_occ_mask_crop_350);
+caa22_occ.epvs.noloops.tort = calc_tortuosity(caa22_occ_epvs);
+caa22_occ.epvs.noloops.mean_tort = mean(caa22_occ.epvs.noloops.tort);
+caa22_occ.epvs.noloops.std_tort = std(caa22_occ.epvs.noloops.tort);
+caa22_occ.epvs.noloops.ld = length_density(caa22_occ_epvs, caa22_occ_mask_crop_350);
+% Generate skeleton of loop-free graphs
+ves_skel_rmloops = sk3D(size(caa22_occ_seg_angio),caa22_occ_seg.Graph,...
+                        '',[0.02,0.02,0.02],0,0);
+epvs_skel_rmloops = sk3D(size(caa22_occ_epvs_angio),caa22_occ_epvs.Graph,...
+                        '',[0.02,0.02,0.02],0,0);
+% Overlays: skeleton and segmentation (vessels and EPVS without loops)
+volshow_overlay(ves_skel_rmloops(1:100,1:100,1:100),...
+                caa22_occ_seg_angio(1:100,1:100,1:100),...
+                'CAA22-Occi Vessel + Skeleton (loops rm)')
+volshow_overlay(epvs_skel_rmloops, caa22_occ_epvs_angio,'CAA22-Occi Vessel + Skeleton (loops rm)')
+
+%% CAA22-Frontal: Compare metrics before/after loop removal
+% Use cropped regions of subjects CAA22-occipital and CAA22-frontal.
+% Compare metrics (length density, branch density, tortuosity) from the
+% skeleton of the EPVS and vascular segmentation
+
+%%% File paths
+caa22_front_path = fullfile(dpath,'caa22/frontal/segmentations/');
+caa22_front_vasc_loops_fpath = 'caa22-frontal_vessels-masked_crop_350_graph_data.mat';
+caa22_front_epvs_loops_fpath = 'caa22_frontal_epvs_min15vox_crop_350_graph_data.mat';
+caa22_front_vasc_fpath = 'caa22-frontal_vessels-masked_crop_350_rmloop_graph_data.mat';
+caa22_front_epvs_fpath = 'caa22_frontal_epvs_min15vox_crop_350_rmloop_graph_data.mat';
+
+%%% CAA 22 Occipital (with loops)
+% Tissue Mask Crop
+caa22_front_mask_crop_350 = fullfile(caa22_front_path, 'caa22_frontal_mask_edited_crop_350.tif');
+caa22_front_mask_crop_350 = TIFF2MAT(caa22_front_mask_crop_350);
+% Vessel Segmentation
+caa22_front_seg_loops = load(fullfile(caa22_front_path, caa22_front_vasc_loops_fpath));
+caa22_front_seg_angio = caa22_front_seg_loops.Data.angio;
+caa22_front_seg_loops = caa22_front_seg_loops.Data;
+% EPVS Segmentation
+caa22_front_epvs_loops = load(fullfile(caa22_front_path, caa22_front_epvs_loops_fpath));
+caa22_front_epvs_angio = caa22_front_epvs_loops.Data.angio;
+caa22_front_epvs_loops = caa22_front_epvs_loops.Data;
+% Calculate metrics (vasculature)
+caa22_front = struct();
+caa22_front.ves.loops.bd = branch_density(caa22_front_seg_loops, caa22_front_mask_crop_350);
+caa22_front.ves.loops.tort = calc_tortuosity(caa22_front_seg_loops);
+caa22_front.ves.loops.mean_tort = mean(caa22_front.ves.loops.tort);
+caa22_front.ves.loops.std_tort = std(caa22_front.ves.loops.tort);
+caa22_front.ves.loops.ld = length_density(caa22_front_seg_loops, caa22_front_mask_crop_350);
+% Calculate metrics (epvs)
+caa22_front.epvs.loops.bd = branch_density(caa22_front_epvs_loops, caa22_front_mask_crop_350);
+caa22_front.epvs.loops.tort = calc_tortuosity(caa22_front_epvs_loops);
+caa22_front.epvs.loops.mean_tort = mean(caa22_front.epvs.loops.tort);
+caa22_front.epvs.loops.std_tort = std(caa22_front.epvs.loops.tort);
+caa22_front.epvs.loops.ld = length_density(caa22_front_epvs_loops, caa22_front_mask_crop_350);
+% Overlays: skeleton and segmentation (vessels and EPVS with loops)
+ves_skel = bwskel(caa22_front_seg_angio,'MinBranchLength',25);
+volshow_overlay(ves_skel, caa22_front_seg_angio,'CAA22-Occi Vessel + Skeleton (min branch 25)')
+epvs_skel = bwskel(caa22_front_epvs_angio,'MinBranchLength',25);
+volshow_overlay(epvs_skel, caa22_front_epvs_angio,'CAA22-Occi Vessel + Skeleton (min branch 25)')
+volshow_overlay(ves_skel(1:100,1:100,1:100),...
+                caa22_front_seg_angio(1:100,1:100,1:100),...
+                'CAA22-Occi Vessel + Skeleton (min branch 25)')
+
+%%% CAA 22 Occipital (without loops)
+% Vessel Segmentation
+caa22_front_seg = load(fullfile(caa22_front_path, caa22_front_vasc_fpath));
+caa22_front_seg = caa22_front_seg.Data;
+% EPVS Segmentation
+caa22_front_epvs = load(fullfile(caa22_front_path, caa22_front_epvs_fpath));
+caa22_front_epvs = caa22_front_epvs.Data;
+% Calculate metrics (vasculature)
+caa22_front.ves.noloops.bd = branch_density(caa22_front_seg, caa22_front_mask_crop_350);
+caa22_front.ves.noloops.tort = calc_tortuosity(caa22_front_seg);
+caa22_front.ves.noloops.mean_tort = mean(caa22_front.ves.noloops.tort);
+caa22_front.ves.noloops.std_tort = std(caa22_front.ves.noloops.tort);
+caa22_front.ves.noloops.ld = length_density(caa22_front_seg, caa22_front_mask_crop_350);
+% Calculate metrics (epvs)
+caa22_front.epvs.noloops.bd = branch_density(caa22_front_epvs, caa22_front_mask_crop_350);
+caa22_front.epvs.noloops.tort = calc_tortuosity(caa22_front_epvs);
+caa22_front.epvs.noloops.mean_tort = mean(caa22_front.epvs.noloops.tort);
+caa22_front.epvs.noloops.std_tort = std(caa22_front.epvs.noloops.tort);
+caa22_front.epvs.noloops.ld = length_density(caa22_front_epvs, caa22_front_mask_crop_350);
+% Overlays: skeleton and segmentation (vessels and EPVS without loops)
+ves_skel_rmloops = sk3D(size(caa22_front_seg_angio),caa22_front_seg.Graph,...
+                        '',[0.02,0.02,0.02],0,0);
+epvs_skel_rmloops = sk3D(size(caa22_front_epvs_angio),caa22_front_epvs.Graph,...
+                        '',[0.02,0.02,0.02],0,0);
+% Overlays: skeleton and segmentation (vessels and EPVS without loops)
+volshow_overlay(ves_skel_rmloops,caa22_front_seg_angio,...
+                'CAA22-Occi Vessel + Skeleton (loops rm)')
+volshow_overlay(ves_skel_rmloops(1:100,1:100,1:100),...
+                caa22_front_seg_angio(1:100,1:100,1:100),...
+                'CAA22-Occi Vessel + Skeleton (loops rm)')
+volshow_overlay(epvs_skel_rmloops, caa22_occ_epvs_angio,'CAA22-Occi Vessel + Skeleton (loops rm)')
 
 
 
