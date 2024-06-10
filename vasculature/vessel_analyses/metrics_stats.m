@@ -1,4 +1,4 @@
-function [pstats] = metrics_stats(metrics, regions, params, groups,...
+function [pstats] = metrics_stats(metrics, regions, params,...
                         alpha, trend, dout, fname)
 %METRICS_ANOVA perform Kruskal-Wallis on the subset of metrics
 %   Parse the "metrics" struct, separate each into its constituent vascular
@@ -12,15 +12,13 @@ function [pstats] = metrics_stats(metrics, regions, params, groups,...
 %   For the metrics that reject the null hypothesis of the KW test, this
 %   function will then perform a non-parametric multiple comparisons test.
 %   In this case, it will be the Wilcoxon rank sum test with bonferoni
-%   correction. The number of hypotheses is calculated from the number of
-%   groups (factorial(N-1)).
+%   correction.
 %   INPUTS:
 %       metrics (struct): contains substructures of vascular parameters
 %                       metrics.[region].[parameter].[group]
 %       regions (cell array): tissue regions (tiss, gyri, sulci, gm, wm)
 %       params (cell array): vascular parameters (length_density,
 %                              branch_density, fraction_volume, tortuosity)
-%       groups (cell array): groups to compare (ad, cte, nc)
 %       alpha (double): threshold for kruskal-wallis significance
 %       trend (double): threshold for a trend
 %       ntests (uint): number of comparisons. this is used for multiple

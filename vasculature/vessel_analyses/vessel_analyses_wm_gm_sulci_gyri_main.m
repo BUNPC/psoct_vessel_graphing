@@ -71,6 +71,32 @@ all_regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
                'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri',...
                'gm_sulci_gyri'};
 
+%% Calculate N tortuosity outliers for each subject
+% Calculate the outlier threshold from the healthy control group
+% Then, calculate the number of outliers for each group (for each tissue
+% region)
+
+%%% Calculate outlier threshold based on the healthy control group
+for ii = 1:length(regions)
+    % Combine tortuosity measurements from all normal controls
+    [~, ~, nc] = organize_metrics(metrics, subids,regions{ii}, 'tortuosity');
+    
+    % Calculate outlier cutoff = 3*MAD (scaled). This is taken from the
+    % Mathworks website for calculating the threshold
+    c = -1 / (sqrt(2)*erfcinv(3/2));
+    mad3 = 3*c*mad(nc,1);
+    cutoff = median(nc) + mad3;
+
+    %%% Calculate number of outliers for each subject
+    for j=1:length(subids)
+        % Load tortuosity for each subject/region
+        t = metrics.(subids{j}).(regions{ii}).tortuosity;
+        n = sum(t > cutoff);
+        % Save the number of outliers to struct
+        metrics.(subids{j}).(regions{ii}).tort_outliers = n;
+    end
+end
+
 %% Reorganize data and generate barcharts
 % This script will reorganize the metrics struct by taking the region from
 % each subject and combining them into a single substruct (e.g. taking the
@@ -78,17 +104,20 @@ all_regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
 % "metrics.tiss". This section can be skipped if it was already run.
 
 % Metric
-params = {'length_density','branch_density','fraction_volume','tortuosity'};
+params = {'length_density','branch_density','fraction_volume',...
+    'tort_outliers','tortuosity'};
 % Title of each bar chart
-titles = {'Length Density','Branch Density','Volume Fraction'};
+titles = {'Length Density','Branch Density','Volume Fraction',...
+    'N Tortuosity Outliers'};
 % Region titles
 r_titles = {'Tissue', 'Gyri', 'Sulci', 'GM', 'WM',...
             'GM Sulci', 'WM Sulci', 'GM Gyri', 'WM Gyri'};
 % Y-axis labels
 ylabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...
-            'Volume Fraction (a.u.)'};
+            'Volume Fraction (a.u.)','Count'};
 % Name of file to save
-plot_names = {'length_density','branch_density','volume_fraction'};
+plot_names = {'length_density','branch_density','volume_fraction'...
+    'tortuosity_outliers'};
 
 % Iterate over each tissue region
 for ii = 1:length(regions)
@@ -104,7 +133,7 @@ for ii = 1:length(regions)
         metrics.(regions{ii}).(params{j}).nc = nc;
 
         % Create and save the bar chart (except for tortuosity
-        if j~=4
+        if j~=5
             % Filename to save
             plot_name = strcat(regions{ii},'_',plot_names{j});
             % Title for bar chart
@@ -122,7 +151,8 @@ end
 % values.
 
 % Cell array of parameters to compute ratio 
-ratio_params = {'length_density','branch_density','fraction_volume'};
+ratio_params = {'length_density','branch_density','fraction_volume',...
+    'tort_outliers'};
 groups = {'ad','cte','nc'};
 
 % Iterate over each parameter
@@ -158,7 +188,7 @@ trend = 0.10;
 % Significant Difference threshold
 alpha = 0.05;
 % Calculate stats
-pstats = metrics_stats(metrics, all_regions, params, groups, alpha,...
+pstats = metrics_stats(metrics, all_regions, params, alpha,...
                         trend, mpath, ptable_out);
 % Save statistics
 stats_fout = fullfile(mpath, 'stats.mat');
