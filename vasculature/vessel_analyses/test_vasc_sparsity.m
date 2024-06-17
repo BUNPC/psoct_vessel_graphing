@@ -1,8 +1,5 @@
-%% Test script for measuring vascular sparsity
-% TODO:
-%{
-- 
-%}
+%% Main script for measuring vascular sparsity
+% Iterate over each subject and tissue region for each subject.
 
 clear; clc; close all;
 
@@ -39,96 +36,71 @@ graphs = {'seg_refined_masked_rmloop_graph_data.mat',...
           'seg_gyri_refined_masked_rmloop_graph_data.mat',...
           'seg_sulci_refined_masked_rmloop_graph_data.mat',...
           'seg_gm_refined_masked_rmloop_graph_data.mat',...
-          'seg_gm_gyri_refined_masked_rmloop_graph_data.mat',...
-          'seg_gm_sulci_refined_masked_rmloop_graph_data.mat',...
           'seg_wm_refined_masked_rmloop_graph_data.mat',...
-          'seg_wm_gyri_refined_masked_rmloop_graph_data.mat',...
-          'seg_wm_sulci_refined_masked_rmloop_graph_data.mat'};
+          'seg_gm_sulci_refined_masked_rmloop_graph_data.mat',...
+          'seg_wm_sulci_refined_masked_rmloop_graph_data.mat',...
+          'seg_gm_gyri_refined_masked_rmloop_graph_data.mat',...
+          'seg_wm_gyri_refined_masked_rmloop_graph_data.mat'};
+
+% Tissue Regions
+regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
+            'gm_gyri','wm_gyri'};
 
 % Masks corresponding to each respective graph
-masks = {'mask_tiss.mat','mask_gyri','mask_sulci','mask_gm','mask_wm'};
+masks = {'mask_tiss.mat','mask_gyri.mat','mask_sulci.mat',...
+        'mask_gm.mat','mask_wm.mat'};
 
 % IDs of each subject
 subid = {'AD_10382', 'AD_20832', 'AD_20969', 'AD_21354', 'AD_21424',...
          'CTE_6489', 'CTE_6912', 'CTE_7019', 'CTE_7126',...
          'NC_6839',  'NC_6974',  'NC_8653',  'NC_21499', 'NC_8095'};
 
-%% Import the mask and segmentation
-sub = subid{1};
-mask_tiss = load(fullfile(dpath,sub,maskdir,'mask_tiss.mat'),'mask_tiss');
-mask = mask_tiss.mask_tiss;
-data = load(fullfile(dpath, sub, graphdir, graphs{1}));
-data = data.Data;
-angio = data.angio;
-
-%% Calculate vascular sparsity
 % Voxel dimensions (microns)
 vox_dim = [12, 12, 15];
-% Call function to calculate vascular sparsity
-% vs = vasc_sparsity(angio, mask, vox_dim);
 
+%% Iterate over subjects and regions - calculate vascular sparsity
 
-%%% Identify indices of non-vessel voxels in the masked OCT matrix
-% Remove the vessel indices from tissue indices
-tiss_idx = mask;
-tiss_idx(angio) = [];
-% Create array of non-vessel tissue indices (non-zero)
-tiss_idx = find(tiss_idx);
+% Struct to store the vascular sparsity values
+vs = struct();
 
-%%% Convert vessel indices to subscripts
-% Vessel indices (non-zero) in segmentation
-vess_idx = find(angio);
-% Convert vessel indices into subscript (y,x,z coordinate)
-[vy, vx, vz] = ind2sub(size(angio),vess_idx);
-vess = [vy, vx, vz];
-
-%% Calculate difference between indices
-% The euclidean distance function takes 0.6 seconds, and this will result
-% in a computation time of 3000 days when operating on all non-vessel
-% tissue voxels. The purpose of this section is to compute the minimum
-% difference between indices, since these are all one-dimensional values.
-% This code will identify the smallest difference in indices, and then it
-% will compute the distance between the respective subcripts.
-
-% Iterate over tissue indices
-% tic
-for ii = 1:size(tiss_idx,2)
-    tic
-    t = tiss_idx(ii);
-    % Find difference between tissue index and all vessel indices
-    d = zeros(size(vess_idx,1),1);
-    for j=1:length(vess_idx)
-        d(j) = abs(t-vess_idx(j));
+% Iterate over subjects
+for sidx = 1 : length(subid)
+    % Retrieve subject ID
+    sub = subid{sidx};
+    
+    %%% Generate masks
+    % There are only masks for the entire tissue volume, gyri, sulci, GM,
+    % and WM. This section generates teh masks gm_sulci, wm_sulci, gm_gyri,
+    % wm_gyri.
+    % 
+    % Load the five masks that have already been generated
+    mstruct = struct();
+    for m = 1:5
+        mask = load(fullfile(dpath,sub,maskdir,masks{m}));
+        f = fields(mask);
+        mstruct.(regions{m}) = mask.(f{1});
     end
-    % Find the smallest difference
-    dmin = min(d);
-    toc
-end
-% toc
+    % Generate the remaining masks
+    mstruct.(regions{6}) = logical(mstruct.gm .* mstruct.sulci);
+    mstruct.(regions{7}) = logical(mstruct.wm .* mstruct.sulci);
+    mstruct.(regions{8}) = logical(mstruct.gm .* mstruct.gyri);
+    mstruct.(regions{9}) = logical(mstruct.wm .* mstruct.gyri);
+    
+    % Iterate over sub-regions
+    for r = 1:length(graphs)
+        % Import the respective mask
+        mask = mstruct.(regions{r});
 
-%% Find distance between non-vessel tissue voxel and all vessel voxels
-% Initialize array to store the minimum distance between tiss/vessel
-dmin = zeros(1,size(tiss_idx,2));
-% Convert tissue indices to subscripts
-[ty, tx, tz] = ind2sub(size(angio),tiss_idx);
-tiss_sub = [ty',tx',tz'];
+        % Import the vessel segmentation (angio)
+        data = load(fullfile(dpath, sub, graphdir, graphs{sidx}));
+        data = data.Data;
+        angio = data.angio;
 
-for ii = 1:size(tiss_idx,2)
-    % Find euclidean distance between tissue and vessel
-    t = tiss_sub(ii,:);
-    d = zeros(size(vess,1),1);
-    tic
-    for j = 1:length(vess)
-        % Take the jth element of the vessels
-        v = vess(j,:);
-        % Compute distance between vessel and tissue
-        d(j) = sqrt((v(1)-t(1)).^2 + (v(2)-t(2)).^2 + (v(3)-t(3)).^2);        
+        % Calculate vascular sparsity for subject and sub-region
+        vs.(sub).(regions{r}) = vasc_sparsity(angio, mask, vox_dim);
+
+        % Print to console
+        fprintf('Completed region "%s" of subject %s\n',regions{r}, sub)
     end
-    toc
-    % Find the minimum distance for this tissue index
-    dmin(ii) = min(d);
+    fprintf('FINISHED SUBJECT %s\n\n',sub)
 end
-
-
-
-
