@@ -25,11 +25,11 @@ dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
 voldir = '/dist_corrected/volume/ref/';
 maskdir = 'dist_corrected/volume/ref/masks/';
 graphdir = ['/dist_corrected/volume/combined_segs/' ...
-            'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/vox_min_50/'];
+            'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
 
 % Metrics output path
 mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
-    'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/vox_min_50/'];
+    'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
 
 % Graph structures to analyze
 graphs = {'seg_refined_masked_rmloop_graph_data.mat',...
@@ -104,3 +104,7 @@ for sidx = 1 : length(subid)
     end
     fprintf('FINISHED SUBJECT %s\n\n',sub)
 end
+
+% Save the vascular sparsity output
+fout = fullfile(mpath, 'metrics_vasc_sparsity.mat');
+save(fout,'vs','-v7.3');
