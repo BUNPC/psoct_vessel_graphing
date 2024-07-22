@@ -3,10 +3,11 @@
 # Set SCC project
 #$ -P npbssmic
 
+# Request cores and memory
 # Specify number of cores
-#$ -pe omp 16
+#$ -pe omp 8
 # Specify memory per core
-#$ -l mem_per_core=16G
+#$ -l mem_per_core=8G
 
 # Send email upon completion
 #$ -m ea
@@ -21,8 +22,8 @@
 #$ -j y
 
 # Batch array
-#$ -t 3
+#$ -t 1-4
 
 echo "Starting task number $SGE_TASK_ID"
 module load matlab/2022b
-matlab -nodisplay -batch caa_init_graph $SGE_TASK_ID
+matlab -nodisplay -batch caa_remove_loops_main $SGE_TASK_ID
