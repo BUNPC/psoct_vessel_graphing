@@ -6,9 +6,9 @@ function [p] = kw_dunnett(ad, cte, nc)
 %   comparisons method corrects for multiple comparisons between multiple
 %   experimental groups with the same control group.
 % INPUTS:
-%   ad (double array): the values from the AD group
-%   cte (double array): the values from the CTE group
-%   nc (double array): the values from the NC group
+%   ad (double column vector [n_ad,1]): the values from the AD group
+%   cte (double column vector [n_ad,1]): the values from the CTE group
+%   nc (double column vector [n_ad,1]): the values from the NC group
 % OUTPUTS
 %   p (double array): the p-values for the two experimental groups compared
 %       to the control group. p(1) is the p-value for AD. p(2) is the
