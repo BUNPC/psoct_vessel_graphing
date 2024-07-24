@@ -4,13 +4,6 @@
 % each cube. The following step is to generate the heat map from these
 % cubes.
 
-% TODO:
-%{
-- modularize the heatmap to operate at a certain depth
-- define the respective OCT depth that aligns with the pathology depth
-- generate heatmaps and masks for each OCT/pathology depth
-%}
-
 %% Add top-level directory of code repository to path
 clear; clc; close all;
 % Print current working directory
@@ -58,7 +51,7 @@ graph_name = 'seg_refined_masked_rmloop_graph_data.mat';
 
 %%% Subvolume parameters
 % Isotropic cube length (microns)
-cube_side = 204;
+cube_side = 1000;
 % Size of each voxel (microns)
 vox = [12, 12, 15];
 % Compute number of voxels in x,y,z for each cube
@@ -195,7 +188,9 @@ for ii = 1:length(fields(stain_fname))
 end
 %}
 
-%% Vascular heatmap: length density, branch density, volume fraction
+%% Vascular heatmaps:
+% len. density, branch density, volume fraction, tortuosity, diameter
+
 %%% Iterate over each subject
 for ii = 1:length(subid)
     %% Generate Subvolumes
@@ -206,27 +201,29 @@ for ii = 1:length(subid)
     seg = graph.Data.angio;
     graph = graph.Data.Graph;   
     nodes = graph.nodes;
+    % Create array of end node positions
+    end_node_pos = nodes(graph.endNodes,:);
+    % Calculate number of cubes in z dimension
+    Nz = ceil(size(seg,3) ./ n_z);
 
     %%% Load tissue mask
     mask = fullfile(dpath,subid{ii},mdir,'mask_tiss.mat');
     mask = load(mask);
     mask = mask.mask_tiss;
     
-    %%% Create array of end node positions
-    end_node_pos = nodes(graph.endNodes,:);
-    % Calculate number of cubes in z dimension
-    Nz = ceil(size(seg,3) ./ n_z);
-
     %% Iterate over the segmentation
-    % Initialize the volume fraction heat map matrix 
-    vf_mat = zeros(size(seg,1), size(seg,2), size(seg,3));
-    ld_mat = zeros(size(seg,1), size(seg,2), size(seg,3));
+    % Initialize the heatmap matrices
+    vf_mat = zeros(size(seg,1), size(seg,2), Nz);
+    ld_mat = zeros(size(seg,1), size(seg,2), Nz);
     bd_mat = zeros(size(seg,1), size(seg,2), Nz);
-    % Index to track the branch density matrix depth
-    z_bd = 0;    
+    tort_mat = zeros(size(seg,1), size(seg,2), Nz);
+    diam_mat = zeros(size(seg,1), size(seg,2), Nz);
+    % Heatmap depth index - depth in matrix
+    hm_z_idx = 0;
     % Iterate over the z-axis
     for z = 1:n_z:size(seg,3)
-        z_bd = z_bd + 1;
+        % Iterate the heatmap depth index
+        hm_z_idx = hm_z_idx + 1;
         % Iterate over rows
         for x = 1:n_x:size(seg,1)
             % Iterate over columns
@@ -250,22 +247,22 @@ for ii = 1:length(subid)
                     % Calculate volume fraction of cube
                     vf = sum(cube(:)) ./ cube_vol_vox;
                     % Assign to the vf matrix
-                    vf_mat((x:xf), (y:yf), (z:zf)) = vf;
+                    vf_mat((x:xf), (y:yf), hm_z_idx) = vf;
     
                     %% Branch Density
                     % Find branch nodes within the bounds of the cube
                     idx = find(...
-                        x <= end_node_pos(:,2) &  end_node_pos(:,2) < xf &...
-                        y <= end_node_pos(:,1) &  end_node_pos(:,1) < yf &...
-                        z <= end_node_pos(:,3) &  end_node_pos(:,3) < zf);
-                    % Extract number of branch points for each end node in cube
+                        x <= end_node_pos(:,2) & end_node_pos(:,2) < xf &...
+                        y <= end_node_pos(:,1) & end_node_pos(:,1) < yf &...
+                        z <= end_node_pos(:,3) & end_node_pos(:,3) < zf);
+                    % Number of branch points for each end node in cube
                     nb = sum(graph.nB(idx));
                     % Calculate branch density
                     bd = nb ./ cube_vol_um;
                     % Add branch density to the heatmap matrix
-                    bd_mat((x:xf), (y:yf), z_bd) = bd;
+                    bd_mat((x:xf), (y:yf), hm_z_idx) = bd;
                     
-                    %% Length Density
+                    %% Generate graph for Length Density, Tort., Diameter
                     %%% Create graph with subvolume (cube)
                     [g, ~] = seg_to_graph(cube, vox);
                     % Move to mean minimum voxel intensity
@@ -280,63 +277,81 @@ for ii = 1:length(subid)
                     [nodes_rm, edges_rm] =...
                         rm_loops_parallel(g.nodes, g.edges, cube,...
                                           delta, v_min, mv_iter, viz);
+                    % Remove singleton nodes
+                    if ~isempty(nodes_rm) && ~isempty(edges_rm)
+                        [nodes_rm, edges_rm] =...
+                            rm_disjoint_nodes(nodes_rm, edges_rm);
+                    end
                     % Update graph with nodes and edges
                     g.nodes = nodes_rm;
                     g.edges = edges_rm;
+                    % Angio Threshold for calculating diameter (using the
+                    % binary segmentation in lieu of angio)
+                    ithresh = 0.99;
                     
-                    %%% If there is only 1 edge, then skip metadata. There
-                    % is a bug in the graphing code that raises an error
-                    % when there is only one edge. This is legacy code and
-                    % difficult to debug. Instead, just calculate Euclidean
-                    % distance of the lone edge.
+                    %%% Handles cases for different N edges
                     if size(edges_rm,1) > 1
-                        % Compute the graph metadata
+                        %%% Compute graph metadata if > 1 edge
                         [Data] = init_graph(g);
-                        % Calculate length density with subvolume (cube)
+
+                        %%% Length density with subvolume (cube)
                         seglen_um = Data.Graph.segInfo.segLen_um;
                         seglen_tot_um = sum(seglen_um);
                         ld = seglen_tot_um ./ cube_vol_um;
+                        
+                        %%% Compute tortuosity
+                        tort = mean(calc_tortuosity(Data));
+
+                        %%% Compute diameter
+                        node_seg = Data.Graph.segInfo.nodeSegN;
+                        cube_nodes = Data.Graph.nodes;
+                        d = calc_segment_diameter(node_seg,cube,...
+                            cube_nodes,ithresh,vox);
                     elseif size(edges_rm,1) == 1
-                        % Euclidean Distance
+                        %%% If only 1 edge, then skip metadata.
+                        % A bug in the graphing code raises an error
+                        % when there is only one edge. The legacy code is
+                        % difficult to debug.
+
+                        %%% Length density (via Euclidean distance)
                         n1 = nodes_rm(edges_rm(1),:) .* vox;
                         n2 = nodes_rm(edges_rm(2),:) .* vox;
                         d = sqrt( (n1(1) - n2(1)).^2 +...
                                   (n1(2) - n2(2)).^2 +...
                                   (n1(3) - n2(3)).^2);
                         ld = d ./ cube_vol_um;
+
+                        %%% Set tortuosity to 1 (only one edge)
+                        tort = 1;
+
+                        %%% Compute diameter for both nodes in edge
+                        n1 = nodes_rm(edges_rm(1),:);
+                        n2 = nodes_rm(edges_rm(2),:);
+                        d = calc_diameter(cube, [n1;n2],ithresh,vox);
                     else
-                        % in this case there is no graph
+                        % In this case there is no graph
                         ld = 0;
+                        tort = 0;
+                        d = 0;
                     end
-                    % Add length density to matrix
-                    ld_mat((x:xf), (y:yf), (z:zf)) = ld;
+
+                    %%% Add metrics to matrices
+                    ld_mat((x:xf), (y:yf), hm_z_idx) = ld;
+                    tort_mat((x:xf), (y:yf), hm_z_idx) = mean(tort);
+                    diam_mat((x:xf), (y:yf), hm_z_idx) = median(d);
+
                 end
             end
         end
     end
    
-    %% Separate LD and VF matrices into z-dimension slices by cube size
-    % Create array of z-dimension indices to retain
-    idx_z = 1 : n_z : size(seg,3);
-    
-    % Initialize matrices to store volume fraction and length density
-    heatmap_vf = zeros(size(vf_mat,1), size(vf_mat,2), length(idx_z));
-    heatmap_ld = zeros(size(ld_mat,1), size(ld_mat,2), length(idx_z));
-        
-    % Keep just the idx_z frames
-    for j = 1:length(idx_z)
-        % Extract volume fraction
-        heatmap_vf(:,:,j) = vf_mat(:,:,idx_z(j));
-        % Extract length density
-        heatmap_ld(:,:,j) = ld_mat(:,:,idx_z(j));
-    end
-
-    % Add volume fraction and length density to struct
+    %% Add metrics to heatmap struct
     sub = subid{ii};
-    heatmap.(sub).vf = heatmap_vf;
-    heatmap.(sub).ld = heatmap_ld;
+    heatmap.(sub).vf = vf_mat;
+    heatmap.(sub).ld = ld_mat;
     heatmap.(sub).bd = bd_mat;
-    sprintf('\nFinished subject %s\n',sub)
+    heatmap.(sub).tort = tort_mat;
+    heatmap.(sub).diam = diam_mat;
     
     %% Take maximum intensity projection of tissue mask  
     %%% Check to see if the mask matrix needs to be truncated
@@ -364,27 +379,6 @@ for ii = 1:length(subid)
     
     % Add mask to heatmap struct
     heatmap.(sub).mask = masks;
-
-    %% Plot a figure for each frame of heatmap
-    if viz_individual
-        % Path to output heatmaps
-        roi_dir = strcat('ROI_',num2str(cube_side));
-        heatmap_dir = fullfile(mpath,'heatmaps',sub,roi_dir);
-        if ~isfolder(heatmap_dir)
-            mkdir(heatmap_dir);
-        end
-    
-        % Iterate over depths in volume fraction heat map
-        plot_save_heatmap(Nz, heatmap_vf, 0, [], masks,'Volume Fraction',...
-            '(a.u.)', heatmap_dir,'heatmap_vf')
-        % Iterate over depths in length density heat map
-        plot_save_heatmap(Nz, heatmap_ld, 0, [], masks,'Length Density',...
-            'Length (\mu) / Volume (\mu^3)',heatmap_dir,'heatmap_ld')
-        % Iterate over depths in branch density heat map
-        plot_save_heatmap(Nz, bd_mat, 0, [], masks,'Branch Density',...
-            'Branches / Volume (\mu^3)',heatmap_dir,'heatmap_bd')
-    end
-
     sprintf('FINISHED HEATMAP FOR SUBJECT %s',sub)
 end
 
@@ -438,27 +432,36 @@ heatmap = load(heat_out);
 heatmap = heatmap.heatmap;
 
 % Vascular metrics (volume fraction, length density, branch density)
-metrics = {'vf','ld','bd'};
+metrics = {'vf','ld','bd','tort','diam'};
 
 %%% Identify minimum / maximum of each metric
 % Set the maximum to be the 95th percentile of each metric. This will
-% scale the colorbar to account for outliers.
+% scale the colorbar to account for outliers. vf = volume fraction,
+% ld = length density, bd = branch density, tr = tortuosity, dm = diameter
 vf = [];
 ld = [];
 bd = [];
+tr = [];
+dm = [];
 for ii = 1:length(subid)
     vf = [vf, reshape(heatmap.(subid{ii}).vf(:),1,[])];
     ld = [ld, reshape(heatmap.(subid{ii}).ld(:),1,[])];
     bd = [bd, reshape(heatmap.(subid{ii}).bd(:),1,[])];
+    tr = [tr, reshape(heatmap.(subid{ii}).tort(:),1,[])];
+    dm = [dm, reshape(heatmap.(subid{ii}).diam(:),1,[])];
 end
 % Minimum of each metric
 vf_min = min(vf);
 ld_min = min(ld);
 bd_min = min(bd);
-% Maximum = 90th percentile of each metric
+tr_min = min(tr);
+dm_min = min(dm);
+% Maximum = 95th percentile of each metric
 vf_max = prctile(vf,95);
 ld_max = prctile(ld,95);
 bd_max = prctile(bd,95);
+tr_max = prctile(tr,95);
+dm_max = prctile(dm,95);
 
 %%% Generate normalized heatmaps
 % Variable for whether or not to invert the heatmap
@@ -470,6 +473,8 @@ for ii = 1:length(subid)
     heatmap_vf = heatmap.(sub).vf;
     heatmap_ld = heatmap.(sub).ld;
     heatmap_bd = heatmap.(sub).bd;
+    heatmap_tr = heatmap.(sub).tort;
+    heatmap_dm = heatmap.(sub).diam;
     masks = heatmap.(sub).mask;
 
     %%% Output filepath for figures
@@ -484,11 +489,17 @@ for ii = 1:length(subid)
         masks,'Volume Fraction','(a.u.)',...
         heatmap_dir,'rescaled_heatmap_vf')
     plot_save_heatmap([], heatmap_ld, flip_cbar, [ld_min, ld_max],...
-        masks,'Length Density','Length (\mu) / Volume (\mu^3)',...
+        masks,'Length Density','Length (\mu) / Volume (\mum^3)',...
         heatmap_dir,'rescaled_heatmap_ld')
     plot_save_heatmap([], heatmap_bd, flip_cbar, [bd_min, bd_max],...
-        masks,'Branch Density','Branches / Volume (\mu^3)',...
+        masks,'Branch Density','Branches / Volume (\mum^3)',...
         heatmap_dir,'rescaled_heatmap_bd')
+    plot_save_heatmap([], heatmap_tr, flip_cbar, [tr_min, tr_max],...
+        masks,'Tortuosity','(a.u.)',...
+        heatmap_dir,'rescaled_heatmap_tr')
+    plot_save_heatmap([], heatmap_dm, flip_cbar, [dm_min, dm_max],...
+        masks,'Diameter','(\mum)',...
+        heatmap_dir,'rescaled_heatmap_dm')
 end
 
 %% Plot and save the heat maps
