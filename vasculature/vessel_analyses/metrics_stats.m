@@ -30,8 +30,6 @@ function [pstats] = metrics_stats(metrics, regions, params,...
 %           or kurskal-wallis test for each parameter from each region.
 %               p-value: stats.[region].[parameter].p
 %
-% TODO: update the p-value and table below
-%
 %% Initialize workspace
 % Struct for storing statistical results
 pstats = struct();
@@ -54,8 +52,8 @@ for ii = 1:length(regions)
             p = zeros(2,1);
             % Use kolmogorov-smirnov test for tortuosity distributions
             if strcmp(params{j},'tortuosity')
-                [~,p(1)] = kstest2(ad, nc,'Alpha',alpha);
-                [~,p(2)] = kstest2(cte, nc,'Alpha',alpha);
+                [~,p(1)] = kstest2(ad, nc,'Alpha',alpha,'Tail','smaller');
+                [~,p(2)] = kstest2(cte, nc,'Alpha',alpha,'Tail','smaller');
             % Use Wilcoxon rank sum test for all others
             else
                 % Create labels for each vector of [experimental; control]
@@ -174,17 +172,19 @@ for ii = 1:length(regions)
     LengthDensity = cell2mat(struct2cell(pstats.(regions{ii}).(params{1}).p));
     BranchDensity = cell2mat(struct2cell(pstats.(regions{ii}).(params{2}).p));
     VolumeFraction = cell2mat(struct2cell(pstats.(regions{ii}).(params{3}).p));
+    TortOutliers = cell2mat(struct2cell(pstats.(regions{ii}).(params{4}).p));
+    Diameter = cell2mat(struct2cell(pstats.(regions{ii}).(params{6}).p));
     % Skip tortuosity if measuring the ratios
     if contains(regions{ii},'sulci_')
         % Create the p-value table
         ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
-                            VolumeFraction);
+                            VolumeFraction, TortOutliers, Diameter);
     else
         % Create tortuosity array
-        Tortuosity = cell2mat(struct2cell(pstats.(regions{ii}).(params{4}).p));
+        Tortuosity = cell2mat(struct2cell(pstats.(regions{ii}).(params{5}).p));
         % Create the p-value table
         ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
-                            VolumeFraction, Tortuosity);
+                      VolumeFraction, TortOutliers, Diameter, Tortuosity);
     end    
     
     %%% Save table to CSV on a specific sheet
