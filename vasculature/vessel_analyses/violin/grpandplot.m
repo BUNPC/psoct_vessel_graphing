@@ -127,6 +127,8 @@ function tile = grpandplot(data,yCol,varargin)
 
 %% 1. Input parsing
 
+set(0,'DefaultFigureRenderer','painters');
+
 % Validation functions
 validNum = @(x) isnumeric(x) && isscalar(x);
 validPosNum = @(x) validNum(x) && (x>0);
@@ -177,6 +179,7 @@ addParameter(p,'pntAlpha', 1, validPosFrc);
 addParameter(p,'boxAlpha', 0.5, validPosFrc);
 addParameter(p,'vlnAlpha', 0.5, validPosFrc);
 addParameter(p,'showMean', true, validLogical);
+addParameter(p,'log',true,validLogical);
 
 % Parse input
 parse(p,data,yCol,varargin{:});
@@ -217,6 +220,7 @@ pntAlpha = p.Results.pntAlpha;
 boxAlpha = p.Results.boxAlpha;
 vlnAlpha = p.Results.vlnAlpha;
 showMean = p.Results.showMean;
+log = p.Results.log;
 
 %% 2. Data preprocessing
 
@@ -360,6 +364,7 @@ for i = 1:nTLvl
     %  (eg boxchart, swarnchart and text), except violin which does not
     %  have this option.
     axes(tile(i));
+    % Set y-axis to logarithmic
     hold(tile(i),"on")
 
     % x-position offset for each color group (so that they don't overlap)
@@ -382,7 +387,9 @@ for i = 1:nTLvl
         end
 
         xPos = xIDs + xOffset(j);  % a list of x-positions
-        y = ydata{i,j}.(yCol);  % data for plotting data points and box plot
+        % data for plotting data points and box plot
+        y = ydata{i,j}.(yCol);  
+
 
         % Show raw data points at bottom layer-----------------------------
         if showPnt == true && pntOnTop == false
@@ -405,8 +412,9 @@ for i = 1:nTLvl
             end
             boxObj(i,j).MarkerColor = 'r';
             boxObj(i,j).BoxWidth = w;
+            boxObj(i,j).LineWidth = 5;
             boxObj(i,j).BoxFaceAlpha = boxAlpha;
-            boxObj(i,j).BoxLineColor = cmap(j,:);
+            boxObj(i,j).BoxEdgeColor = cmap(j,:);
             boxObj(i,j).WhiskerLineColor = cmap(j,:);
             if ~isempty(boxFillC), boxObj(i,j).BoxFaceColor = boxFillC; end
             if ~isempty(boxEdgeC)
@@ -426,8 +434,14 @@ for i = 1:nTLvl
                     yViolin = ydata{i,j}.(yCol)(xLvlFilter);
                 else
                     yViolin = ydata{i,j}.(yCol)(:);
-                end                
-                if ~isempty(yViolin)  % don't plot if no data for current x level
+                end
+                % If plotting in log scale, remove zero values
+                if log
+                    yViolin(yViolin==0) = [];
+                end
+
+                % don't plot if no data for current x level
+                if ~isempty(yViolin)
                     vlnObj(i,j) = violin(xx + xOffset(j), yViolin,...
                         linecolor=cmap(j,:),scaling=w, withmdn=1,...
                         cutoff=0,linewidth=3);
@@ -479,6 +493,10 @@ for i = 1:nTLvl
     if showXLine == true
         xline(tile(i),1.5:1:nXLvl,'LineStyle',':');
     end
+end
+% Set to logarithmic scale, if prompted
+if log
+    set(gca,'YScale','log');
 end
 
 %% 4. Figure settings
@@ -548,6 +566,8 @@ if xAxisMode == 0 || nCLvl == 1 % default mode
     % Show ticks only at xLvls
     xticks(tile(:), 1:1:nXLvl);   % x-axis tick positions
     xticklabels(tile(:), xLvls);  % use xLvls as tick labels 
+    xaxisprops = get(gca, 'XAxis');
+    xaxisprops.TickLabelInterpreter = 'None';
 
 elseif xAxisMode == 1 && nCLvl > 1  % two-level x-axis labeling
     % get x-axis tick positions from xOffset
