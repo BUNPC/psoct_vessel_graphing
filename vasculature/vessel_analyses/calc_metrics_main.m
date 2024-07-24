@@ -1,6 +1,6 @@
 %% Main script for calling all the metric functions for n subjects. 
-% Then, storing all of the metrics for each subject in a strict, within an array
-% of structs with n elements (one for each subject)
+% Then, storing all of the metrics for each subject in a struct, within an
+% array of structs with n elements (one for each subject)
 % Functions being called: ave_length.m, branch_density.m,
 % calc_tortuosity.m, length_density.m
 
@@ -33,8 +33,6 @@ graphdir = ['/dist_corrected/volume/combined_segs/' ...
 % Metrics output path
 mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
     'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/'];
-% mpath = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
-%     'gsigma_1-3-5_2-3-4_3-5-7_5-7-9_7-9-11/p18/vox_min_50/'];
 
 % Graph structures to analyze
 graphs = {'seg_refined_masked_rmloop_graph_data.mat',...
@@ -122,17 +120,21 @@ for ii = 1:length(subid)
         % Load the graph
         data = load(fullfile(dpath, sub, graphdir, graphs{j}));
         data = data.Data;
+        angio = data.angio;
+        nodes = data.Graph.nodes;
+        vox = data.Graph.vox;
         
         % Load the respective mask for this iteration
         mask = masks.(f{j});
         
-        % Call metric functions
+        % Call functions to measure vascular metrics
         [um_len, ~] =   ave_length(data);
         lengths     =   data.Graph.segInfo.segLen_um;
         ld =            length_density(data, mask);
         branchden =     branch_density(data, mask);
         tort =          calc_tortuosity(data);
         fv =            fraction_vol(data, mask);
+        diam =          calc_diameter(angio,nodes,0.99,vox);
         
         % Store metrics for this subject and partition of the volume
         metrics.(sub).(f{j}).ave_length_um = um_len;
@@ -141,10 +143,11 @@ for ii = 1:length(subid)
         metrics.(sub).(f{j}).branch_density = branchden;
         metrics.(sub).(f{j}).tortuosity = tort;
         metrics.(sub).(f{j}).fraction_volume = fv;
+        metrics.(sub).(f{j}).diameter = diam;
     end
 
     fprintf('Finished Subject %s\n', sub);
 end
 
-%% Save output (maybe)
+%% Save output
 save(fullfile(mpath, 'metrics.mat'), 'metrics');
