@@ -5,13 +5,6 @@
 % The next script in the sequence is
 % "vessel_analyses_wm_gm_sulci_gyri_main.m"
 
-% TODO:
-% - load the heatmaps + masks
-% - For each subject:
-%   - remove ROIs outside of tissue boundaries
-%   - save the ROIs within tissue mask to the struct hm_distro
-% - Output the struct "heatmap_[#]_distro.mat"
-
 %% Clear workspace & add top-level directory
 clear; clc; close all;
 
@@ -77,6 +70,8 @@ for ii = 1:length(subid)
     vf = hm.(sub).vf;
     ld = hm.(sub).ld;
     bd = hm.(sub).bd;
+    tort = hm.(sub).tort;
+    diam = hm.(sub).diam;
 
     % Create struct for storing masks
     masks = struct();
@@ -145,9 +140,9 @@ for ii = 1:length(subid)
     end
 
     %% Iterate through masks for each tissue region
-    % Apply the mask
-    % Check if the cubic grid contains the mask
-    %   - if so, then store the value from this cube
+    % If cube contains mask, then store heatmap value from this cube. The
+    % heatmap will have the same value within this cube, so the "max"
+    % function is used to just select a single value from this cube.
 
     f = fields(masks);
     for j=1:length(f)
@@ -163,6 +158,8 @@ for ii = 1:length(subid)
         vf_distro = zeros(n_cubes,1);
         ld_distro = zeros(n_cubes,1);
         bd_distro = zeros(n_cubes,1);
+        tort_distro = zeros(n_cubes,1);
+        diam_distro = zeros(n_cubes,1);
 
         %%% Load the respective mask for this iteration
         mask = masks_mip.(f{j});
@@ -173,12 +170,6 @@ for ii = 1:length(subid)
         if size(mask,2) > size(vf,2)
             mask = mask(:,1:size(vf,2),:);
         end
-        % Retain the non-zero voxels within the mask
-        idx = find(mask);
-        % Apply mask to each heatmap
-        vf_masked = vf(idx) .* double(mask(idx));
-        ld_masked = ld(idx) .* double(mask(idx));
-        bd_masked = bd(idx) .* double(mask(idx));
 
         %% Iterate through cubic grid and retain values within mask
         % Counter for storing the distribution values
@@ -204,16 +195,20 @@ for ii = 1:length(subid)
                     vf_distro(cnt) = max(vf((x:xf), (y:yf), z),[],"all");
                     ld_distro(cnt) = max(ld((x:xf), (y:yf), z),[],"all");
                     bd_distro(cnt) = max(bd((x:xf), (y:yf), z),[],"all");
+                    tort_distro(cnt) = max(tort((x:xf), (y:yf), z),[],"all");
+                    diam_distro(cnt) = max(diam((x:xf), (y:yf), z),[],"all");
                     % Iterate the counter
                     cnt = cnt + 1;
                 end
                 end
             end
         end
-        % Store distribution
+        % Store distributions
         hm_distro.(sub).(f{j}).vf = vf_distro(1:cnt);
         hm_distro.(sub).(f{j}).ld = ld_distro(1:cnt);
         hm_distro.(sub).(f{j}).bd = bd_distro(1:cnt);
+        hm_distro.(sub).(f{j}).tort = tort_distro(1:cnt);
+        hm_distro.(sub).(f{j}).diam = diam_distro(1:cnt);
     end
 
     fprintf('Finished Subject %s\n', sub);
