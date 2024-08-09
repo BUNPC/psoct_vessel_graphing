@@ -58,10 +58,6 @@ vox = [12, 12, 15];
 n_x = floor(cube_side ./ vox(1));
 n_y = floor(cube_side ./ vox(2));
 n_z = floor(cube_side ./ vox(3));
-% Calculate the size of each cube (in voxels)
-cube_vol_vox = n_x * n_y * n_z;
-% Calculate the size of each cube (in cubic microns)
-cube_vol_um = cube_vol_vox * vox(1) * vox(2) * vox(3);
 
 %%% Struct for storing vascular heat map
 heatmap = struct();
@@ -194,6 +190,8 @@ end
 %%% Iterate over each subject
 for ii = 1:length(subid)
     %% Generate Subvolumes
+    sub = subid{ii};
+    sprintf('\nSTARTED HEATMAP FOR SUBJECT %s',sub)
     %%% Load Data struct containing graph and angio (masked segmentation)
     graph = fullfile(dpath,subid{ii},subdir,segdir,graph_name);
     graph = load(graph);
@@ -210,6 +208,14 @@ for ii = 1:length(subid)
     mask = fullfile(dpath,subid{ii},mdir,'mask_tiss.mat');
     mask = load(mask);
     mask = mask.mask_tiss;
+
+    %%% Verify that both segmentation and mask are logicals
+    if ~isa(seg,'logical')
+        seg = logical(seg);
+    end
+    if ~isa(mask,'logical')
+        mask = logical(mask);
+    end
     
     %% Iterate over the segmentation
     % Initialize the heatmap matrices
@@ -238,14 +244,18 @@ for ii = 1:length(subid)
                 yf = min(yf, size(seg,2));
                 zf = min(zf, size(seg,3));
                 % Take cube from segmentation
-                cube = seg((x:xf), (y:yf), (z:zf));
+                seg_cube = seg((x:xf), (y:yf), (z:zf));
+                % Take cube from tissue mask
+                mask_cube = mask((x:xf), (y:yf), (z:zf));
+                % Calculate volume of tissue voxels (cubic microns)
+                mask_cube_um = sum(mask_cube(:)).*vox(1)*vox(2)*vox(3);
 
                 %% Calculate metrics if cube has segmentation
                 % Check for segmentation within cube
-                if sum(cube(:)) > 1
+                if sum(seg_cube(:)) > 1
                     %% Volume Fraction
                     % Calculate volume fraction of cube
-                    vf = sum(cube(:)) ./ cube_vol_vox;
+                    vf = sum(seg_cube(:)) ./ sum(mask_cube(:));
                     % Assign to the vf matrix
                     vf_mat((x:xf), (y:yf), hm_z_idx) = vf;
     
@@ -257,14 +267,14 @@ for ii = 1:length(subid)
                         z <= end_node_pos(:,3) & end_node_pos(:,3) < zf);
                     % Number of branch points for each end node in cube
                     nb = sum(graph.nB(idx));
-                    % Calculate branch density
-                    bd = nb ./ cube_vol_um;
+                    % Calculate branch density (1 / cubic microns)
+                    bd = nb ./ mask_cube_um;
                     % Add branch density to the heatmap matrix
                     bd_mat((x:xf), (y:yf), hm_z_idx) = bd;
                     
                     %% Generate graph for Length Density, Tort., Diameter
                     %%% Create graph with subvolume (cube)
-                    [g, ~] = seg_to_graph(cube, vox);
+                    [g, ~] = seg_to_graph(seg_cube, vox);
                     % Move to mean minimum voxel intensity
                     v_min = 0.99;
                     % initial search radius in down sample function (voxels)
@@ -275,7 +285,7 @@ for ii = 1:length(subid)
                     viz = false;
                     % Call remove loops
                     [nodes_rm, edges_rm] =...
-                        rm_loops_parallel(g.nodes, g.edges, cube,...
+                        rm_loops_parallel(g.nodes, g.edges, seg_cube,...
                                           delta, v_min, mv_iter, viz);
                     % Remove singleton nodes
                     if ~isempty(nodes_rm) && ~isempty(edges_rm)
@@ -297,7 +307,7 @@ for ii = 1:length(subid)
                         %%% Length density with subvolume (cube)
                         seglen_um = Data.Graph.segInfo.segLen_um;
                         seglen_tot_um = sum(seglen_um);
-                        ld = seglen_tot_um ./ cube_vol_um;
+                        ld = seglen_tot_um ./ mask_cube_um;
                         
                         %%% Compute tortuosity
                         tort = mean(calc_tortuosity(Data));
@@ -305,7 +315,7 @@ for ii = 1:length(subid)
                         %%% Compute diameter
                         node_seg = Data.Graph.segInfo.nodeSegN;
                         cube_nodes = Data.Graph.nodes;
-                        d = calc_segment_diameter(node_seg,cube,...
+                        d = calc_segment_diameter(node_seg,seg_cube,...
                             cube_nodes,ithresh,vox);
                     elseif size(edges_rm,1) == 1
                         %%% If only 1 edge, then skip metadata.
@@ -319,7 +329,7 @@ for ii = 1:length(subid)
                         d = sqrt( (n1(1) - n2(1)).^2 +...
                                   (n1(2) - n2(2)).^2 +...
                                   (n1(3) - n2(3)).^2);
-                        ld = d ./ cube_vol_um;
+                        ld = d ./ mask_cube_um;
 
                         %%% Set tortuosity to 1 (only one edge)
                         tort = 1;
@@ -327,7 +337,7 @@ for ii = 1:length(subid)
                         %%% Compute diameter for both nodes in edge
                         n1 = nodes_rm(edges_rm(1),:);
                         n2 = nodes_rm(edges_rm(2),:);
-                        d = calc_diameter(cube, [n1;n2],ithresh,vox);
+                        d = calc_diameter(seg_cube, [n1;n2],ithresh,vox);
                     else
                         % In this case there is no graph
                         ld = 0;
@@ -346,7 +356,6 @@ for ii = 1:length(subid)
     end
    
     %% Add metrics to heatmap struct
-    sub = subid{ii};
     heatmap.(sub).vf = vf_mat;
     heatmap.(sub).ld = ld_mat;
     heatmap.(sub).bd = bd_mat;
@@ -425,6 +434,7 @@ end
 % Iterate over each metric, choose one depth from each subject, normalize
 % the colorbar across all subjects for this metric.
 
+%{
 % Load Heat map
 heat_out = append('heatmap_',num2str(cube_side),'.mat');
 heat_out = fullfile(mpath, heat_out);
@@ -501,6 +511,7 @@ for ii = 1:length(subid)
         masks,'Diameter','(\mum)',...
         heatmap_dir,'rescaled_heatmap_dm')
 end
+%}
 
 %% Plot and save the heat maps
 function plot_save_heatmap(Ndepths, heatmaps, flip_cbar, colorbar_range,...

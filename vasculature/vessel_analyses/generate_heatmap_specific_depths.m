@@ -70,9 +70,6 @@ graph_name = 'seg_refined_masked_rmloop_graph_data.mat';
 %%% Subvolume parameters
 % Isotropic cube length (microns)
 cube_side = 984;
-% Boolean for Minimum intensity projection of tissue mask
-% true = minimum intensity projection, false = maximum intensity projection
-min_ip = false;
 % Size of each voxel (microns)
 vox = [12, 12, 15];
 % Whether to plot non-normalized heatmaps for each depth
@@ -82,10 +79,6 @@ viz_individual = false;
 n_x = floor(cube_side ./ vox(1));
 n_y = floor(cube_side ./ vox(2));
 n_z = floor(cube_side ./ vox(3));
-% Calculate the size of each cube (in voxels)
-cube_vol_vox = n_x * n_y * n_z;
-% Calculate the size of each cube (in cubic microns)
-cube_vol_um = cube_vol_vox * vox(1) * vox(2) * vox(3);
 
 %% Pathology heatmap: A-beta and p-tau
 %{
@@ -222,16 +215,23 @@ for ii = 1:length(subid)
     % Create array of end node positions
     end_node_pos = nodes(graph.endNodes,:);
 
-    %%% Load tissue mask
+    %%% Load mask for tissue volume and white matter
+    wm = fullfile(dpath,sub,mdir,'mask_wm.mat');
+    wm = load(wm); wm = wm.mask_wm;
+    gm = fullfile(dpath,sub,mdir,'mask_gm.mat');
+    gm = load(gm); gm = gm.mask_gm;
     mask = fullfile(dpath,sub,mdir,'mask_tiss.mat');
-    mask = load(mask);
-    mask = mask.mask_tiss;
+    mask = load(mask); mask = mask.mask_tiss;
     % Check to see if the mask matrix needs to be truncated
     if size(mask,1) > size(seg,1)
         mask = mask(1:size(seg,1),:,:);
+        wm = wm(1:size(seg,1),:,:);
+        gm = gm(1:size(seg,1),:,:);
     end
     if size(mask,2) > size(seg,2)
         mask = mask(:,1:size(seg,2),:);
+        wm = wm(:,1:size(seg,2),:);
+        gm = gm(:,1:size(seg,2),:);
     end
 
     %% Iterate over the segmentation
@@ -244,6 +244,8 @@ for ii = 1:length(subid)
     % Initialize heatmap masks matrix. Z dimension is equivalent to the
     % number of depths
     hm_masks = zeros(size(seg,1), size(seg,2), size(z_sub,2));
+    wm_masks = zeros(size(seg,1), size(seg,2), size(z_sub,2));
+    gm_masks = zeros(size(seg,1), size(seg,2), size(z_sub,2));
 
     % Initialize the heat map matrices
     vf_mat = zeros(size(seg,1), size(seg,2), length(z_sub));
@@ -264,12 +266,10 @@ for ii = 1:length(subid)
         % Set depth indices to be within the bounds of segmentation
         zi = max(1, zi);
         zf = min(zf, size(seg,3));
-        % Generate tissue mask from either minIP or maxIP of tissue mask
-        if min_ip
-            hm_masks(:,:,idx_z) = min(mask(:,:,zi:zf),[],3);
-        else
-            hm_masks(:,:,idx_z) = max(mask(:,:,zi:zf),[],3);
-        end
+        % Generate tissue mask from maxIP 
+        hm_masks(:,:,idx_z) = max(mask(:,:,zi:zf),[],3);
+        wm_masks(:,:,idx_z) = max(wm(:,:,zi:zf),[],3);
+        gm_masks(:,:,idx_z) = max(gm(:,:,zi:zf),[],3);
         % Iterate over rows
         for x = 1:n_x:size(seg,1)
             % Iterate over columns
@@ -290,7 +290,7 @@ for ii = 1:length(subid)
                 if sum(cube(:)) > 1 && sum(cube_mask(:)) > 0
                     %% Volume Fraction
                     % Calculate volume fraction of cube
-                    vf = sum(cube(:)) ./ cube_vol_vox;
+                    vf = sum(cube(:)) ./ sum(cube_mask(:));
                     % Assign to the vf matrix
                     vf_mat((x:xf), (y:yf), idx_z) = vf;
     
@@ -303,7 +303,7 @@ for ii = 1:length(subid)
                     % Extract number of branch points for each end node in cube
                     nb = sum(graph.nB(idx));
                     % Calculate branch density
-                    bd = nb ./ cube_vol_um;
+                    bd = nb ./ sum(cube_mask(:));
                     % Add branch density to the heatmap matrix
                     bd_mat((x:xf), (y:yf), idx_z) = bd;
                     
@@ -342,7 +342,7 @@ for ii = 1:length(subid)
                         %%% Length density with subvolume (cube)
                         seglen_um = Data.Graph.segInfo.segLen_um;
                         seglen_tot_um = sum(seglen_um);
-                        ld = seglen_tot_um ./ cube_vol_um;
+                        ld = seglen_tot_um ./ sum(cube_mask(:));
                         
                         %%% Compute tortuosity
                         tort = mean(calc_tortuosity(Data));
@@ -365,7 +365,7 @@ for ii = 1:length(subid)
                         d = sqrt( (n1(1) - n2(1)).^2 +...
                                   (n1(2) - n2(2)).^2 +...
                                   (n1(3) - n2(3)).^2);
-                        ld = d ./ cube_vol_um;
+                        ld = d ./ sum(cube_mask(:));
 
                         %%% Set tortuosity to 1 (only one edge)
                         tort = 1;
@@ -390,6 +390,8 @@ for ii = 1:length(subid)
     end
    
     % Add heatmaps to struct
+    heatmap.(sub).mask_wm = wm_masks;
+    heatmap.(sub).mask_gm = gm_masks;
     heatmap.(sub).mask = hm_masks;
     heatmap.(sub).vf = vf_mat;
     heatmap.(sub).ld = ld_mat;
@@ -400,47 +402,9 @@ for ii = 1:length(subid)
 end
 
 % Save the heatmap struct
-if min_ip
-    heat_out = append('heatmap_ab_ptau_',num2str(cube_side),'_minIP.mat');
-else
-    heat_out = append('heatmap_ab_ptau_',num2str(cube_side),'.mat');
-end
+heat_out = append('heatmap_ab_ptau_',num2str(cube_side),'.mat');
 heat_out = fullfile(mpath, heat_out);
 save(heat_out,'heatmap','-v7.3');
-
-%% Generate Heat Maps (not normalized)
-% Individually generate a heat map for each subject. The colorbar scales
-% are not normalied to one another.
-%{
-% Load Heat map
-heatmap = load(fullfile(mpath, 'heatmap.mat'));
-heatmap = heatmap.heatmap;
-% Iterate over subject ID list
-for ii = 1:length(subid)
-    %%% Load the heatmap for the subject
-    sub = subid{ii};
-    heatmap_vf = heatmap.(sub).vf;
-    heatmap_ld = heatmap.(sub).ld;
-    heatmap_bd = heatmap.(sub).bd;
-    masks = heatmap.(sub).mask;
-
-    %%% Output filepath
-    heatmap_dir = fullfile(mpath,'heatmaps',sub,roi_dir);
-    if ~isfolder(heatmap_dir)
-        mkdir(heatmap_dir);
-    end
-
-    % Iterate over depths in volume fraction heat map
-    plot_save_heatmap(Nz, heatmap_vf, 0, [],masks,'Volume Fraction',...
-        '(a.u.)', heatmap_dir,'heatmap_vf')
-    % Iterate over depths in length density heat map
-    plot_save_heatmap(Nz, heatmap_ld, 0, [],masks,'Length Density',...
-        'Length (\mu) / Volume (\mu^3)',heatmap_dir,'heatmap_ld')
-    % Iterate over depths in branch density heat map
-    plot_save_heatmap(Nz, heatmap_bd, 0, [],masks,'Branch Density',...
-        'Branches / Volume (\mu^3)',heatmap_dir,'heatmap_bd')
-end
-%}
 
 %% Generate heat maps - normalized across subjects
 % Iterate over each metric, choose one depth from each subject, normalize
@@ -475,14 +439,14 @@ end
 vf_min = min(vf);
 ld_min = min(ld);
 bd_min = min(bd);
-tr_min = min(tr);
 dm_min = min(dm);
 % Maximum = 90th percentile of each metric
 vf_max = prctile(vf,95);
 ld_max = prctile(ld,95);
 bd_max = prctile(bd,95);
-tr_max = prctile(tr,95);
 dm_max = prctile(dm,95);
+% Manually set the min/max values for tortuosity and diameter
+tr_min = 1; tr_max = 1.3;
 
 %% Generate normalized heatmaps
 % Variable for whether or not to invert the heatmap
@@ -499,32 +463,28 @@ for ii = 1:length(subid)
     masks = heatmap.(sub).mask;
 
     %%% Output filepath for figures
-    if min_ip
-        roi_dir = strcat('AB_p-tau_ROI_',num2str(cube_side),'_minIP');
-    else
-        roi_dir = strcat('AB_p-tau_ROI_',num2str(cube_side));
-    end
+    roi_dir = strcat('AB_p-tau_ROI_',num2str(cube_side));
     heatmap_dir = fullfile(mpath,'heatmaps',sub,roi_dir);
     if ~isfolder(heatmap_dir)
         mkdir(heatmap_dir);
     end
 
     %%% Plot heatmaps at each depth
-    plot_save_heatmap([], heatmap_vf, flip_cbar, [vf_min, vf_max],...
-        masks,'Volume Fraction','(a.u.)',...
-        heatmap_dir,'rescaled_heatmap_vf')
-    plot_save_heatmap([], heatmap_ld, flip_cbar, [ld_min, ld_max],...
-        masks,'Length Density','Length (\mu) / Volume (\mu^3)',...
-        heatmap_dir,'rescaled_heatmap_ld')
-    plot_save_heatmap([], heatmap_bd, flip_cbar, [bd_min, bd_max],...
-        masks,'Branch Density','Branches / Volume (\mu^3)',...
-        heatmap_dir,'rescaled_heatmap_bd')
+%     plot_save_heatmap([], heatmap_vf, flip_cbar, [vf_min, vf_max],...
+%         masks,'Volume Fraction','(a.u.)',...
+%         heatmap_dir,'rescaled_heatmap_vf')
+%     plot_save_heatmap([], heatmap_ld, flip_cbar, [ld_min, ld_max],...
+%         masks,'Length Density','Length (\mu) / Volume (\mu^3)',...
+%         heatmap_dir,'rescaled_heatmap_ld')
+%     plot_save_heatmap([], heatmap_bd, flip_cbar, [bd_min, bd_max],...
+%         masks,'Branch Density','Branches / Volume (\mu^3)',...
+%         heatmap_dir,'rescaled_heatmap_bd')
     plot_save_heatmap([], heatmap_tr, flip_cbar, [tr_min, tr_max],...
         masks,'Tortuosity','(a.u.)',...
         heatmap_dir,'rescaled_heatmap_tr')
-    plot_save_heatmap([], heatmap_dm, flip_cbar, [dm_min, dm_max],...
-        masks,'Diameter','(\mum)',...
-        heatmap_dir,'rescaled_heatmap_dm')
+%     plot_save_heatmap([], heatmap_dm, flip_cbar, [dm_min, dm_max],...
+%         masks,'Diameter','(\mum)',...
+%         heatmap_dir,'rescaled_heatmap_dm')
 end
 
 %% Export tissue mask for each heatmap
@@ -536,11 +496,7 @@ for ii = 1:length(subid)
     masks = im2uint8(masks);
 
     %%% Output filepath for figures
-    if min_ip
-        roi_dir = strcat('AB_p-tau_ROI_',num2str(cube_side),'_minIP');
-    else
-        roi_dir = strcat('AB_p-tau_ROI_',num2str(cube_side));
-    end
+    roi_dir = strcat('AB_p-tau_ROI_',num2str(cube_side));
     heatmap_dir = fullfile(mpath,'heatmaps',sub,roi_dir);
     if ~isfolder(heatmap_dir)
         mkdir(heatmap_dir);
@@ -654,6 +610,7 @@ for d = 1:Ndepths
     end
     % Save figure as PNG
     fout = fullfile(dpath, fout);
+    pause(0.1)
     saveas(gca, fout,'png');
     close;
 end

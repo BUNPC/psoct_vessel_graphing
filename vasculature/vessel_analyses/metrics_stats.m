@@ -30,6 +30,9 @@ function [pstats] = metrics_stats(metrics, regions, params,...
 %           or kurskal-wallis test for each parameter from each region.
 %               p-value: stats.[region].[parameter].p
 %
+% TODO:
+%   - change kstest2 to the LME model
+
 %% Initialize workspace
 % Struct for storing statistical results
 pstats = struct();
@@ -37,134 +40,124 @@ pstats = struct();
 %% Iterate over tissue regions
 for ii = 1:length(regions)
     %%% Iterate over parameters
-    for j = 1:length(params)
-        %% Skip tortuosity for the ratio metrics
-        if strcmp(params{j},'tortuosity') && contains(regions{ii},'sulci_')
-            continue
-        else    
-            %% Concatenate groups into matrix for pair-wise comparison
-            % Load in the arrays from each group (ad, cte, nc)
-            ad = metrics.(regions{ii}).(params{j}).ad;
-            cte = metrics.(regions{ii}).(params{j}).cte;
-            nc = metrics.(regions{ii}).(params{j}).nc;        
-            
-            %%% pair-wise comparisons
-            p = zeros(2,1);
-            % Use kolmogorov-smirnov test for tortuosity distributions
-            if strcmp(params{j},'tortuosity')
-                [~,p(1)] = kstest2(ad, nc,'Alpha',alpha,'Tail','smaller');
-                [~,p(2)] = kstest2(cte, nc,'Alpha',alpha,'Tail','smaller');
-            % Use Wilcoxon rank sum test for all others
+    for j = 1:length(params) 
+        %% Concatenate groups into matrix for pair-wise comparison
+        % Load in the arrays from each group (ad, cte, nc)
+        ad = metrics.(regions{ii}).(params{j}).ad;
+        cte = metrics.(regions{ii}).(params{j}).cte;
+        nc = metrics.(regions{ii}).(params{j}).nc;
+        
+        %%% multiple comparisons (kruskal-wallis)
+        p = zeros(2,1);
+        % Create labels for each vector of [experimental; control]
+        [nc_group{1:size(nc)}] = deal('nc');
+        [ad_group{1:size(ad)}] = deal('ad');
+        [cte_group{1:size(cte)}] = deal('cte');
+        group = [ad_group, cte_group, nc_group]';
+        % Concatenate the experimental & control into vector
+        ad_cte_nc = [ad; cte; nc];
+        % Call the Kruskal Wallis Test
+        [~,~,stats] = kruskalwallis(ad_cte_nc, group);
+        % Multiple Comparisons w/ Dunnett correction
+        [results,~,~,~] = multcompare(stats,...
+            'ControlGroup',3,...
+            'CriticalValueType','dunnett');
+        % Extract the p-values for each comparison
+        p(1) = results(1,6);
+        p(2) = results(2,6);
+
+        
+        %%% experimental/healthy comparisons for statistic
+        ad_mean_tf = mean(ad) < mean(nc);
+        ad_med_tf = median(ad) < median(nc);
+        cte_mean_tf = mean(cte) < mean(nc);
+        cte_med_tf = median(cte) < median(nc);
+
+        %%% print region/parameter/inequal. for significance/trend
+        % AD Significance
+        if p(1) < alpha
+            % AD Mean
+            if ad_mean_tf == 1
+                fprintf('SIG: mean(ad) < mean(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
             else
-                % Create labels for each vector of [experimental; control]
-                [nc_group{1:size(nc)}] = deal('nc');
-                [ad_group{1:size(ad)}] = deal('ad');
-                [cte_group{1:size(cte)}] = deal('cte');
-                group = [ad_group, cte_group, nc_group]';
-                % Concatenate the experimental & control into vector
-                ad_cte_nc = [ad; cte; nc];
-                % Call the Kruskal Wallis Test
-                [~,~,stats] = kruskalwallis(ad_cte_nc, group);
-                % Multiple Comparisons w/ Dunnett correction
-                [results,~,~,~] = multcompare(stats,...
-                    'ControlGroup',3,...
-                    'CriticalValueType','dunnett');
-                % Extract the p-values for each comparison
-                p(1) = results(1,6);
-                p(2) = results(2,6);
+                fprintf('SIG: mean(ad) > mean(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
             end
-            
-            %%% experimental/healthy comparisons for statistic
-            ad_mean_tf = mean(ad) < mean(nc);
-            ad_med_tf = median(ad) < median(nc);
-            cte_mean_tf = mean(cte) < mean(nc);
-            cte_med_tf = median(cte) < median(nc);
-
-            %%% print region/parameter/inequal. for significance/trend
-            % AD Significance
-            if p(1) < alpha
-                % AD Mean
-                if ad_mean_tf == 1
-                    fprintf('SIG: mean(ad) < mean(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                else
-                    fprintf('SIG: mean(ad) > mean(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                end
-                % AD Median
-                if ad_med_tf == 1
-                    fprintf('SIG: median(ad) < median(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                else
-                    fprintf('SIG: median(ad) > median(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                end
+            % AD Median
+            if ad_med_tf == 1
+                fprintf('SIG: median(ad) < median(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            else
+                fprintf('SIG: median(ad) > median(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
             end
-            % AD Trend
-            if (alpha < p(1)) && (p(1) < trend)
-                % AD Mean
-                if ad_mean_tf == 1
-                    fprintf('TREND: mean(ad) < mean(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                else
-                    fprintf('TREND: mean(ad) > mean(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                end
-                % AD Median
-                if ad_med_tf == 1
-                    fprintf('TREND: median(ad) < median(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                elseif ad_med_tf == 0
-                    fprintf('TREND: median(ad) > median(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                end
-            end
-            % CTE Significance
-            if p(2) < alpha
-                % AD Mean
-                if cte_mean_tf == 1
-                    fprintf('SIG: mean(cte) < mean(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                else
-                    fprintf('SIG: mean(cte) > mean(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                end
-                % AD Median
-                if ad_med_tf == 1
-                    fprintf('SIG: median(cte) < median(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                else
-                    fprintf('SIG: median(cte) > median(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                end
-            end
-            % CTE Trend
-            if (alpha < p(2)) && (p(2) < trend)
-                % CTE Mean
-                if cte_mean_tf == 1
-                    fprintf('TREND: mean(cte) < mean(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                else
-                    fprintf('TREND: mean(cte) > mean(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                end
-                % CTE Median
-                if cte_med_tf == 1
-                    fprintf('TREND: median(cte) < median(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                else
-                    fprintf('TREND: median(cte) > median(nc) for %s, %s\n',...
-                            regions{ii}, params{j})
-                end
-            end
-
-
-            % Save the p-value for each comparison
-            pstats.(regions{ii}).(params{j}).p.ad_nc = p(1);
-            pstats.(regions{ii}).(params{j}).p.cte_nc = p(2);
-            close all;
         end
+        % AD Trend
+        if (alpha < p(1)) && (p(1) < trend)
+            % AD Mean
+            if ad_mean_tf == 1
+                fprintf('TREND: mean(ad) < mean(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            else
+                fprintf('TREND: mean(ad) > mean(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            end
+            % AD Median
+            if ad_med_tf == 1
+                fprintf('TREND: median(ad) < median(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            elseif ad_med_tf == 0
+                fprintf('TREND: median(ad) > median(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            end
+        end
+        % CTE Significance
+        if p(2) < alpha
+            % AD Mean
+            if cte_mean_tf == 1
+                fprintf('SIG: mean(cte) < mean(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            else
+                fprintf('SIG: mean(cte) > mean(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            end
+            % AD Median
+            if ad_med_tf == 1
+                fprintf('SIG: median(cte) < median(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            else
+                fprintf('SIG: median(cte) > median(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            end
+        end
+        % CTE Trend
+        if (alpha < p(2)) && (p(2) < trend)
+            % CTE Mean
+            if cte_mean_tf == 1
+                fprintf('TREND: mean(cte) < mean(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            else
+                fprintf('TREND: mean(cte) > mean(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            end
+            % CTE Median
+            if cte_med_tf == 1
+                fprintf('TREND: median(cte) < median(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            else
+                fprintf('TREND: median(cte) > median(nc) for %s, %s\n',...
+                        regions{ii}, params{j})
+            end
+        end
+
+
+        % Save the p-value for each comparison
+        pstats.(regions{ii}).(params{j}).p.ad_nc = p(1);
+        pstats.(regions{ii}).(params{j}).p.cte_nc = p(2);
+        close all;
     end
+
     %% Generate a table of p-values for the region
     % Create cell array for the pairwise comparisons
     Pairs = {'AD vs. HC'; 'CTE vs. HC'};
@@ -173,24 +166,15 @@ for ii = 1:length(regions)
     BranchDensity = cell2mat(struct2cell(pstats.(regions{ii}).(params{2}).p));
     VolumeFraction = cell2mat(struct2cell(pstats.(regions{ii}).(params{3}).p));
     TortOutliers = cell2mat(struct2cell(pstats.(regions{ii}).(params{4}).p));
+    Tort = cell2mat(struct2cell(pstats.(regions{ii}).(params{5}).p));
     Diameter = cell2mat(struct2cell(pstats.(regions{ii}).(params{6}).p));
-    % Skip tortuosity if measuring the ratios
-    if contains(regions{ii},'sulci_')
-        % Create the p-value table
-        ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
-                            VolumeFraction, TortOutliers, Diameter);
-    else
-        % Create tortuosity array
-        Tortuosity = cell2mat(struct2cell(pstats.(regions{ii}).(params{5}).p));
-        % Create the p-value table
-        ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
-                      VolumeFraction, TortOutliers, Diameter, Tortuosity);
-    end    
+    % Create the p-value table
+    ptable = make_ptable(Pairs, LengthDensity, BranchDensity,...
+                VolumeFraction, TortOutliers,Tort,Diameter);
     
     %%% Save table to CSV on a specific sheet
     % Create output filename
     table_out = fullfile(dout, fname);
     writetable(ptable, table_out, 'Sheet',regions{ii});
 end
-
 end

@@ -17,18 +17,10 @@ LengthDensity = varargin{2};
 BranchDensity = varargin{3};
 VolumeFraction = varargin{4};
 TortOutliers = varargin{5};
-Diameter = varargin{6};
+Tort = varargin{6};
+Diameter = varargin{7};
 
-% Inlcude tortuosity if present
-if length(varargin) == 7
-    Tortuosity = varargin{7};
-    % Create p-value table with tortuosity
-    ptable = table(Pairs, LengthDensity, BranchDensity, VolumeFraction,...
-                    TortOutliers, Diameter,Tortuosity);
-else
-    % Create p-value table without tortuosity
-    ptable = table(Pairs, LengthDensity, BranchDensity, VolumeFraction,...
-                    TortOutliers, Diameter);
-end
-
+% Create p-value table without tortuosity
+ptable = table(Pairs, LengthDensity, BranchDensity, VolumeFraction,...
+            TortOutliers, Tort, Diameter);
 end

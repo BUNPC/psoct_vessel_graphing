@@ -121,7 +121,7 @@ for ii = 1:length(subid)
 
     % Retrieve the vascular heatmaps from the "hm" struct
     vasc = hm.(sub);
-    mask_vasc = logical(vasc.mask);
+    mask_gm = logical(vasc.mask_gm);
     hm_vf = vasc.vf;
     hm_bd = vasc.bd;
     hm_ld = vasc.ld;
@@ -151,7 +151,7 @@ for ii = 1:length(subid)
         % Track the pair index in the nested for loops
         idx = 1;
         % Combine the pathology / vascular masks
-        mask = mask_vasc(:,:,j) .* path.(pidx{j}).mask;
+        mask = mask_gm(:,:,j) .* path.(pidx{j}).mask;
         % Retrieve the respective pathology heatmap matrix
         hm_path = path.(pidx{j}).hm;
         
@@ -273,7 +273,62 @@ for ii = 1:length(subid)
     end
 end
 
+%% Create single table of all subjects / pathologies / metrics
+% Count number of subjects, metrics, and pathologies
+nsub = length(fields(spear));
+nmet = length(fields(spear.AD_10382.ab));
+npath = length(pidx);
+% Initialize matrix to store the p-values and rho values
+% rho_p_vf = zeros((nsub .* npath),1);
+% rho_p_ld = zeros((nsub .* npath),1);
+% rho_p_bd = zeros((nsub .* npath),1);
+% rho_p_tr = zeros((nsub .* npath),1);
+% rho_p_dm = zeros((nsub .* npath),1);
+rho_p = zeros((nsub .* npath),nmet);
 
+% Index to track row
+idx = 1;
+
+% Iterate over each subject
+for ii = 1:length(subid)
+    % Retrieve subject 
+    sub = subid{ii};
+    % Iterate over the stain
+    for j=1:2
+        % Retrieve the rho and p-value for each metric
+        vf = spear.(subid{ii}).(pidx{j}).vf;
+        ld = spear.(subid{ii}).(pidx{j}).ld;
+        bd = spear.(subid{ii}).(pidx{j}).bd;
+        tr = spear.(subid{ii}).(pidx{j}).tr;
+        dm = spear.(subid{ii}).(pidx{j}).dm;
+        % Add to matrix
+        rho_p(idx,:) = [vf.rho, ld.rho, bd.rho, tr.rho, dm.rho];
+        rho_p(idx+1,:) = [vf.p, ld.p, bd.p, tr.p, dm.p];
+        % Iterate row index
+        idx = idx + 2;
+    end
+end
+
+%%% Create table
+% Strings for the pathology
+path_cell = repmat({'A-beta';'A-beta';'p-tau';'p-tau'},[nsub,1]);
+% Strings for rho or p-value
+rho_p_cell = repmat({'rho';'p-value'},[nsub*npath,1]);
+% Strings for the group (AD, CTE, HC)
+ad_cell = repmat({'AD'},[5.*4,1]);
+cte_cell = repmat({'CTE'},[4.*4,1]);
+hc_cell = repmat({'HC'},[3.*4,1]);
+sub_cell = vertcat(ad_cell, cte_cell, hc_cell);
+% Combine into table
+vf = rho_p(:,1);
+ld = rho_p(:,2);
+bd = rho_p(:,3);
+tr = rho_p(:,4);
+dm = rho_p(:,5);
+combined_table = table(sub_cell, path_cell, rho_p_cell,vf,ld,bd,tr,dm);
+% Write to spreadsheet
+table_out = fullfile(mpath, 'p_value_spearmans.xls');
+writetable(combined_table, table_out, 'Sheet', 'combined');
 
 %% Fig. 4: Scatter plot of pathology vs. vasculature
 % The struct "pairs" contains a matrix of [x,y] pairs for each subject,
@@ -484,9 +539,9 @@ for d = 1:Ndepths
 end
 end
 
-%% Plot the linear regression of the pathology vs. vasculature
+%% Scatterplot of the pathology vs. vasculature
 function lin_reg_plot(pair,sub,tstr,xl,yl,dpath,fname)
-% LIN_REG_PLOT scatterplot of pathology vs. vasculature & linear reg.
+% LIN_REG_PLOT scatterplot of pathology vs. vasculature
 % INPUT
 %   pair (double matrix [x,2]): ROI pairs,
 %                               column 1 = vasculature
@@ -516,6 +571,7 @@ title(tstr)
 legend('hide')
 % Save the figure
 fout = fullfile(dpath,sub,fname);
+pause(0.1)
 saveas(gcf,fout,'png');
 close;
 

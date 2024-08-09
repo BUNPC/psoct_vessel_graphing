@@ -15,10 +15,10 @@
 #$ -l h_rt=240:00:00
 
 # Name of job
-#$ -N heatmaps
+#$ -N calc_mets
 
 # Combine output/error files into single file
 #$ -j y
 
 module load matlab/2022b
-matlab -nodisplay -r "generate_heatmap_subgraphs; exit"
+matlab -nodisplay -r "calc_metrics_main; exit"

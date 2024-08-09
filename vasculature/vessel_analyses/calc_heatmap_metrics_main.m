@@ -20,6 +20,10 @@ end
 topdir = mydir(1:idcs(end-1));
 addpath(genpath(topdir));
 
+%% Set # threads = # cores for job
+NSLOTS = str2num(getenv('NSLOTS'));
+maxNumCompThreads(NSLOTS);
+
 %% Define directory paths
 % Path to top-level directory
 dpath = '/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/';
