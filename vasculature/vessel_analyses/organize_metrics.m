@@ -30,15 +30,15 @@ nc = [];
 
 %% Concatenate the AD, CTE, and NC
 
-% The diameter is a column vector and must be transposed
-if strcmp(param,'diameter') || strcmp(param,'tortuosity')
+% The tortuosity is a column vector and must be transposed
+if strcmp(param,'tortuosity') || strcmp(param,'diameter')
     for ii=1:length(subid)
         if ismember(ii, ad_idcs)
-            ad = [ad; mean(metrics.(subid{ii}).(region).(param))];
+            ad = [ad; median(metrics.(subid{ii}).(region).(param))];
         elseif ismember(ii, cte_idcs)
-            cte = [cte; mean(metrics.(subid{ii}).(region).(param))];
+            cte = [cte; median(metrics.(subid{ii}).(region).(param))];
         else
-            nc = [nc; mean(metrics.(subid{ii}).(region).(param))];
+            nc = [nc; median(metrics.(subid{ii}).(region).(param))];
         end
     end
 else

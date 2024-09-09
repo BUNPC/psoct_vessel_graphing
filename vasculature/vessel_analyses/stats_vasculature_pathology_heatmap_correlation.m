@@ -1,7 +1,7 @@
 %% Measure correlation b/w pathology and vascular heatmap matrices
 % Overview:
 %   - overlay the vascular heatmap with the registered pathology
-%   - iterate over the vascular heatmap ROIs
+%   - iterate over the vascular heatmap ROIs (WM and GM separately)
 %       - measure the average pathology value for each vascular ROI
 %       - add [x,y] pair to matrix
 %   - Statistics:
@@ -36,7 +36,10 @@ path_reg = ['/projectnb/npbssmic/ns/Ann_Mckee_samples_55T/metrics/' ...
     'heatmaps_pathology_registration/'];
 
 %%% Vasculature heatmap matrix filename
-hm_fname = 'heatmap_ab_ptau_984.mat';
+% ROI cube side (microns)
+cube_side = 1000;
+% Load according to size of ROI cube
+hm_fname = append('heatmap_ab_ptau_',num2str(cube_side),'.mat');
 % Load the vascular heatmap matrix
 hm = load(fullfile(mpath,hm_fname));
 hm = hm.heatmap;
@@ -65,7 +68,7 @@ subs_mat = {'AD_10382','AD_21354','AD_21424','CTE_7019','CTE_7126',...
 
 %%% Subvolume parameters
 % Isotropic cube length (microns)
-cube_side = 984;
+cube_side = 1000;
 % Size of each OCT voxel (microns)
 vox = [12, 12, 15];
 % Whether to plot non-normalized heatmaps for each depth
@@ -80,8 +83,11 @@ cube_vol_vox = n_x * n_y * n_z;
 % Calculate the size of each cube (in cubic microns)
 cube_vol_um = cube_vol_vox * vox(1) * vox(2) * vox(3);
 
-%%% Index for struct
+%%% Index for structs
+% Pathology
 pidx = {'ab','pt'};
+% masks (gray matter and white matter)
+midx = {'gm','wm'};
 
 %%% Struct for storing pairs of values (heatmap, pathology)
 pairs = struct();
@@ -119,9 +125,11 @@ for ii = 1:length(subid)
         pt_mask = logical(pt_mask.path_mask_registered);
     end
 
-    % Retrieve the vascular heatmaps from the "hm" struct
+    % Retrieve the vascular heatmaps/masks from the "hm" struct
     vasc = hm.(sub);
-    mask_gm = logical(vasc.mask_gm);
+    masks = struct();
+    masks.gm = logical(vasc.mask_gm);
+    masks.wm = logical(vasc.mask_wm);
     hm_vf = vasc.vf;
     hm_bd = vasc.bd;
     hm_ld = vasc.ld;
@@ -137,71 +145,77 @@ for ii = 1:length(subid)
 
     
     %% Iterate over the pathology stains
-    % Iteration 1 = A-beta, Iteartion 2 = p-tau
-    for j=1:2        
-        % Initialize the matrices to store the [x,y] pairs for each metric
-        n_pair_x = size(1:n_x:size(hm_vf,1),2);
-        n_pair_y = size(1:n_y:size(hm_vf,2),2);
-        n_pairs = n_pair_x .* n_pair_y;
-        vf_pairs = zeros(n_pairs,2);
-        ld_pairs = zeros(n_pairs,2);
-        bd_pairs = zeros(n_pairs,2);
-        tr_pairs = zeros(n_pairs,2);
-        dm_pairs = zeros(n_pairs,2);
-        % Track the pair index in the nested for loops
-        idx = 1;
-        % Combine the pathology / vascular masks
-        mask = mask_gm(:,:,j) .* path.(pidx{j}).mask;
-        % Retrieve the respective pathology heatmap matrix
-        hm_path = path.(pidx{j}).hm;
-        
-        %% Iterate over ROIs
-        % Iterate over rows
-        for x = 1:n_x:size(hm_vf,1)
-            % Iterate over columns
-            for y = 1:n_y:size(hm_vf,2)
-                %% Set the x/y bounds 
-                % Initialize end indices for each axis
-                xf = x + n_x - 1;
-                yf = y + n_y - 1;
-                % Take minimum of matrix dimensions and end indices
-                xf = min(xf, size(hm_vf,1));
-                yf = min(yf, size(hm_vf,2));
-                
-                %% Determine if combined mask contain tissue
-                if all(mask((x:xf),(y:yf)))
-                    % Take the minimum vascular heatmap value. This should
-                    % be uniform across the ROI, so minimum is arbitrary
-                    vf_tmp = min(hm_vf((x:xf), (y:yf),j),[],"all");
-                    bd_tmp = min(hm_bd((x:xf), (y:yf),j),[],"all");
-                    ld_tmp = min(hm_ld((x:xf), (y:yf),j),[],"all");
-                    tr_tmp = min(hm_tr((x:xf), (y:yf),j),[],"all");
-                    dm_tmp = min(hm_dm((x:xf), (y:yf),j),[],"all");
+    % Iteration 1 = A-beta, Iteration 2 = p-tau
+    for j=1:2
+        %%% Iterate over the white matter and gray matter
+        % 1 = GM, 2 = WM
+        for k=1:2
+            % Initialize matrices for [x,y] pairs for each metric
+            n_pair_x = size(1:n_x:size(hm_vf,1),2);
+            n_pair_y = size(1:n_y:size(hm_vf,2),2);
+            n_pairs = n_pair_x .* n_pair_y;
+            vf_pairs = zeros(n_pairs,2);
+            ld_pairs = zeros(n_pairs,2);
+            bd_pairs = zeros(n_pairs,2);
+            tr_pairs = zeros(n_pairs,2);
+            dm_pairs = zeros(n_pairs,2);
+            % Track the pair index in the nested for loops
+            idx = 1;
+            % Combine the pathology / vascular masks
+            mask = masks.(midx{k});
+            mask = mask(:,:,j) .* path.(pidx{j}).mask;
+            % Retrieve the respective pathology heatmap matrix
+            hm_path = path.(pidx{j}).hm;
+            
+            %% Iterate over ROIs
+            % Iterate over rows
+            for x = 1:n_x:size(hm_vf,1)
+                % Iterate over columns
+                for y = 1:n_y:size(hm_vf,2)
+                    %% Set the x/y bounds 
+                    % Initialize end indices for each axis
+                    xf = x + n_x - 1;
+                    yf = y + n_y - 1;
+                    % Take minimum of matrix dimensions and end indices
+                    xf = min(xf, size(hm_vf,1));
+                    yf = min(yf, size(hm_vf,2));
                     
-                    % Take average pathology value within ROI
-                    path_tmp = mean(hm_path((x:xf), (y:yf)),'all');
-
-                    % Create x-y pair for each metric
-                    vf_pairs(idx,:) = [vf_tmp, path_tmp];
-                    bd_pairs(idx,:) = [bd_tmp, path_tmp];
-                    ld_pairs(idx,:) = [ld_tmp, path_tmp];
-                    tr_pairs(idx,:) = [tr_tmp, path_tmp];
-                    dm_pairs(idx,:) = [dm_tmp, path_tmp];
-                    
-                    % Iterate counter index
-                    idx = idx + 1;
-                else
-                    continue
+                    %% Determine if combined mask contain tissue
+                    if any(mask((x:xf),(y:yf)))
+                        % Take the minimum vascular heatmap value. This should
+                        % be uniform across the ROI, so minimum is arbitrary
+                        vf_tmp = min(hm_vf((x:xf), (y:yf),j),[],"all");
+                        bd_tmp = min(hm_bd((x:xf), (y:yf),j),[],"all");
+                        ld_tmp = min(hm_ld((x:xf), (y:yf),j),[],"all");
+                        tr_tmp = min(hm_tr((x:xf), (y:yf),j),[],"all");
+                        dm_tmp = min(hm_dm((x:xf), (y:yf),j),[],"all");
+                        
+                        % Take average pathology value within ROI
+                        path_tmp = mean(hm_path((x:xf), (y:yf)),'all');
+    
+                        % Create x-y pair for each metric
+                        vf_pairs(idx,:) = [vf_tmp, path_tmp];
+                        bd_pairs(idx,:) = [bd_tmp, path_tmp];
+                        ld_pairs(idx,:) = [ld_tmp, path_tmp];
+                        tr_pairs(idx,:) = [tr_tmp, path_tmp];
+                        dm_pairs(idx,:) = [dm_tmp, path_tmp];
+                        
+                        % Iterate counter index
+                        idx = idx + 1;
+                    else
+                        continue
+                    end
                 end
             end
+            % Retain pairs up to the index
+            pairs.(sub).(midx{k}).(pidx{j}).vf = vf_pairs(1:idx,:);
+            pairs.(sub).(midx{k}).(pidx{j}).bd = bd_pairs(1:idx,:);
+            pairs.(sub).(midx{k}).(pidx{j}).ld = ld_pairs(1:idx,:);
+            pairs.(sub).(midx{k}).(pidx{j}).tr = tr_pairs(1:idx,:);
+            pairs.(sub).(midx{k}).(pidx{j}).dm = dm_pairs(1:idx,:);
         end
-        % Retain pairs up to the index
-        pairs.(sub).(pidx{j}).vf = vf_pairs(1:idx,:);
-        pairs.(sub).(pidx{j}).bd = bd_pairs(1:idx,:);
-        pairs.(sub).(pidx{j}).ld = ld_pairs(1:idx,:);
-        pairs.(sub).(pidx{j}).tr = tr_pairs(1:idx,:);
-        pairs.(sub).(pidx{j}).dm = dm_pairs(1:idx,:);
     end
+    sprintf('Finished subject %s\n',sub)
 end
 
 %% Statistics (spearman's rho correlations)
@@ -217,95 +231,104 @@ for ii = 1:length(subid)
     sub = subid{ii};
     % Iterate over the stain
     for j=1:2
-        % Load the pairs
-        vf = pairs.(sub).(pidx{j}).vf;
-        bd = pairs.(sub).(pidx{j}).bd;
-        ld = pairs.(sub).(pidx{j}).ld;
-        tr = pairs.(sub).(pidx{j}).tr;
-        dm = pairs.(sub).(pidx{j}).dm;
-        % Call Spearman's
-        [vf_rho, vf_p] = corr(vf(:,1),vf(:,2),'type','Spearman');
-        [bd_rho, bd_p] = corr(bd(:,1),bd(:,2),'type','Spearman');
-        [ld_rho, ld_p] = corr(ld(:,1),ld(:,2),'type','Spearman');
-        [tr_rho, tr_p] = corr(tr(:,1),tr(:,2),'type','Spearman');
-        [dm_rho, dm_p] = corr(dm(:,1),dm(:,2),'type','Spearman');
-
-        %%% Assign to struct
-        % Volume fraction
-        spear.(sub).(pidx{j}).vf.rho = vf_rho;
-        spear.(sub).(pidx{j}).vf.p = vf_p;
-        % Length density
-        spear.(sub).(pidx{j}).ld.rho = ld_rho;
-        spear.(sub).(pidx{j}).ld.p = ld_p;
-        % Branch density
-        spear.(sub).(pidx{j}).bd.rho = bd_rho;
-        spear.(sub).(pidx{j}).bd.p = bd_p;
-        % Tortuosity
-        spear.(sub).(pidx{j}).tr.rho = tr_rho;
-        spear.(sub).(pidx{j}).tr.p = tr_p;
-        % Diameter
-        spear.(sub).(pidx{j}).dm.rho = dm_rho;
-        spear.(sub).(pidx{j}).dm.p = dm_p;
-
-
-        % Print to console if any of the p values are below 0.05
-        if vf_p < 0.05
-            sprintf('SIG: subject %s, path %s, met VF, p=%f, rho=%f',sub,pidx{j},vf_p,vf_rho)
-        elseif ld_p < 0.05
-            sprintf('SIG: subject %s, path %s, met LD, p=%f, rho=%f',sub,pidx{j},ld_p,ld_rho)
-        elseif bd_p < 0.05
-            sprintf('SIG: subject %s, path %s, met BD, p=%f, rho=%f',sub,pidx{j},bd_p,ld_rho)
+        % Iterate over GM, WM
+        for k=1:2
+            % Load the pairs
+            vf = pairs.(sub).(midx{k}).(pidx{j}).vf;
+            bd = pairs.(sub).(midx{k}).(pidx{j}).bd;
+            ld = pairs.(sub).(midx{k}).(pidx{j}).ld;
+            tr = pairs.(sub).(midx{k}).(pidx{j}).tr;
+            dm = pairs.(sub).(midx{k}).(pidx{j}).dm;
+            % Call Spearman's
+            [vf_rho, vf_p] = corr(vf(:,1),vf(:,2),'type','Spearman');
+            [bd_rho, bd_p] = corr(bd(:,1),bd(:,2),'type','Spearman');
+            [ld_rho, ld_p] = corr(ld(:,1),ld(:,2),'type','Spearman');
+            [tr_rho, tr_p] = corr(tr(:,1),tr(:,2),'type','Spearman');
+            [dm_rho, dm_p] = corr(dm(:,1),dm(:,2),'type','Spearman');
+    
+            %%% Assign to struct
+            % Volume fraction
+            spear.(sub).(midx{k}).(pidx{j}).vf.rho = vf_rho;
+            spear.(sub).(midx{k}).(pidx{j}).vf.p = vf_p;
+            % Length density
+            spear.(sub).(midx{k}).(pidx{j}).ld.rho = ld_rho;
+            spear.(sub).(midx{k}).(pidx{j}).ld.p = ld_p;
+            % Branch density
+            spear.(sub).(midx{k}).(pidx{j}).bd.rho = bd_rho;
+            spear.(sub).(midx{k}).(pidx{j}).bd.p = bd_p;
+            % Tortuosity
+            spear.(sub).(midx{k}).(pidx{j}).tr.rho = tr_rho;
+            spear.(sub).(midx{k}).(pidx{j}).tr.p = tr_p;
+            % Diameter
+            spear.(sub).(midx{k}).(pidx{j}).dm.rho = dm_rho;
+            spear.(sub).(midx{k}).(pidx{j}).dm.p = dm_p;
+    
+    
+            % Print to console if any of the p values are below 0.05
+            if vf_p < 0.05
+                sprintf('SIG: subject %s, path %s, met VF, p=%f, rho=%f',...
+                    sub,pidx{j},vf_p,vf_rho)
+            elseif ld_p < 0.05
+                sprintf('SIG: subject %s, path %s, met LD, p=%f, rho=%f',...
+                    sub,pidx{j},ld_p,ld_rho)
+            elseif bd_p < 0.05
+                sprintf('SIG: subject %s, path %s, met BD, p=%f, rho=%f',...
+                    sub,pidx{j},bd_p,ld_rho)
+            end
+            %%% Add spearman's to table
+            VolumeFraction = [vf_rho; vf_p];
+            LengthDensity = [ld_rho; ld_p];
+            BranchDensity = [bd_rho; bd_p];
+            Tortuosity = [tr_rho; tr_p];
+            Diameter = [dm_rho; dm_p];
+            ptable = make_heatmap_ptable(Stat,VolumeFraction,LengthDensity,...
+                                        BranchDensity,Tortuosity,Diameter);
+            %%% Save to table
+            % Name of sheet
+            sheet = append(sub,'_',midx{k},'_',pidx{j});
+            % Create output filename
+            table_out = fullfile(mpath, 'p_value_spearmans.xls');
+            writetable(ptable, table_out, 'Sheet',sheet);
         end
-        %%% Add spearman's to table
-        VolumeFraction = [vf_rho; vf_p];
-        LengthDensity = [ld_rho; ld_p];
-        BranchDensity = [bd_rho; bd_p];
-        Tortuosity = [tr_rho; tr_p];
-        Diameter = [dm_rho; dm_p];
-        ptable = make_heatmap_ptable(Stat,VolumeFraction,LengthDensity,...
-                                    BranchDensity,Tortuosity,Diameter);
-        %%% Save to table
-        % Name of sheet
-        sheet = append(sub,'_',pidx{j});
-        % Create output filename
-        table_out = fullfile(mpath, 'p_value_spearmans.xls');
-        writetable(ptable, table_out, 'Sheet',sheet);
     end
 end
 
 %% Create single table of all subjects / pathologies / metrics
 % Count number of subjects, metrics, and pathologies
 nsub = length(fields(spear));
-nmet = length(fields(spear.AD_10382.ab));
+nmet = length(fields(spear.AD_10382.gm.ab));
 npath = length(pidx);
 % Initialize matrix to store the p-values and rho values
-% rho_p_vf = zeros((nsub .* npath),1);
-% rho_p_ld = zeros((nsub .* npath),1);
-% rho_p_bd = zeros((nsub .* npath),1);
-% rho_p_tr = zeros((nsub .* npath),1);
-% rho_p_dm = zeros((nsub .* npath),1);
-rho_p = zeros((nsub .* npath),nmet);
+gm_rho_p = zeros((nsub .* npath),nmet);
+wm_rho_p = zeros((nsub .* npath),nmet);
 
-% Index to track row
-idx = 1;
-
-% Iterate over each subject
-for ii = 1:length(subid)
-    % Retrieve subject 
-    sub = subid{ii};
-    % Iterate over the stain
-    for j=1:2
-        % Retrieve the rho and p-value for each metric
-        vf = spear.(subid{ii}).(pidx{j}).vf;
-        ld = spear.(subid{ii}).(pidx{j}).ld;
-        bd = spear.(subid{ii}).(pidx{j}).bd;
-        tr = spear.(subid{ii}).(pidx{j}).tr;
-        dm = spear.(subid{ii}).(pidx{j}).dm;
-        % Add to matrix
-        rho_p(idx,:) = [vf.rho, ld.rho, bd.rho, tr.rho, dm.rho];
-        rho_p(idx+1,:) = [vf.p, ld.p, bd.p, tr.p, dm.p];
-        % Iterate row index
-        idx = idx + 2;
+% Iterate over GM, WM
+for k=1:2
+    % Index to track row
+    idx = 1;
+    % Iterate over each subject
+    for ii = 1:length(subid)
+        % Retrieve subject 
+        sub = subid{ii};
+        % Iterate over the stain
+        for j=1:2
+            % Retrieve the rho and p-value for each metric
+            vf = spear.(subid{ii}).(midx{k}).(pidx{j}).vf;
+            ld = spear.(subid{ii}).(midx{k}).(pidx{j}).ld;
+            bd = spear.(subid{ii}).(midx{k}).(pidx{j}).bd;
+            tr = spear.(subid{ii}).(midx{k}).(pidx{j}).tr;
+            dm = spear.(subid{ii}).(midx{k}).(pidx{j}).dm;
+            % Add to matrix
+            if strcmp(midx{k},'gm')
+                gm_rho_p(idx,:) = [vf.rho, ld.rho, bd.rho, tr.rho, dm.rho];
+                gm_rho_p(idx+1,:) = [vf.p, ld.p, bd.p, tr.p, dm.p];
+            else
+                wm_rho_p(idx,:) = [vf.rho, ld.rho, bd.rho, tr.rho, dm.rho];
+                wm_rho_p(idx+1,:) = [vf.p, ld.p, bd.p, tr.p, dm.p];
+            end
+            % Iterate row index
+            idx = idx + 2;
+        end
     end
 end
 
@@ -319,24 +342,30 @@ ad_cell = repmat({'AD'},[5.*4,1]);
 cte_cell = repmat({'CTE'},[4.*4,1]);
 hc_cell = repmat({'HC'},[3.*4,1]);
 sub_cell = vertcat(ad_cell, cte_cell, hc_cell);
-% Combine into table
-vf = rho_p(:,1);
-ld = rho_p(:,2);
-bd = rho_p(:,3);
-tr = rho_p(:,4);
-dm = rho_p(:,5);
-combined_table = table(sub_cell, path_cell, rho_p_cell,vf,ld,bd,tr,dm);
+% Combine GM rho and p-values into table
+vf = gm_rho_p(:,1);
+ld = gm_rho_p(:,2);
+bd = gm_rho_p(:,3);
+tr = gm_rho_p(:,4);
+dm = gm_rho_p(:,5);
+gm_table = table(sub_cell, path_cell, rho_p_cell,vf,ld,bd,tr,dm);
+% Combine WM rho and p-values into table
+vf = wm_rho_p(:,1);
+ld = wm_rho_p(:,2);
+bd = wm_rho_p(:,3);
+tr = wm_rho_p(:,4);
+dm = wm_rho_p(:,5);
+wm_table = table(sub_cell, path_cell, rho_p_cell,vf,ld,bd,tr,dm);
 % Write to spreadsheet
 table_out = fullfile(mpath, 'p_value_spearmans.xls');
-writetable(combined_table, table_out, 'Sheet', 'combined');
+writetable(gm_table, table_out, 'Sheet', 'gm_combined');
+writetable(wm_table, table_out, 'Sheet', 'wm_combined');
 
 %% Fig. 4: Scatter plot of pathology vs. vasculature
 % The struct "pairs" contains a matrix of [x,y] pairs for each subject,
 % pathology, and vascular metric (i.e. pairs.[sub].[ab/pt].[vf/bd/ld])
 % The first column is the vascular metrix (x-axis) within the ROI, and the
 % second column is the pathology (y-axis) within the same ROI.
-% TODO:
-% - make modular and iterate over subjects, pathologies, vascular metrics
 
 % Vascular Metrics
 vmets = {'vf','bd','ld','tr','dm'};
@@ -352,18 +381,21 @@ for ii = 1:length(subid)
     for j=1:length(pidx)
         % Iterate over vascular metrics
         for k=1:length(vmets)
-            % Extract the pair values
-            pair = pairs.(subid{ii}).(pidx{j}).(vmets{k});
-            % Set the x-axis label (vascular metrics)
-            xl = xlabels{k};
-            % Set the y-axis label (pathology)
-            yl = ylabels{j};
-            % Set title string
-            tstr = append(subid{ii},' ',pidx{j},' ',vmets{k});
-            % Set the filename
-            fname = append(subid{ii},'_',pidx{j},'_',vmets{k},'_scatter.png');
-            % Call plotting function
-            lin_reg_plot(pair,subid{ii},tstr,xl,yl,path_reg,fname)
+            % Iterate over gray matter and white matter masks
+            for m=1:2
+                % Extract the pair values
+                pair = pairs.(subid{ii}).(midx{m}).(pidx{j}).(vmets{k});
+                % Set the x-axis label (vascular metrics)
+                xl = xlabels{k};
+                % Set the y-axis label (pathology)
+                yl = ylabels{j};
+                % Set title string
+                tstr = append(subid{ii},' ',midx{m},' ',pidx{j},' ',vmets{k});
+                % Set the filename
+                fname = append(subid{ii},'_',midx{m},'_',pidx{j},'_',vmets{k},'_scatter.png');
+                % Call plotting function
+                lin_reg_plot(pair,subid{ii},tstr,xl,yl,path_reg,fname)
+            end
         end
     end
 end
@@ -534,6 +566,7 @@ for d = 1:Ndepths
     end
     % Save figure as PNG
     fout = fullfile(dpath, fout);
+    pause(0.1)
     saveas(gca, fout,'png');
     close;
 end

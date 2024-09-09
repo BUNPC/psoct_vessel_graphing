@@ -180,6 +180,7 @@ addParameter(p,'boxAlpha', 0.5, validPosFrc);
 addParameter(p,'vlnAlpha', 0.5, validPosFrc);
 addParameter(p,'showMean', true, validLogical);
 addParameter(p,'log',true,validLogical);
+addParameter(p,'jitter',false,validLogical);
 
 % Parse input
 parse(p,data,yCol,varargin{:});
@@ -221,6 +222,7 @@ boxAlpha = p.Results.boxAlpha;
 vlnAlpha = p.Results.vlnAlpha;
 showMean = p.Results.showMean;
 log = p.Results.log;
+jitter = p.Results.jitter;
 
 %% 2. Data preprocessing
 
@@ -397,7 +399,12 @@ for i = 1:nTLvl
                                      MarkerEdgeColor=pntEdgeC, ...
                                      MarkerFaceAlpha=pntAlpha);
             % Configure pntObj
-            pntObj(i,j).XJitterWidth= w;
+            % If jitter is false, then set to zero
+            if ~jitter
+                pntObj(i,j).XJitter = 'none';
+            else
+                pntObj(i,j).XJitterWidth= w;
+            end
             pntObj(i,j).SizeData = pntSize;
             if ~isempty(pntFillC), pntObj(i,j).MarkerFaceColor = pntFillC; end
         end
@@ -463,13 +470,40 @@ for i = 1:nTLvl
 
         % Show raw data points on top of other objects---------------------
         if showPnt == true && pntOnTop == true
-            pntObj(i,j) = swarmchart(xPos, y, MarkerFaceColor=cmap(j,:), ...
+            pntObj(i,j) = swarmchart(xPos, y, 40,...
+                                     MarkerFaceColor=cmap(j,:), ...
                                      MarkerEdgeColor=pntEdgeC, ...
                                      MarkerFaceAlpha=pntAlpha);
-            % Configure pntObj
-            pntObj(i,j).XJitterWidth= w;
+            %%% Configure swarm chart
+            % If jitter is false, then set to zero
+            if ~jitter
+                pntObj(i,j).XJitter = 'none';
+            else
+                pntObj(i,j).XJitterWidth= w;
+            end
             pntObj(i,j).SizeData = pntSize;
-            if ~isempty(pntFillC), pntObj(i,j).MarkerFaceColor = pntFillC; end
+            % Fill points
+            if ~isempty(pntFillC)
+                pntObj(i,j).MarkerFaceColor = pntFillC
+            end
+            
+            %%% Add horizontal line for mean of each x-axis grouping
+            if showMean
+                hold on;
+                % Find the unique x-axis offsets
+                x_unique = unique(xPos);
+                % Find y values corresponding to each x-axis offset
+                for ii=1:length(x_unique)
+                    % Take average
+                    y_mean = mean(y(xPos == x_unique(ii)));
+                    % Create line
+                    xl = [x_unique(ii) - w/2, x_unique(ii) + w/2];
+                    yl = [y_mean, y_mean];
+                    % Draw horizontal line for mean
+                    line(xl,yl,'LineStyle','-','color',cmap(j,:),...
+                        'LineWidth',5);
+                end
+            end
         end
 
         % Show n number----------------------------------------------------

@@ -50,9 +50,10 @@ metrics = load(fullfile(mpath, 'metrics.mat'));
 metrics = metrics.metrics;
 subids = fields(metrics);
 metrics_out = fullfile(mpath, 'metrics.mat');
-% Average Metric Parameters
+% Average Metric Parameters. The tortuosity and diameter are continuous 
+% distributions, which are tested with the LME model for the entire volume
 params = {'length_density','branch_density','fraction_volume',...
-    'tort_outliers','tortuosity','diameter'};
+            'tort_outliers','tortuosity','diameter'};
 % Output filename for saving the p-value table
 ptable_out = 'p_value_table.xls';
 
@@ -75,6 +76,9 @@ regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
 all_regions = {'tiss','gyri','sulci','gm','wm','gm_sulci','wm_sulci',...
                'gm_gyri','wm_gyri','sulci_gyri','wm_sulci_gyri',...
                'gm_sulci_gyri'};
+% X-axis labels for violin plots and swarmcharts
+xlabels = {'Volume','Gyri','Sulci','GM','WM','GM Sulci','WM Sulci',...
+               'GM Gyri','WM Gyri'};
 
 %%% Voxel dimensions (microns) and volume (cubic micron)
 vox_dim = [12, 12, 15];
@@ -120,7 +124,7 @@ titles = {'Length Density','Branch Density','Volume Fraction',...
 r_titles = {'Tissue', 'Gyri', 'Sulci', 'GM', 'WM',...
             'GM Sulci', 'WM Sulci', 'GM Gyri', 'WM Gyri'};
 % Y-axis labels
-ylabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...
+ylabels = {'Length Density (mm/mm^2)','Branch Density (mm/mm^3)',...
             'Volume Fraction (a.u.)','Count'};
 % Name of file to save
 plot_names = {'length_density','branch_density','volume_fraction'...
@@ -135,8 +139,7 @@ for ii = 1:length(regions)
         % all AD, CTE, and NC subjects. Concatenate into arrays.
         [ad, cte, nc] = organize_metrics(metrics, subids,...
                                          regions{ii}, params{j});
-        % Save parameter by the group to fascilitate statistical analyses
-        % in a later step.
+        %%% Save parameter by the group to fascilitate statistical analyses
         metrics.(regions{ii}).(params{j}).ad = ad;
         metrics.(regions{ii}).(params{j}).cte = cte;
         metrics.(regions{ii}).(params{j}).nc = nc;
@@ -175,8 +178,8 @@ vtitle_param = {'Volume Fraction','Length Density','Branch Density',...
 vtitle_tissue = {'Entire Volume','Gyri','Sulci','GM','WM',...
                 'GM Sulci','WM Sulci','GM Gyri','WM Gyri'};
 % Y-axis labels
-ylabels = {'Volume Fraction (a.u.)','Length Density (\mum^-^2)',...
-            'Branch Density (\mum^-^3)','Tortuosity (a.u.)',...
+ylabels = {'Volume Fraction (a.u.)','Length Density (mm/mm^3)',...
+            'Branch Density (1/mm^3)','Tortuosity (a.u.)',...
             'Diameter (\mum)'};
 
 %%% Iterate over vascular metrics
@@ -217,16 +220,11 @@ for ii = 1:length(hm_params)
             v_array = vertcat(v_array, sub_distro);
         end
         
-        %%% Retrieve the group values
-        group.AD = hm.(regions{j}).(hm_params{ii}).ad;
-        group.CTE = hm.(regions{j}).(hm_params{ii}).cte;
-        group.HC = hm.(regions{j}).(hm_params{ii}).nc;
-        
         %%% Initialize table for violin plots
         vtable = table(group_idx,sub_idx, v_array);
     
         %%% Call function to generate violin plot
-        % violin plot
+        % violin plot (no points)
         grpandplot(vtable,"v_array",yTitle=ylabels{ii},...
                    xFactor="sub_idx",...
                    cFactor="group_idx",...
@@ -238,6 +236,7 @@ for ii = 1:length(hm_params)
         % Save output
         fname = append('heatmap_',hm_params{ii},'_',regions{j},'_violin');
         fout = fullfile(mpath,'heatmaps',fname);
+        pause(0.1)
         saveas(gcf,fout,'png');
         close;
     end
@@ -245,9 +244,6 @@ end
 %}
 
 %% (Fig. 2) Violin Plots: Heatmap distribution inter-group differences
-% X-axis labels for groups
-xlabels = {'Volume','Gyri','Sulci','GM','WM','GM Sulci','WM Sulci',...
-               'GM Gyri','WM Gyri'};
 
 %%% Iterate over vascular metrics
 for ii = 1:length(hm_params)
@@ -291,12 +287,13 @@ for ii = 1:length(hm_params)
     set(gca, 'FontSize', 30)
     % Save output
     fout = fullfile(mpath,'/heatmaps/',append('heatmap_',hm_params{ii},'_violin'));
+    pause(0.1)
     saveas(gcf,fout,'png');
     close;
 end
 %}
 
-%% Heatmap Statistical Hypothesis Testing (linear mixed error model)
+%% Fig.2 - Heatmap Statistical Hypothesis Testing (LME model)
 % Significant Difference threshold
 alpha = 0.05;
 % Calculate stats
@@ -310,6 +307,7 @@ hm_stats = calc_heatmap_stats(hm, regions, hm_params, subids, alpha,...
 % Cell array of parameters to compute ratio 
 ratio_params = {'length_density','branch_density','fraction_volume',...
     'tort_outliers'};
+ratio_params = params;
 groups = {'ad','cte','nc'};
 
 % Iterate over each parameter
@@ -346,22 +344,77 @@ trend = 0.10;
 % Significant Difference threshold
 alpha = 0.05;
 % Calculate stats
-pstats = metrics_stats(metrics, all_regions, params, alpha,...
+pstats = calc_avg_stats(metrics, all_regions, params, alpha,...
                         trend, mpath, ptable_out);
 % Save statistics
 stats_fout = fullfile(mpath, 'stats.mat');
 save(stats_fout, 'pstats','-v7.3');
 
+%% Fig. 3 - Swarmchart for average values (inter-group)
+
+% y-axis labels
+ylabels = {'Length Density (mm/mm^3)','Branch Density (1/mm^3)',...
+            'Volume Fraction (a.u.)','N Outliers',...
+            'Tortuosity (a.u.)','Diameter (\mum)'};
+
+for ii = 1:length(params)
+    % Initialize array to store the values
+    v_array = [];
+    % Store disease state index (AD, CTE, HC)
+    group_idx = {};
+    % Store brain region index ()
+    region_idx = {};
+
+    %%% Iterate over brain regions
+    for j = 1:length(regions)
+        % Vertically concatenate the [AD; CTE; NC] into single vert array
+        ad = metrics.(regions{j}).(params{ii}).ad;
+        cte = metrics.(regions{j}).(params{ii}).cte;
+        nc = metrics.(regions{j}).(params{ii}).nc;
+        v_array = vertcat(v_array, ad, cte, nc);
+        n_samples = length(ad) + length(cte) + length(nc);
+
+        % Initialize labels for comparisons within each group (AD, CTE, HC)
+        ad = repmat({'AD'},[length(ad),1]);
+        cte = repmat({'CTE'},[length(cte),1]);
+        nc = repmat({'HC'},[length(nc),1]);
+        group_idx = vertcat(group_idx, ad, cte, nc);
+
+        % Initialize label for comparisons between brain regions
+        region_idx = vertcat(region_idx,...
+            repmat(cellstr(xlabels{j}),[n_samples,1]));
+    end
+
+    %%% Initialize table for violin plots
+    vtable = table(region_idx, group_idx, v_array);
+
+    %%% Call function to generate violin plot
+    % Group each AD/HC/CTE comparison by tissue
+    grpandplot(vtable,"v_array", yTitle=ylabels{ii},...
+        xFactor="region_idx", cFactor="group_idx", xOrder=xlabels,...
+        showXLine=true, showVln=false, showBox=false, showMean=true,...
+        showPnt=true, pntOnTop=true,jitter=false,...
+        showNum=false, numYPos=500, pntSize=40,...
+        gap=0.6, log=log_bool);
+    set(gca, 'FontSize', 30)
+    % Save output
+    if ~exist(fullfile(mpath,'/swarmchart/'))
+        mkdir(fullfile(mpath,'/swarmchart/'));
+    end
+    fout = fullfile(mpath,'/swarmchart/',...
+                    append('swarmchart_',params{ii}));
+    pause(0.1);
+    saveas(gcf,fout,'png');
+    close;
+end
+
 %% Fig. 3 Generate boxplots for average values (deprecated)
+%{
 % Hui decided she no longer wanted boxplots, so this code is deprecated.
 % Create boxplots for the metrics that have significance:
 % Length Density: WM sulci (AD<HC, CTE<HC), sulci (AD<HC)
 % Branch Density: WM sulci (AD<HC)
 
-% Parameters
-bp_params = {'length_density','branch_density'};
-% Regions
-bp_regions = {'wm_sulci','sulci'};
 % Groups for binning the violin plots
 groups = {'AD','CTE','HC'};
 % y-axis labels
@@ -414,15 +467,16 @@ for ii = 1:length(bp_params)
         close;
     end
 end
+%}
 
-
-%% Generate violin plots of average values for each sample
+%% Violin plots of average values for each sample (deprecated)
 % This section will iterate over each vascular metric and generate a 1xm
 % cell array, where each column contains the vascular metric values for a
 % particular brain region. Then, this section will generate a violin plot
 % for each vascular metric, where the x-axis will represent different brain
 % regions. For each brain region, the AD, CTE, NC will be grouped together
 
+%{
 % Y-axis labels
 ylabels = {'Length Density (\mum^-^2)','Branch Density (\mum^-^3)',...
             'Volume Fraction (a.u.)','Tortuosity (a.u.)'};
@@ -527,3 +581,4 @@ for ii = 1:length(params)
     end
 
 end
+%}

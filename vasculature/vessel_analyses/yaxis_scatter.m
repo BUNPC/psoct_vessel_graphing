@@ -1,3 +1,14 @@
+function yaxis_scatter(c, var, n)
+%YAXIS_SCATTER vertical scatter plot for values within the same group
+%   add a horizontal line for the mean value of each group.
+% INPUTS:
+%   c (double array [n,3]) - color of dots and lines
+%   var (struct) - data for y-axis scatter plot. Each field in the struct
+%       contains the data for a particular x-axis offset plot
+%   n (double) - x-axis position
+
+% Example
+%{
 data = readtable('PMI_stat_analysis.xlsx');
 Category = ['AD', 'CTE', 'NC'];
 
@@ -19,17 +30,31 @@ subplot_scat_bar(c, var2, 2)
 c = [0.8500 0.3250 0.0980];
 subplot_scat_bar(c, var3, 3)
 c = [108/255 46/255 18/255];
+
+function subplot_scat_bar
 scatter(3*ones(length(var4)), var4, 'MarkerFaceColor',c, 'MarkerEdgeColor',c)
 hold off
 set(gca, 'FontSize', 18, 'FontWeight', 'bold');
 xticklabels({'', 'AD', 'CTE', 'NC'});
 ylabel('N_{def}/mm^{2}')
+end
+%}
 
-function subplot_scat_bar(c, var, n)
-% c - color of dots and lines
-% var - value of Y variable
-% n - value of X variable
-    scatter(n*ones(length(var)), var, 'MarkerFaceColor',c, 'MarkerEdgeColor',c)
-    mean_var = mean(var);
-    plot([n-0.4 n+0.4], [mean_var mean_var], 'LineWidth', 3, 'Color',c);
+%% Initialize figure
+hdl = figure;
+hdl.WindowState = 'maximized';
+hold on;
+
+%% Iterate through the groups in the struct
+
+% Retrieve field names
+f =  fields(var);
+
+
+% Scatter plot of values within group
+scatter(n*ones(length(var)), var, 'MarkerFaceColor',c, 'MarkerEdgeColor',c)
+
+% Add horizontal line for mean value
+mean_var = mean(var);
+plot([n-0.4 n+0.4], [mean_var, mean_var], 'LineWidth', 3, 'Color',c);
 end
