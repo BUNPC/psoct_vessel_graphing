@@ -102,6 +102,7 @@ for ii = 1:length(subid)
     masks.gm =       mask_gm(:, :, 1:zmin);
     masks.sulci =    mask_sulci(:, :, 1:zmin);
     masks.gyri =     mask_gyri(:, :, 1:zmin);
+    clear mask_tiss mask_wm mask_gm mask_sulci mask_gyri
 
     % Create remaining masks (WM & GM partitions of sulci/gyri)
     masks.gm_sulci = masks.gm .* masks.sulci;
