@@ -122,6 +122,7 @@ for ii = 1:length(subid)
         data = data.Data;
         angio = logical(data.angio);
         nodes = data.Graph.nodes;
+        node_seg = data.Graph.segInfo.nodeSegN;
         vox = data.Graph.vox;
         
         %%% Load the respective mask for this iteration
@@ -134,7 +135,7 @@ for ii = 1:length(subid)
         branchden =     branch_density(data, mask);
         tort =          calc_tortuosity(data);
         fv =            fraction_vol(data, mask);
-        diam =          calc_diameter(angio,nodes,0.99,vox);
+        diam = calc_segment_diameter(node_seg,angio,nodes,0.99,vox);
         
         % Store metrics for this subject and partition of the volume
         metrics.(sub).(f{j}).ave_length_um = um_len;
