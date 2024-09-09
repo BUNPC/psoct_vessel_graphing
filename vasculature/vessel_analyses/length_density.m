@@ -10,14 +10,24 @@ function ld = length_density(data, t_mask)
 % OUTPUTS:
 %   ld (double): length density
 
-% Retrieve voxel dimensions (x,y,z)
+% Retrieve voxel dimensions (x,y,z) in microns
 vox = data.Graph.vox;
-% Calculate volume of a single voxel
+% Calculate volume of a single voxel (cubic microns)
 vox_vol = vox(1) .* vox(2) .* vox(3);
-% Calculate volume of tissue from the non-zero voxels in tissue mask
+
+% Calculate volume of tissue from non-zero voxels in tissue mask (cubic
+% microns)
 t_vol = sum(logical(t_mask(:))) .* vox_vol;
+
+% Calculate total length of vasculature (microns)
+len = sum(data.Graph.segInfo.segLen_um);
+
 % Calculate length density from sum of all segments and total tissue vol
-ld = sum(data.Graph.segInfo.segLen_um) ./ t_vol;
+ld = len ./ t_vol;
+
+% Convert length density from um/um^3 -> mm/mm^3
+ld = ld .* 1e6;
+
 end
 
     

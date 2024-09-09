@@ -20,4 +20,6 @@ t_vol = sum(logical(t_mask(:))) .* vox_vol;
 nb = data.Graph.nB;
 % Calculate branch density
 bd = sum(nb) / t_vol;
+% Convert branch density to cubic millimeters
+bd = bd .* 1e9;
 end

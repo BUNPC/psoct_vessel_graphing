@@ -20,15 +20,10 @@ function nodeDiam = calc_diameter(angio, nodes, Ithresh, vox_dim)
 %   Modified by Sreekanth Kura - skura@bu.edu
 %   Further modified by Mack Hyman - mhyman@bu
 
-% TODO:
-% - separate inputs to measure diameter for separate vessels
-%   - output all diameter measurements for each vessel
-%   - output average for each vessel
-
 %% Initialize variables
 % Set minimum and maximum diameters
 minDiam = 2;
-maxDiam = 500;
+maxDiam = 30;
 
 % initialize vector for storing diameter at each node
 nodeDiam = zeros(1,size(nodes,1));
