@@ -267,8 +267,8 @@ for ii = 1:length(subid)
                         z <= end_node_pos(:,3) & end_node_pos(:,3) < zf);
                     % Number of branch points for each end node in cube
                     nb = sum(graph.nB(idx));
-                    % Calculate branch density (1 / cubic microns)
-                    bd = nb ./ mask_cube_um;
+                    % Calculate branch density (1 / cubic millimeters)
+                    bd = (nb ./ mask_cube_um) .* 1e9;
                     % Add branch density to the heatmap matrix
                     bd_mat((x:xf), (y:yf), hm_z_idx) = bd;
                     
@@ -305,9 +305,7 @@ for ii = 1:length(subid)
                         [Data] = init_graph(g);
 
                         %%% Length density with subvolume (cube)
-                        seglen_um = Data.Graph.segInfo.segLen_um;
-                        seglen_tot_um = sum(seglen_um);
-                        ld = seglen_tot_um ./ mask_cube_um;
+                        ld = length_density(Data,mask_cube);
                         
                         %%% Compute tortuosity
                         tort = mean(calc_tortuosity(Data));
@@ -329,7 +327,8 @@ for ii = 1:length(subid)
                         d = sqrt( (n1(1) - n2(1)).^2 +...
                                   (n1(2) - n2(2)).^2 +...
                                   (n1(3) - n2(3)).^2);
-                        ld = d ./ mask_cube_um;
+                        % Units = millimeter / cubic millimeter
+                        ld = (d ./ mask_cube_um) .* 1e6;
 
                         %%% Set tortuosity to 1 (only one edge)
                         tort = 1;
@@ -344,12 +343,10 @@ for ii = 1:length(subid)
                         tort = 0;
                         d = 0;
                     end
-
                     %%% Add metrics to matrices
                     ld_mat((x:xf), (y:yf), hm_z_idx) = ld;
                     tort_mat((x:xf), (y:yf), hm_z_idx) = mean(tort);
                     diam_mat((x:xf), (y:yf), hm_z_idx) = median(d);
-
                 end
             end
         end
@@ -614,6 +611,7 @@ for d = 1:Ndepths
 
     fout = fullfile(dpath, fout);
     saveas(gca, fout,'png');
+    pause(0.1)
     close;
 
 end

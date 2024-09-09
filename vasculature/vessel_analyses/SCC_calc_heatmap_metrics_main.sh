@@ -5,7 +5,7 @@
 
 # Request a whole node with 28 cores and at least 384 GB of RAM.
 # Specify number of cores
-#$ -pe omp 4
+#$ -pe omp 8
 # Specify memory per core
 #$ -l mem_per_core=8G
 

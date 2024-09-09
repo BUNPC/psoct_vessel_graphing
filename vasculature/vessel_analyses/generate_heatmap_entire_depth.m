@@ -45,7 +45,8 @@ viz_individual = false;
 metrics = {'vf','ld','bd','tort','diam'};
 
 %% Vascular heatmap across entire heatmap depth
-% Create a heatmap across the entire z-axis. Fig. 2 in manuscript
+% Create a heatmap across the entire z-axis. Fig. 2 in manuscript. Exclude
+% ROIs that are devoid of vasculature
 
 % Load heatmap
 hm = append('heatmap_',num2str(cube_side),'.mat');
@@ -56,7 +57,9 @@ hm = hm.heatmap;
 subid = fields(hm);
 % Initialize struct to store heatmaps across depth
 hm_stack = struct();
-% maximum values for x,y
+% Initialize the maximum values for x,y dimensions. These are used for
+% scaling all of the heatmap figures such that they are all on the same
+% scale.
 ymax = 1;
 xmax = 1;
 
@@ -70,10 +73,15 @@ for ii = 1:length(subid)
     xmax = max([xmax,size(hm_stack.(sub).mask,2)]);
     
     %%% Take average of heatmap across z-axis   
-    for j=1:length(metrics)
-        hm_stack.(sub).(metrics{j}) = mean(hm.(sub).(metrics{j}),3);
+    for j = 1:length(metrics)
+        % Set the zero elements to NaN so that they're excluded from mean
+        tmp = hm.(sub).(metrics{j});
+        tmp(tmp==0) = NaN;
+        % Take mean across z-dimension, exclude NaN
+        hm_stack.(sub).(metrics{j}) = mean(tmp,3,'omitnan');
     end
-    sprintf('FINISHED HEATMAP AVERAGE FOR SUBJECT %s',sub)
+
+    fprintf('FINISHED HEATMAP AVERAGE FOR SUBJECT %s\n',sub)
 end
 
 % Save the heatmap struct
@@ -81,7 +89,7 @@ heat_out = append('heatmap_entire_depth_',num2str(cube_side),'.mat');
 heat_out = fullfile(mpath, heat_out);
 save(heat_out,'hm_stack','-v7.3');
 
-%% Generate heat maps - normalized across subjects
+%% Calculate limits for normalized heatmaps
 % Iterate over each metric, choose one depth from each subject, normalize
 % the colorbar across all subjects for this metric.
 
@@ -111,7 +119,7 @@ end
 vf_min = min(vf);
 ld_min = min(ld);
 bd_min = min(bd);
-tr_min = min(tr);
+tr_min = 1;
 dm_min = min(dm);
 % Maximum = 90th percentile of each metric
 vf_max = prctile(vf,95);
@@ -119,9 +127,6 @@ ld_max = prctile(ld,95);
 bd_max = prctile(bd,95);
 tr_max = prctile(tr,95);
 dm_max = prctile(dm,95);
-% Manually set the min/max values for tortuosity and diameter
-tr_min = 1; tr_max = 1.3;
-dr_min = 0; dr_max = 300;
 
 %% Generate normalized heatmaps
 % Variable for whether or not to invert the heatmap
@@ -214,7 +219,6 @@ xmax = max_dim(2);
 %%% Iterate over frames in z dimension
 for d = 1:Ndepths
     %%% Heatmap of j_th frame from the length density
-    fh = figure();
     % If there are multiple heatmaps in the matrix
     if size(heatmaps,3) > 1
         heatmap = heatmaps(:,:,d);

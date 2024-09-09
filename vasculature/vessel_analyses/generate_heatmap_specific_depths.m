@@ -1,4 +1,4 @@
-%% Divide volume into grid and calculate metrics for each cube
+%% Generate heatmap at same depth as pathology slice
 % Generate heatmaps centered about specific depths in the OCT volumes.
 % The purpose of this is to correlate the vascular metrics with the
 % pathology staining of deposits of amyloid beta and phosphorylated tau.
@@ -69,7 +69,7 @@ graph_name = 'seg_refined_masked_rmloop_graph_data.mat';
 
 %%% Subvolume parameters
 % Isotropic cube length (microns)
-cube_side = 984;
+cube_side = 1000;
 % Size of each voxel (microns)
 vox = [12, 12, 15];
 % Whether to plot non-normalized heatmaps for each depth
@@ -201,6 +201,7 @@ end
 %}
 
 %% Vascular heatmap: length density, branch density, volume fraction
+
 %%% Iterate over each subject
 for ii = 1:length(subid)
     %% Load graph, segmentation, and mask
@@ -283,7 +284,10 @@ for ii = 1:length(subid)
                 yf = min(yf, size(seg,2));
                 % Take cube from segmentation
                 cube = seg((x:xf), (y:yf), (zi:zf));
+                % Take cube from tissue mask
                 cube_mask = mask((x:xf), (y:yf), (zi:zf));
+                % Calculate volume of tissue voxels (cubic microns)
+                mask_cube_um = sum(cube_mask(:)).*vox(1)*vox(2)*vox(3);
 
                 %% Calculate metrics if cube has segmentation
                 % Check for segmentation within cube
@@ -302,8 +306,8 @@ for ii = 1:length(subid)
                         zi <= end_node_pos(:,3) &  end_node_pos(:,3) < zf);
                     % Extract number of branch points for each end node in cube
                     nb = sum(graph.nB(idx));
-                    % Calculate branch density
-                    bd = nb ./ sum(cube_mask(:));
+                    % Calculate branch density (1 / cubic millimeters)
+                    bd = (nb ./ mask_cube_um) .* 1e9;
                     % Add branch density to the heatmap matrix
                     bd_mat((x:xf), (y:yf), idx_z) = bd;
                     
@@ -340,9 +344,7 @@ for ii = 1:length(subid)
                         [Data] = init_graph(g);
 
                         %%% Length density with subvolume (cube)
-                        seglen_um = Data.Graph.segInfo.segLen_um;
-                        seglen_tot_um = sum(seglen_um);
-                        ld = seglen_tot_um ./ sum(cube_mask(:));
+                        ld = length_density(Data,cube_mask);
                         
                         %%% Compute tortuosity
                         tort = mean(calc_tortuosity(Data));
@@ -365,7 +367,8 @@ for ii = 1:length(subid)
                         d = sqrt( (n1(1) - n2(1)).^2 +...
                                   (n1(2) - n2(2)).^2 +...
                                   (n1(3) - n2(3)).^2);
-                        ld = d ./ sum(cube_mask(:));
+                        % Units = millimeter / cubic millimeter
+                        ld = (d ./ mask_cube_um) .* 1e6;
 
                         %%% Set tortuosity to 1 (only one edge)
                         tort = 1;
@@ -380,7 +383,7 @@ for ii = 1:length(subid)
                         tort = 0;
                         d = 0;
                     end
-                    % Add length density to matrix
+                    %%% Add length density to matrix
                     ld_mat((x:xf), (y:yf), idx_z) = ld;
                     tort_mat((x:xf), (y:yf), idx_z) = mean(tort);
                     diam_mat((x:xf), (y:yf), idx_z) = median(d);
@@ -406,7 +409,7 @@ heat_out = append('heatmap_ab_ptau_',num2str(cube_side),'.mat');
 heat_out = fullfile(mpath, heat_out);
 save(heat_out,'heatmap','-v7.3');
 
-%% Generate heat maps - normalized across subjects
+%% Calculate limits for normalized heatmaps
 % Iterate over each metric, choose one depth from each subject, normalize
 % the colorbar across all subjects for this metric.
 
@@ -447,8 +450,23 @@ bd_max = prctile(bd,95);
 dm_max = prctile(dm,95);
 % Manually set the min/max values for tortuosity and diameter
 tr_min = 1; tr_max = 1.3;
-
+%}
 %% Generate normalized heatmaps
+
+% Initialize the maximum values for x,y dimensions. These are used for
+% scaling all of the heatmap figures such that they are all on the same
+% scale.
+ymax = 1; xmax = 1;
+
+% Iterate over each subject
+for ii = 1:length(subid)
+    %%% Load the heatmap for the subject
+    sub = subid{ii};
+    % Identify the maximum dimensions of x,y
+    ymax = max([ymax,size(heatmap.(sub).mask,1)]);
+    xmax = max([xmax,size(heatmap.(sub).mask,2)]);
+end
+
 % Variable for whether or not to invert the heatmap
 flip_cbar = 0;
 % Iterate over each subject
@@ -462,6 +480,25 @@ for ii = 1:length(subid)
     heatmap_dm = heatmap.(sub).diam;
     masks = heatmap.(sub).mask;
 
+    %%% Rotate and transpose subjects so that they all align
+    % Rotate subject AD_20969
+    if strcmp(sub,'AD_20969')
+        heatmap_vf = flip(permute(heatmap_vf,[2,1,3]),2);
+        heatmap_ld = flip(permute(heatmap_ld,[2,1,3]),2);
+        heatmap_bd = flip(permute(heatmap_bd,[2,1,3]),2);
+        heatmap_tr = flip(permute(heatmap_tr,[2,1,3]),2);
+        heatmap_dm = flip(permute(heatmap_dm,[2,1,3]),2);
+        masks =      flip(permute(masks,[2,1,3]),2);
+    end
+    if strcmp(sub,'CTE_6912')||strcmp(sub,'NC_6974')||strcmp(sub,'NC_21499')
+        heatmap_vf = flip(heatmap_vf,1);
+        heatmap_ld = flip(heatmap_ld,1);
+        heatmap_bd = flip(heatmap_bd,1);
+        heatmap_tr = flip(heatmap_tr,1);
+        heatmap_dm = flip(heatmap_dm,1);
+        masks = flip(masks,1);
+    end
+
     %%% Output filepath for figures
     roi_dir = strcat('AB_p-tau_ROI_',num2str(cube_side));
     heatmap_dir = fullfile(mpath,'heatmaps',sub,roi_dir);
@@ -470,25 +507,26 @@ for ii = 1:length(subid)
     end
 
     %%% Plot heatmaps at each depth
-%     plot_save_heatmap([], heatmap_vf, flip_cbar, [vf_min, vf_max],...
-%         masks,'Volume Fraction','(a.u.)',...
-%         heatmap_dir,'rescaled_heatmap_vf')
-%     plot_save_heatmap([], heatmap_ld, flip_cbar, [ld_min, ld_max],...
-%         masks,'Length Density','Length (\mu) / Volume (\mu^3)',...
-%         heatmap_dir,'rescaled_heatmap_ld')
-%     plot_save_heatmap([], heatmap_bd, flip_cbar, [bd_min, bd_max],...
-%         masks,'Branch Density','Branches / Volume (\mu^3)',...
-%         heatmap_dir,'rescaled_heatmap_bd')
+    plot_save_heatmap([], heatmap_vf, flip_cbar, [vf_min, vf_max],...
+        [ymax,xmax],masks,'Volume Fraction','(a.u.)',...
+        heatmap_dir,'rescaled_heatmap_vf')
+    plot_save_heatmap([], heatmap_ld, flip_cbar, [ld_min, ld_max],...
+        [ymax,xmax],masks,'Length Density','Length (\mu) / Volume (\mu^3)',...
+        heatmap_dir,'rescaled_heatmap_ld')
+    plot_save_heatmap([], heatmap_bd, flip_cbar, [bd_min, bd_max],...
+        [ymax,xmax],masks,'Branch Density','Branches / Volume (\mu^3)',...
+        heatmap_dir,'rescaled_heatmap_bd')
     plot_save_heatmap([], heatmap_tr, flip_cbar, [tr_min, tr_max],...
-        masks,'Tortuosity','(a.u.)',...
+        [ymax,xmax],masks,'Tortuosity','(a.u.)',...
         heatmap_dir,'rescaled_heatmap_tr')
-%     plot_save_heatmap([], heatmap_dm, flip_cbar, [dm_min, dm_max],...
-%         masks,'Diameter','(\mum)',...
-%         heatmap_dir,'rescaled_heatmap_dm')
+    plot_save_heatmap([], heatmap_dm, flip_cbar, [dm_min, dm_max],...
+        [ymax,xmax],masks,'Diameter','(\mum)',...
+        heatmap_dir,'rescaled_heatmap_dm')
 end
-
+%}
 %% Export tissue mask for each heatmap
 % This will be used for registering the heatmaps w/ pathology
+%{
 for ii = 1:length(subid)
     %%% Load the heatmap for the subject
     sub = subid{ii};
@@ -508,10 +546,10 @@ for ii = 1:length(subid)
     segmat2tif(masks(:,:,1),ab_mask_fname);
     segmat2tif(masks(:,:,2),ptau_mask_fname);
 end
-
+%}
 %% Plot and save the heat maps
 function plot_save_heatmap(Ndepths, heatmaps, flip_cbar, colorbar_range,...
-    masks, tstr, cbar_label, dpath, fname)
+    max_dim, masks, tstr, cbar_label, dpath, fname)
 % PLOT_SAVE_HEATMAP use imagesc and set background = 0
 % INPUT
 %   Ndepths (int): number of depths in z dimension
@@ -531,13 +569,14 @@ if isempty(Ndepths)
     Ndepths = size(heatmaps,3);
 end
 % Set fontsize for the heatmap figure
-fontsize = 40;
+fontsize = 20;
+% Set the maximum dimensions for x-y axes
+ymax = max_dim(1);
+xmax = max_dim(2);
 
 %%% Iterate over frames in z dimension
 for d = 1:Ndepths
     %%% Heatmap of j_th frame from the length density
-    fh = figure();
-    fh.WindowState = 'maximized';
     % If there are multiple heatmaps in the matrix
     if size(heatmaps,3) > 1
         heatmap = heatmaps(:,:,d);
@@ -547,6 +586,12 @@ for d = 1:Ndepths
     end
     % Initialize heatmap
     h = imagesc(heatmap);
+
+    %%% Scale the x- and y-axes according to the max dimensions
+    % Calculate the ratio of the current axes to the max axes
+    yratio = size(heatmap,1) ./ ymax;
+    xratio = size(heatmap,2) ./ xmax;
+    set(gcf,'Units','Normalized','OuterPosition',[0,0,xratio,yratio])
 
     %%% Initialize colorbar
     % If the colorbar_range is passed in, then extract min & max
@@ -579,7 +624,7 @@ for d = 1:Ndepths
     % Update title string with specific pathology
     pathology = {'A-Beta','p-tau'};
     if size(heatmaps,3) > 1
-        title_str = append(tstr, ' ', pathology{d});
+        title_str = append(tstr, ' (', pathology{d},' depth)');
     else
         title_str = tstr;
     end
@@ -591,7 +636,7 @@ for d = 1:Ndepths
     c.Label.Position = [10 (cmap_max - (cmap_max-cmap_min)/2)];
     c.Label.Rotation = 270;
     % Increase fontsize of colorbar
-    c.FontSize = 40;
+    c.FontSize = 20;
     % Remove x and y tick labels
     set(gca,'Yticklabel',[]);
     set(gca,'Xticklabel',[]);
