@@ -8,7 +8,7 @@ function [pstats] = calc_heatmap_stats(hm, regions, params, subids,...
 % 
 % In addition, this script measures the mean, median, and variance of each
 % group for each region and parameter. These summary statistics are saved
-% alongside the p-value of the KS test.
+% alongside the p-value.
 %
 %   INPUTS:
 %       hm (struct): contains substructures of vascular parameters
