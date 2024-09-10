@@ -1,11 +1,10 @@
 function [pstats] = calc_heatmap_stats(hm, regions, params, subids,...
                                         alpha, dout, fname)
-%CALC_HEATMAP_STATS kolmogorov-smirnov (KS) test of distributions
-% This function performs the two-sided kolmogorov-smirnov (KS) test between
-% each of the experimental groups and the control groups. The null
-% hypothesis of this test is that the two samples comes from the same
-% distribution. The alternative hypothesis is that they come from different
-% distributions.
+%CALC_HEATMAP_STATS Linear Mixed Effects (LME) model
+% This function creates an LME model and then tests the fixed effects
+% (diseased vs. control) while accounting for random effects within groups.
+% This method accounts for multiple observations (samples) from the same
+% subject.
 % 
 % In addition, this script measures the mean, median, and variance of each
 % group for each region and parameter. These summary statistics are saved
@@ -19,15 +18,13 @@ function [pstats] = calc_heatmap_stats(hm, regions, params, subids,...
 %                            branch_density, fraction_volume, tortuosity
 %                            diameter)
 %       subids (cell array): subject IDs
-%       alpha (double): threshold for kruskal-wallis significance
-%       trend (double): threshold for a trend
+%       alpha (double): threshold for significance
 %       dout (string): directory to save table
 %       fname (string): filename to save table
 %   OUTPUTS:
-%       stats (struct): contains p-value from KS test and the summary
-%           statistics for each parameter from each region:
+%       stats (struct): contains p-value from LME fixed effects test and
+%           the summary statistics for each parameter from each region, ex:
 %               - stats.[region].[parameter].p
-%               - stats.[region].[parameter].
 % 
 %
 %% Initialize workspace
@@ -119,7 +116,7 @@ for ii = 1:length(regions)
         % Fit the model for CTE vs. HC
         lme_cte_nc = fitlme(tbl_cte_nc,fml);
         
-        %%% Estimates of random effects 
+        %%% Estimates of fixed effects 
         [~,~,stats_ad_nc] = fixedEffects(lme_ad_nc);
         [~,~,stats_cte_nc] = fixedEffects(lme_cte_nc);
         % Store the p-value for the stats tests
